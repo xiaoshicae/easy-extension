@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.xiaoshicae</groupId>
+    <artifactId>easy-extension</artifactId>
+    <version>1.0.1</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>easy-extension-core</module>
+        <module>easy-extension-spring-boot-starter</module>
+    </modules>
+
+    <properties>
+        <easy-extension-core.version>1.0.1</easy-extension-core.version>
+        <easy-extension-spring-boot-starter.version>1.0.1</easy-extension-spring-boot-starter.version>
+
+        <spring-boot-starter.version>2.7.18</spring-boot-starter.version>
+        <spring-boot-configuration-processor.version>2.7.18</spring-boot-configuration-processor.version>
+
+        <junit.version>4.13.2</junit.version>
+
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.compilerVersion>17</maven.compiler.compilerVersion>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.zs</groupId>
+                <artifactId>easy-extension-core</artifactId>
+                <version>${easy-extension-core.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.zs</groupId>
+                <artifactId>easy-extension-spring-boot-starter</artifactId>
+                <version>${easy-extension-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter</artifactId>
+                <version>${spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-configuration-processor</artifactId>
+                <version>${spring-boot-configuration-processor.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
