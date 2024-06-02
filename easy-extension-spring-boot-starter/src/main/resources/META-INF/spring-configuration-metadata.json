@@ -1,0 +1,26 @@
+{
+  "groups": [
+    {
+      "name": "easy-extension",
+      "type": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "easy-extension.allow-unknown-business",
+      "type": "java.lang.Boolean",
+      "description": "是否允许未知业务，当没有业务身份可以匹配时，如果不允许未知业务则请求报错，如果允许，则扩展点会走默认能力兜底 whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability.",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
+      "defaultValue": false
+    },
+    {
+      "name": "easy-extension.enable-log",
+      "type": "java.lang.Boolean",
+      "description": "是否启用日志，扩展点匹配过程会打印相应的一致 whether to enable logs, the extension point matching process will print log",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
+      "defaultValue": false
+    }
+  ],
+  "hints": []
+}
