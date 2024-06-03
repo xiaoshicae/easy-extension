@@ -6,8 +6,15 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>pom</packaging>
+
+    <description>
+        easy-extension framework offers a simple and flexible mechanism for extension points, employing a plugin
+        approach to endow the system with robust extensibility.
+    </description>
+    <url>https://github.com/xiaoshicae/easy-extensione</url>
+    <inceptionYear>2024</inceptionYear>
 
     <modules>
         <module>easy-extension-core</module>
@@ -15,14 +22,15 @@
     </modules>
 
     <properties>
-        <easy-extension-core.version>1.0.1</easy-extension-core.version>
-        <easy-extension-spring-boot-starter.version>1.0.1</easy-extension-spring-boot-starter.version>
+        <easy-extension-core.version>1.0.2</easy-extension-core.version>
+        <easy-extension-spring-boot-starter.version>1.0.2</easy-extension-spring-boot-starter.version>
 
         <spring-boot-starter.version>2.7.18</spring-boot-starter.version>
         <spring-boot-configuration-processor.version>2.7.18</spring-boot-configuration-processor.version>
 
         <junit.version>4.13.2</junit.version>
 
+        <jdk.version>17</jdk.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.compilerVersion>17</maven.compiler.compilerVersion>
@@ -32,13 +40,13 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.zs</groupId>
+                <groupId>io.github.xiaoshicae</groupId>
                 <artifactId>easy-extension-core</artifactId>
                 <version>${easy-extension-core.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>org.zs</groupId>
+                <groupId>io.github.xiaoshicae</groupId>
                 <artifactId>easy-extension-spring-boot-starter</artifactId>
                 <version>${easy-extension-spring-boot-starter.version}</version>
             </dependency>
@@ -64,4 +72,114 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.4.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>ossrh</publishingServerId>
+                    <tokenAuth>true</tokenAuth>
+                </configuration>
+            </plugin>
+            <!-- Source -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Javadoc -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <windowtitle>${project.name}</windowtitle>
+                    <doctitle>${project.name}</doctitle>
+                    <show>private</show>
+                    <detectLinks>false</detectLinks>
+                    <detectOfflineLinks>true</detectOfflineLinks>
+                    <linksource>true</linksource>
+                    <detectJavaApiLink>true</detectJavaApiLink>
+                    <source>8</source>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- 以下是GPG -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.0.1</version> <!-- 使用合适的版本号 -->
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--batch</arg>
+                                <arg>--no-tty</arg>
+                            </gpgArguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
+    <issueManagement>
+        <system>Github Issue</system>
+        <url>https://github.com/xiaoshicae/easy-extension/issues</url>
+    </issueManagement>
+
+    <scm>
+        <connection>scm:git:git@github.com:xiaoshicae/easy-extension.git</connection>
+        <developerConnection>scm:git:git@github.com:xiaoshicae/easy-extension.git</developerConnection>
+        <url>git@github.com:xiaoshicae/easy-extension.git</url>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Shui Zhuang</name>
+            <email>snk_zhuang@126.com</email>
+        </developer>
+    </developers>
 </project>
