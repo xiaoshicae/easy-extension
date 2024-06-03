@@ -11,6 +11,11 @@
 
     <artifactId>easy-extension-core</artifactId>
     <version>1.0.1</version>
+    <packaging>jar</packaging>
+
+    <description>easy-extension core</description>
+    <url>https://github.com/xiaoshicae/easy-extensione</url>
+    <inceptionYear>2024</inceptionYear>
 
     <dependencies>
 
