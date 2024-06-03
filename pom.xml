@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>pom</packaging>
 
     <description>
@@ -22,8 +22,8 @@
     </modules>
 
     <properties>
-        <easy-extension-core.version>1.0.1</easy-extension-core.version>
-        <easy-extension-spring-boot-starter.version>1.0.1</easy-extension-spring-boot-starter.version>
+        <easy-extension-core.version>1.0.2</easy-extension-core.version>
+        <easy-extension-spring-boot-starter.version>1.0.2</easy-extension-spring-boot-starter.version>
 
         <spring-boot-starter.version>2.7.18</spring-boot-starter.version>
         <spring-boot-configuration-processor.version>2.7.18</spring-boot-configuration-processor.version>
@@ -40,13 +40,13 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.zs</groupId>
+                <groupId>io.github.xiaoshicae</groupId>
                 <artifactId>easy-extension-core</artifactId>
                 <version>${easy-extension-core.version}</version>
             </dependency>
 
             <dependency>
-                <groupId>org.zs</groupId>
+                <groupId>io.github.xiaoshicae</groupId>
                 <artifactId>easy-extension-spring-boot-starter</artifactId>
                 <version>${easy-extension-spring-boot-starter.version}</version>
             </dependency>
@@ -73,17 +73,6 @@
         </dependencies>
     </dependencyManagement>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
-
     <build>
         <plugins>
             <plugin>
@@ -96,18 +85,6 @@
                     <tokenAuth>true</tokenAuth>
                 </configuration>
             </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                    <encoding>${project.build.sourceEncoding}</encoding>
-                </configuration>
-            </plugin>
-
             <!-- Source -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -170,11 +147,21 @@
         </plugins>
     </build>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
     <issueManagement>
         <system>Github Issue</system>
         <url>https://github.com/xiaoshicae/easy-extension/issues</url>
     </issueManagement>
-
 
     <scm>
         <connection>scm:git:git@github.com:xiaoshicae/easy-extension.git</connection>
