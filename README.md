@@ -45,7 +45,8 @@ public class Controller {
 ```
 
 # 文档
-完整文档请参考: [wiki](https://github.com/xiaoshicae/easy-extension/wiki)
+* 完整文档请参考: [wiki](https://github.com/xiaoshicae/easy-extension/wiki)
+* go版本的easy-extension实现可以参考: [go-easy-extension](https://github.com/xiaoshicae/go-easy-extension)
 
 # 代码样例
 样例源码请参考: [easy-extension-sample](https://github.com/xiaoshicae/easy-extension-sample)
