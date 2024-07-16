@@ -18,6 +18,7 @@ public class DefaultExtGroupRealizationManager implements IExtGroupRealizationMa
         if (name == null) {
             throw new ExtensionException("name can not be null");
         }
+
         if (instance == null) {
             throw new ExtensionTypeException("instance can not be null");
         }
@@ -60,7 +61,6 @@ public class DefaultExtGroupRealizationManager implements IExtGroupRealizationMa
 
         return (T) instance;
     }
-
 
     private String makeKey(Class<?> extensionType, String name) {
         return extensionType.getName() + keySeparator + name;

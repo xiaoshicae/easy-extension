@@ -6,11 +6,11 @@
     <parent>
         <groupId>io.github.xiaoshicae</groupId>
         <artifactId>easy-extension</artifactId>
-        <version>1.0.2</version>
+        <version>2.0.0</version>
     </parent>
 
     <artifactId>easy-extension-spring-boot-starter</artifactId>
-    <version>1.0.2</version>
+    <version>2.0.0</version>
     <packaging>jar</packaging>
 
     <description>easy-extension spring boot sample</description>
@@ -26,7 +26,6 @@
         <dependency>
             <groupId>io.github.xiaoshicae</groupId>
             <artifactId>easy-extension-core</artifactId>
-            <version>${easy-extension-core.version}</version>
         </dependency>
 
         <dependency>
@@ -36,8 +35,8 @@
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

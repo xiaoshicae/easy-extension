@@ -7,16 +7,15 @@ import java.util.List;
 public interface IAbilityManager<T> {
 
     /**
-     * register ability to container
+     * register ability
      *
      * @param ability @NonNull
      * @throws AbilityException ability invalid
      */
     void registerAbility(IAbility<T> ability) throws AbilityException;
 
-
     /**
-     * get ability form container
+     * get ability
      *
      * @param abilityCode @NonNull code of ability
      * @throws AbilityException abilityCode is null or ability not found(AbilityNotFoundException)
@@ -24,7 +23,7 @@ public interface IAbilityManager<T> {
     IAbility<T> getAbility(String abilityCode) throws AbilityException;
 
     /**
-     * get all abilities from container
+     * get all abilities
      *
      * @return abilities
      */
