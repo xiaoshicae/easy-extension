@@ -1,27 +1,29 @@
 package io.github.xiaoshicae.extension.core.business;
 
 
-public class UsedAbility {
+import io.github.xiaoshicae.extension.core.priority.ICodePriority;
+
+public class UsedAbility implements ICodePriority {
     /**
      * code of ability
      */
-    private final String abilityCode;
+    private final String code;
 
     /**
      * priority of extension that implements by ability
      */
-    private final int priority;
+    private final Integer priority;
 
-    public UsedAbility(String abilityCode, int priority) {
-        this.abilityCode = abilityCode;
+    public UsedAbility(String code, Integer priority) {
+        this.code = code;
         this.priority = priority;
     }
 
-    public String getAbilityCode() {
-        return abilityCode;
+    public String code() {
+        return code;
     }
 
-    public int getPriority() {
+    public Integer priority() {
         return priority;
     }
 }

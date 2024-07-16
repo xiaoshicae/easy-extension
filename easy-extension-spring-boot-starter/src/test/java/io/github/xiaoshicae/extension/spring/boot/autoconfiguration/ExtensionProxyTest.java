@@ -1,7 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfiguration;
 
 
-import org.junit.Test;
 import io.github.xiaoshicae.extension.core.BaseDefaultAbility;
 import io.github.xiaoshicae.extension.core.DefaultExtContext;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.proxy.AllMatchedExtensionProxy;
@@ -12,7 +11,11 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+
+import org.junit.jupiter.api.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+
 
 public class ExtensionProxyTest {
 

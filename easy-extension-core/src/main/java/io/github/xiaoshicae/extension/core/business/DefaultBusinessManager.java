@@ -16,6 +16,7 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
         if (business == null) {
             throw new BusinessException("business can not be null");
         }
+
         if (businesses.containsKey(business.code())) {
             throw new BusinessException("business " + business.code() + " already registered");
         }
@@ -28,10 +29,12 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
         if (businessCode == null) {
             throw new BusinessException("businessCode can not be null");
         }
+
         IBusiness<T> business = businesses.get(businessCode);
         if (business == null) {
             throw new BusinessNotFoundException("business " + businessCode + " not found");
         }
+
         return business;
     }
 

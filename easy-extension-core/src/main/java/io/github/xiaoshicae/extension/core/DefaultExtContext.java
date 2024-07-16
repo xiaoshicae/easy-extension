@@ -16,8 +16,7 @@ import io.github.xiaoshicae.extension.core.exception.ExtensionException;
 import io.github.xiaoshicae.extension.core.exception.ExtensionNotFoundException;
 import io.github.xiaoshicae.extension.core.exception.SessionException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -30,7 +29,7 @@ public class DefaultExtContext<T> implements IExtContext<T> {
 
     private final Boolean enableLogger;
 
-    private final ISession session;
+    private final ISession session = new DefaultSession() ;
 
     private final IAbilityManager<T> abilityManager = new DefaultAbilityManager<>();
 
@@ -39,11 +38,10 @@ public class DefaultExtContext<T> implements IExtContext<T> {
     private final IExtGroupRealizationManager extensionManager = new DefaultExtGroupRealizationManager();
 
     public DefaultExtContext() {
-        this(false, false, false);
+        this(false, false);
     }
 
-    public DefaultExtContext(Boolean enableLogger, Boolean sessionDisablePriorityDuplicate, Boolean matchBusinessStrict) {
-        this.session = new DefaultSession(sessionDisablePriorityDuplicate);
+    public DefaultExtContext(Boolean enableLogger, Boolean matchBusinessStrict) {
         this.enableLogger = enableLogger;
         this.matchBusinessStrict = matchBusinessStrict;
     }
@@ -98,20 +96,20 @@ public class DefaultExtContext<T> implements IExtContext<T> {
 
             session.setMatchedCode(matchedBusiness.code(), matchedBusiness.priority());
             for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
-                IAbility<T> ability = abilityManager.getAbility(usedAbility.getAbilityCode());
+                IAbility<T> ability = abilityManager.getAbility(usedAbility.code());
                 if (ability == null) {
-                    throw new ExtensionException("business " + matchedBusiness.code() + " used ability " + usedAbility.getAbilityCode() + " not found");
+                    throw new ExtensionException("business " + matchedBusiness.code() + " used ability " + usedAbility.code() + " not found");
                 }
                 if (ability.match(param)) {
                     if (enableLogger) {
-                        logger.info("[ExtensionFactory] init session match ability: " + usedAbility.getAbilityCode() + " priority: " + usedAbility.getPriority());
+                        logger.info("[ExtensionFactory] init session match ability: " + usedAbility.code() + " priority: " + usedAbility.priority());
                     }
-                    session.setMatchedCode(usedAbility.getAbilityCode(), usedAbility.getPriority());
+                    session.setMatchedCode(usedAbility.code(), usedAbility.priority());
                 }
             }
         }
 
-        IAbility<T> defaultAbility = abilityManager.getAbility(BaseDefaultAbility.defaultCode);
+        IAbility<T> defaultAbility = abilityManager.getAbility(BaseDefaultAbility.DEFAULT_CODE);
 
         session.setMatchedCode(defaultAbility.code(), defaultAbilityPriority);
         if (enableLogger) {
@@ -136,7 +134,7 @@ public class DefaultExtContext<T> implements IExtContext<T> {
         }
         E firstMatchedExtension = allMatchedExtension.get(0);
         if (enableLogger) {
-            logger.info("[ExtensionFactory] get first matched extension instance: " + ((IExtGroupRealization<?>)firstMatchedExtension).code());
+            logger.info("[ExtensionFactory] get first matched extension instance: " + ((IExtGroupRealization<?>) firstMatchedExtension).code());
         }
         return firstMatchedExtension;
     }
@@ -171,5 +169,53 @@ public class DefaultExtContext<T> implements IExtContext<T> {
             logger.info("[ExtensionFactory] get all matched extension instance: " + extensions.stream().map(e -> ((IExtGroupRealization<?>) e).code()).collect(Collectors.joining(" > ")));
         }
         return extensions;
+    }
+
+    @Override
+    public void validateContext() throws ExtensionException {
+        List<Class<?>> allExtensionList = new ArrayList<>();
+
+        for (IBusiness<T> business : businessManager.listAllBusinesses()) {
+            if (business.usedAbilities() == null) {
+                continue;
+            }
+
+            allExtensionList.addAll(business.implementsExtensions());
+
+            Set<String> codeSet = new HashSet<>();
+            Set<Integer> prioritySet = new HashSet<>();
+
+            codeSet.add(business.code());
+            prioritySet.add(business.priority());
+
+            for (UsedAbility usedAbility : business.usedAbilities()) {
+                IAbility<T> ability = abilityManager.getAbility(usedAbility.code());
+                allExtensionList.addAll(ability.implementsExtensions());
+
+                if (codeSet.contains(usedAbility.code())) {
+                    throw new ExtensionException("business " + business.code() + " used ability code " + usedAbility.code() + " duplicate");
+                }
+
+                if (prioritySet.contains(usedAbility.priority())) {
+                    throw new ExtensionException("business " + business.code() + " used ability priority " + usedAbility.priority() + " duplicate");
+                }
+
+                codeSet.add(usedAbility.code());
+                prioritySet.add(usedAbility.priority());
+            }
+        }
+
+        if (!allExtensionList.isEmpty()) {
+            IAbility<T> defaultAbility = abilityManager.getAbility(BaseDefaultAbility.DEFAULT_CODE);
+            List<String> notImplemented = new ArrayList<>();
+            for (Class<?> clazz : allExtensionList) {
+                if (!clazz.isAssignableFrom(defaultAbility.getClass())) {
+                    notImplemented.add(clazz.getName());
+                }
+            }
+            if (!notImplemented.isEmpty()) {
+                throw new ExtensionException("default ability should implements all extension interface, but current default ability not implements extension " + Arrays.toString(notImplemented.stream().distinct().toArray()));
+            }
+        }
     }
 }

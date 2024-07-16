@@ -78,18 +78,23 @@ public class ClassPathExtensionScanner extends ClassPathBeanDefinitionScanner {
             extDefinition.setBeanClass(FirstMatchedExtensionFactoryBean.class);
             // Attribute for MockitoPostProcessor
             // https://github.com/mybatis/spring-boot-starter/issues/475
-            extDefinition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, beanClassName);
-            extDefinition.getPropertyValues().add("extensionProxyFactory", new RuntimeBeanReference(extensionProxyFactoryBeanName));
+            try {
+                Class<?> beanClass = Class.forName(beanClassName);
+                extDefinition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, beanClass);
+                extDefinition.getPropertyValues().add("extensionProxyFactory", new RuntimeBeanReference(extensionProxyFactoryBeanName));
+            } catch (ClassNotFoundException e) {
+                // ignore
+            }
 
             // register all matched extensions bean definition
             BeanDefinition extensionListBeanDefinition = buildExtensionListBeanDefinition(beanClassName, extensionProxyFactoryBeanName);
             String extensionListBeanName = this.extensionBeanNameGenerator.genExtensionListBeanName(beanClassName);
-            extensionListBeanDefinition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, extensionListBeanName);
+//            extensionListBeanDefinition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, extensionListBeanName);
             registry.registerBeanDefinition(extensionListBeanName, extensionListBeanDefinition);
 
             // register extension proxy factory bean definition
             BeanDefinition extensionProxyFactoryBeanDefinition = buildExtensionProxyFactoryBeanDefinition(beanClassName, extensionProxyFactoryBeanName);
-            extensionProxyFactoryBeanDefinition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, extensionProxyFactoryBeanName);
+//            extensionProxyFactoryBeanDefinition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, extensionProxyFactoryBeanName);
             registry.registerBeanDefinition(extensionProxyFactoryBeanName, extensionProxyFactoryBeanDefinition);
         }
     }
