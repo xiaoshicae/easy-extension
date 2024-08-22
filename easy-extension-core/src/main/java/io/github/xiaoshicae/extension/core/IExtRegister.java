@@ -5,6 +5,7 @@ import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.exception.ExtensionException;
 
 public interface IExtRegister<T> {
+
     /**
      * register ability to factory
      *

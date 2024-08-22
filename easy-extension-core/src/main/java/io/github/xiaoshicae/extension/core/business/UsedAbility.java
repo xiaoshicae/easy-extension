@@ -10,7 +10,7 @@ public class UsedAbility implements ICodePriority {
     private final String code;
 
     /**
-     * priority of extension that implements by ability
+     * priority of extension point that implements by ability
      */
     private final Integer priority;
 
