@@ -7,6 +7,7 @@ import java.util.List;
 public interface ISession {
 
     /**
+     * set matched code with session
      *
      * @param code matched business or ability code
      * @param priority priority of matched business or ability code
@@ -16,6 +17,7 @@ public interface ISession {
     void setMatchedCode(String code, Integer priority) throws SessionException;
 
     /**
+     * get matched from session
      *
      * @return matched business or ability code sorted by priority
      * @throws SessionException business null exception
@@ -25,7 +27,7 @@ public interface ISession {
 
     /**
      *
-     * clear after session finish
+     * clear after session finished
      *
      */
     void remove();

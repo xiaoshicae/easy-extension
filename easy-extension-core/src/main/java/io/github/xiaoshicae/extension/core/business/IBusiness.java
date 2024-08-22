@@ -6,15 +6,16 @@ import io.github.xiaoshicae.extension.core.priority.ICodePriority;
 import java.util.List;
 
 public interface IBusiness<T> extends IExtGroupRealization<T>, ICodePriority {
+
     /**
-     * effective priority of business
+     * priority of extension point that implements by business
      *
      * @return priority
      */
     Integer priority();
 
     /**
-     * all abilities used by business
+     * abilities used by business
      *
      * @return abilities
      */

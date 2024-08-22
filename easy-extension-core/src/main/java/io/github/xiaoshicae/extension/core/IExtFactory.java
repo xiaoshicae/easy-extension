@@ -5,6 +5,7 @@ import io.github.xiaoshicae.extension.core.exception.ExtensionException;
 import java.util.List;
 
 public interface IExtFactory {
+
     /**
      * get matched extension instance that has max priority
      *
@@ -18,7 +19,7 @@ public interface IExtFactory {
     /**
      * get all matched extension instance
      *
-     * @param <E> extension type
+     * @param <E>           extension type
      * @param extensionType extension.class
      * @return all instance that implements extension
      * @throws ExtensionException extension not found

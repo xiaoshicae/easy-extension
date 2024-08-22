@@ -4,8 +4,9 @@ package io.github.xiaoshicae.extension.core.extension;
 import java.util.List;
 
 public interface IExtGroupRealization<T> {
+
     /**
-     * code of instance that implements a group of extension
+     * code of instance that implements a group of extension point
      *
      * @return code
      */
@@ -21,9 +22,9 @@ public interface IExtGroupRealization<T> {
 
 
     /**
-     * a group of extension interface (i.e., interface annotated with @Extension) implemented by the instance
+     * a group of extension point interface (i.e., interface annotated with @Extension) implemented by the instance
      *
-     * @return extension interfaces implemented by the group
+     * @return extension point interfaces implemented by the group
      */
     List<Class<?>> implementsExtensions();
 }

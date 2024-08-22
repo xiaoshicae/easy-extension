@@ -7,23 +7,23 @@ import java.util.List;
 public interface IAbilityManager<T> {
 
     /**
-     * register ability
+     * register ability with the manager
      *
-     * @param ability @NonNull
-     * @throws AbilityException ability invalid
+     * @param ability ability that need to be registered with the manager
+     * @throws AbilityException ability invalid (ability null or ability has been registered or ...)
      */
     void registerAbility(IAbility<T> ability) throws AbilityException;
 
     /**
-     * get ability
+     * get ability from the manager
      *
-     * @param abilityCode @NonNull code of ability
-     * @throws AbilityException abilityCode is null or ability not found(AbilityNotFoundException)
+     * @param abilityCode code of ability
+     * @throws AbilityException abilityCode is null or ability not found
      */
     IAbility<T> getAbility(String abilityCode) throws AbilityException;
 
     /**
-     * get all abilities
+     * get all abilities from the manager
      *
      * @return abilities
      */

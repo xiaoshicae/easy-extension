@@ -7,23 +7,23 @@ import java.util.List;
 public interface IBusinessManager<T> {
 
     /**
-     * register business to container
+     * register business with the manager
      *
-     * @param business @NonNull
+     * @param business business need to be registered with the manager
      * @throws BusinessException business invalid
      */
     void registerBusiness(IBusiness<T> business) throws BusinessException;
 
     /**
-     * get business form container
+     * get business form the manager
      *
-     * @param businessCode @NonNull code of business
+     * @param businessCode code of business
      * @throws BusinessException businessCode is null or ability not found(BusinessNotFoundException)
      */
     IBusiness<T> getBusiness(String businessCode) throws BusinessException;
 
     /**
-     * get all businesses from container
+     * get all businesses from the manager
      *
      * @return businesses
      */
