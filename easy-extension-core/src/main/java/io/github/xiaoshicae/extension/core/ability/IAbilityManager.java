@@ -1,31 +1,40 @@
 package io.github.xiaoshicae.extension.core.ability;
 
-import io.github.xiaoshicae.extension.core.exception.AbilityException;
+import io.github.xiaoshicae.extension.core.exception.QueryException;
+import io.github.xiaoshicae.extension.core.exception.QueryNotFoundException;
+import io.github.xiaoshicae.extension.core.exception.QueryParamException;
+import io.github.xiaoshicae.extension.core.exception.RegisterDuplicateException;
+import io.github.xiaoshicae.extension.core.exception.RegisterException;
+import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 import java.util.List;
 
 public interface IAbilityManager<T> {
 
     /**
-     * register ability with the manager
+     * Register ability by code.
      *
-     * @param ability ability that need to be registered with the manager
-     * @throws AbilityException ability invalid (ability null or ability has been registered or ...)
+     * @param ability ability instance
+     * @throws RegisterParamException     if {@code ability} is null, implement extension points is empty,
+     *                                    implement extension point class not an interface type,
+     *                                    or {@code ability} is not instance of extension point class
+     * @throws RegisterDuplicateException if ability code duplicate register
      */
-    void registerAbility(IAbility<T> ability) throws AbilityException;
+    void registerAbility(IAbility<T> ability) throws RegisterException;
 
     /**
-     * get ability from the manager
+     * Get ability by code.
      *
      * @param abilityCode code of ability
-     * @throws AbilityException abilityCode is null or ability not found
+     * @throws QueryParamException    if {@code abilityCode} is null
+     * @throws QueryNotFoundException if ability not found
      */
-    IAbility<T> getAbility(String abilityCode) throws AbilityException;
+    IAbility<T> getAbility(String abilityCode) throws QueryException;
 
     /**
-     * get all abilities from the manager
+     * Get all abilities.
      *
-     * @return abilities
+     * @return all abilities
      */
     List<IAbility<T>> listAllAbilities();
 }

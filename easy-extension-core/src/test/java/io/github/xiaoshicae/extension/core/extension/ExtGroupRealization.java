@@ -1,11 +1,9 @@
 package io.github.xiaoshicae.extension.core.extension;
 
-import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
+import java.util.List;
 
-public class ExtGroupRealization {
-}
+class ExtensionPointGroupImplementation1 extends AbstractExtensionPointGroupImplementation<Object> {
 
-class ExtGroupRealization1 extends AbstractExtGroupRealization<Object> {
     @Override
     public String code() {
         return "ExtGroupRealization1";
@@ -15,12 +13,15 @@ class ExtGroupRealization1 extends AbstractExtGroupRealization<Object> {
     public Boolean match(Object param) {
         return param.toString().contains("ExtGroupRealization1");
     }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
+    }
 }
 
+class ExtensionPointGroupImplementation2 extends AbstractExtensionPointGroupImplementation<Object> implements ExtA {
 
-
-
-class ExtGroupRealization2 extends AbstractExtGroupRealization<Object> implements ExtA {
     @Override
     public String code() {
         return "ExtGroupRealization2";
@@ -30,9 +31,15 @@ class ExtGroupRealization2 extends AbstractExtGroupRealization<Object> implement
     public Boolean match(Object param) {
         return param.toString().contains("ExtGroupRealization2");
     }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtA.class);
+    }
 }
 
-class ExtGroupRealization3 extends AbstractExtGroupRealization<Object> implements ExtA, ExtB {
+class ExtensionPointGroupImplementation3 extends AbstractExtensionPointGroupImplementation<Object> implements ExtA, ExtB {
+
     @Override
     public String code() {
         return "ExtGroupRealization1";
@@ -42,12 +49,15 @@ class ExtGroupRealization3 extends AbstractExtGroupRealization<Object> implement
     public Boolean match(Object param) {
         return param.toString().contains("ExtGroupRealization1");
     }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtA.class, ExtB.class);
+    }
 }
 
-@ExtensionPoint
 interface ExtA {
 }
 
-@ExtensionPoint
 interface ExtB {
 }

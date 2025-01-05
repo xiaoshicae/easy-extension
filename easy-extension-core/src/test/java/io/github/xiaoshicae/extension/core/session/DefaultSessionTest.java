@@ -47,13 +47,19 @@ public class DefaultSessionTest {
         e = assertThrows(SessionException.class, session::getMatchedCodes);
         assertEquals("matched codes is empty, may be no code register", e.getMessage());
 
+        e = assertThrows(SessionException.class, () ->  session.setMatchedCode(null, null));
+        assertEquals("code should not be null", e.getMessage());
+
+        e = assertThrows(SessionException.class, () ->  session.setMatchedCode("m", null));
+        assertEquals("priority should not be null", e.getMessage());
+
         session.setMatchedCode("a", 0);
         e = assertThrows(SessionException.class, () -> session.setMatchedCode("a", 1));
-        assertEquals("code a already exist", e.getMessage());
+        assertEquals("code [a] already exist", e.getMessage());
 
         session.setMatchedCode("b", 1);
         e = assertThrows(SessionException.class, () -> session.setMatchedCode("c", 1));
-        assertEquals("priority 1 already exist", e.getMessage());
+        assertEquals("priority [1] already exist", e.getMessage());
 
         session.setMatchedCode("d", 100);
         session.setMatchedCode("e", 10);

@@ -1,7 +1,6 @@
 package io.github.xiaoshicae.extension.core;
 
 import io.github.xiaoshicae.extension.core.ability.AbstractAbility;
-import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
 import io.github.xiaoshicae.extension.core.business.AbstractBusiness;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
 
@@ -20,6 +19,11 @@ class BusinessX extends AbstractBusiness<Object> implements ExtA {
     @Override
     public Boolean match(Object param) {
         return param.toString().contains("BusinessX");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtD.class);
     }
 
     @Override
@@ -51,13 +55,18 @@ class BusinessY extends AbstractBusiness<Object> implements ExtB {
     }
 
     @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtB.class);
+    }
+
+    @Override
     public Integer priority() {
         return 100;
     }
 
     @Override
     public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("AbilityM", 200));
+        return List.of(new UsedAbility("Unknown", 200));
     }
 
 
@@ -79,16 +88,20 @@ class BusinessZ extends AbstractBusiness<Object> {
     }
 
     @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
+    }
+
+    @Override
     public Integer priority() {
         return 100;
     }
 
     @Override
     public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("AbilityM", 10));
+        return List.of(new UsedAbility("AbilityN", 10), new UsedAbility("AbilityN", 20));
     }
 }
-
 
 class BusinessZZ extends AbstractBusiness<Object> {
     @Override
@@ -102,26 +115,36 @@ class BusinessZZ extends AbstractBusiness<Object> {
     }
 
     @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
+    }
+
+    @Override
     public Integer priority() {
         return 100;
     }
 
     @Override
     public List<UsedAbility> usedAbilities() {
-        return null;
+        return List.of(new UsedAbility("AbilityN", 10), new UsedAbility("AbilityNN", 10));
     }
 }
 
 
-class BusinessUnknownAbilityCode extends AbstractBusiness<Object> {
+class BusinessZZZ extends AbstractBusiness<Object> implements ExtA, ExtB {
     @Override
     public String code() {
-        return "BusinessUnknownAbilityCode";
+        return "BusinessZZZ";
     }
 
     @Override
     public Boolean match(Object param) {
-        return false;
+        return param.toString().contains("XXX");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtA.class, ExtB.class);
     }
 
     @Override
@@ -131,108 +154,77 @@ class BusinessUnknownAbilityCode extends AbstractBusiness<Object> {
 
     @Override
     public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("Unknown", 200));
-    }
-}
-
-
-class BusinessUsedAbilityCodeDuplicate extends AbstractBusiness<Object> {
-    @Override
-    public String code() {
-        return "BusinessUsedAbilityCodeDuplicate";
-    }
-
-    @Override
-    public Boolean match(Object param) {
-        return false;
-    }
-
-    @Override
-    public Integer priority() {
-        return 100;
-    }
-
-    @Override
-    public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("AbilityM", 200), new UsedAbility("AbilityM", 300));
-    }
-}
-
-
-class BusinessUsedAbilityPriorityDuplicate extends AbstractBusiness<Object> {
-    @Override
-    public String code() {
-        return "BusinessUsedAbilityPriorityDuplicate";
-    }
-
-    @Override
-    public Boolean match(Object param) {
-        return false;
-    }
-
-    @Override
-    public Integer priority() {
-        return 100;
-    }
-
-    @Override
-    public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("AbilityM", 200), new UsedAbility("AbilityN", 200));
-    }
-}
-
-
-class BusinessUsedAbilityPriority extends AbstractBusiness<Object> {
-    @Override
-    public String code() {
-        return "BusinessUsedAbilityPriority";
-    }
-
-    @Override
-    public Boolean match(Object param) {
-        return false;
-    }
-
-    @Override
-    public Integer priority() {
-        return 100;
-    }
-
-    @Override
-    public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("AbilityM", 200), new UsedAbility("AbilityN", 300));
-    }
-}
-
-
-class BusinessPriorityConflict extends AbstractBusiness<Object> implements ExtA {
-    @Override
-    public String code() {
-        return "BusinessPriorityConflict";
-    }
-
-    @Override
-    public Boolean match(Object param) {
-        return param.toString().contains("BusinessPriorityConflict");
-    }
-
-    @Override
-    public Integer priority() {
-        return 100;
-    }
-
-    @Override
-    public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("AbilityM", 100));
+        return List.of(new UsedAbility("AbilityN", 10), new UsedAbility("AbilityNN", 20));
     }
 
     @Override
     public String extA() {
-        return "BusinessPriorityConflict extA";
+        return "BusinessZZZ extA";
+    }
+
+    @Override
+    public String extB() {
+        return "BusinessZZZ extB";
     }
 }
 
-class AbilityL extends AbstractAbility<Object> {
+
+class BusinessC1 extends AbstractBusiness<Object> {
+    @Override
+    public String code() {
+        return "BusinessC1";
+    }
+
+    @Override
+    public Boolean match(Object param) {
+        return param.toString().contains("BusinessC");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
+    }
+
+    @Override
+    public Integer priority() {
+        return 100;
+    }
+
+    @Override
+    public List<UsedAbility> usedAbilities() {
+        return List.of(new UsedAbility("AbilityN", 10), new UsedAbility("AbilityNN", 20));
+    }
+}
+
+
+class BusinessC2 extends AbstractBusiness<Object> {
+    @Override
+    public String code() {
+        return "BusinessC2";
+    }
+
+    @Override
+    public Boolean match(Object param) {
+        return param.toString().contains("BusinessC");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
+    }
+
+    @Override
+    public Integer priority() {
+        return 100;
+    }
+
+    @Override
+    public List<UsedAbility> usedAbilities() {
+        return List.of(new UsedAbility("AbilityN", 10), new UsedAbility("AbilityNN", 20));
+    }
+}
+
+class AbilityL extends AbstractAbility<Object> implements ExtD {
     @Override
     public String code() {
         return "AbilityL";
@@ -242,9 +234,19 @@ class AbilityL extends AbstractAbility<Object> {
     public Boolean match(Object param) {
         return param.toString().contains("AbilityL");
     }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtD.class);
+    }
+
+    @Override
+    public String extC() {
+        return "";
+    }
 }
 
-class AbilityM extends AbstractAbility<Object> implements ExtA, ExtB {
+class AbilityM extends AbstractAbility<Object> {
     @Override
     public String code() {
         return "AbilityM";
@@ -255,15 +257,9 @@ class AbilityM extends AbstractAbility<Object> implements ExtA, ExtB {
         return param.toString().contains("AbilityM") || param.toString().contains("BusinessPriorityConflict");
     }
 
-
     @Override
-    public String extA() {
-        return "AbilityM exec extA";
-    }
-
-    @Override
-    public String extB() {
-        return "AbilityM exec extB";
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
     }
 }
 
@@ -275,9 +271,13 @@ class AbilityN extends AbstractAbility<Object> implements ExtB, ExtC {
 
     @Override
     public Boolean match(Object param) {
-        return param.toString().contains("AbilityN");
+        return param.toString().contains("XXX");
     }
 
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtB.class, ExtC.class);
+    }
 
     @Override
     public String extB() {
@@ -290,22 +290,52 @@ class AbilityN extends AbstractAbility<Object> implements ExtB, ExtC {
     }
 }
 
-@ExtensionPoint
+
+class AbilityNN extends AbstractAbility<Object> implements ExtB, ExtC {
+    @Override
+    public String code() {
+        return "AbilityNN";
+    }
+
+    @Override
+    public Boolean match(Object param) {
+        return param.toString().contains("XXX");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(ExtB.class, ExtC.class);
+    }
+
+    @Override
+    public String extB() {
+        return "AbilityNN exec extB";
+    }
+
+    @Override
+    public String extC() {
+        return "AbilityNN exec extC";
+    }
+}
+
+
 interface ExtA {
     String extA();
 }
 
-@ExtensionPoint
 interface ExtB {
     String extB();
 }
 
-@ExtensionPoint
 interface ExtC {
     String extC();
 }
 
-class ExtDefaultAbility extends BaseDefaultAbility<Object> implements ExtA, ExtB, ExtC {
+interface ExtD {
+    String extC();
+}
+
+class ExtensionPointDefaultImplementation extends AbstractExtensionPointDefaultImplementation<Object> implements ExtA, ExtB, ExtC {
     @Override
     public String extA() {
         return "ExtDefaultAbility do extA";
@@ -320,17 +350,22 @@ class ExtDefaultAbility extends BaseDefaultAbility<Object> implements ExtA, ExtB
     public String extC() {
         return "ExtDefaultAbility do extC";
     }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
+    }
 }
 
 
-class ExtDefaultAbilityInvalid extends BaseDefaultAbility<Object> implements ExtB, ExtC {
+class ExtensionPointDefaultImplementationInvalid extends AbstractExtensionPointDefaultImplementation<Object> implements ExtB {
     @Override
     public String extB() {
         return "ExtDefaultAbility do extB";
     }
 
     @Override
-    public String extC() {
-        return "ExtDefaultAbility do extC";
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
     }
 }

@@ -3,29 +3,30 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>io.github.xiaoshicae</groupId>
         <artifactId>easy-extension</artifactId>
-        <version>2.0.1</version>
+        <version>3.0.1</version>
     </parent>
 
     <artifactId>easy-extension-spring-boot-starter</artifactId>
-    <version>2.0.1</version>
     <packaging>jar</packaging>
-
-    <description>easy-extension spring boot sample</description>
-    <url>https://github.com/xiaoshicae/easy-extensione</url>
-    <inceptionYear>2024</inceptionYear>
 
     <dependencies>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <groupId>io.github.xiaoshicae</groupId>
+            <artifactId>easy-extension-core</artifactId>
         </dependency>
 
         <dependency>
             <groupId>io.github.xiaoshicae</groupId>
-            <artifactId>easy-extension-core</artifactId>
+            <artifactId>easy-extension-proxy</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
         <dependency>
@@ -39,6 +40,11 @@
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
-    </dependencies>
 
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

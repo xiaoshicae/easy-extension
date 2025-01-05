@@ -1,23 +1,16 @@
 package io.github.xiaoshicae.extension.core.business;
 
-import io.github.xiaoshicae.extension.core.extension.IExtGroupRealization;
-import io.github.xiaoshicae.extension.core.priority.ICodePriority;
+import io.github.xiaoshicae.extension.core.common.Priority;
+import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImplementation;
 
 import java.util.List;
 
-public interface IBusiness<T> extends IExtGroupRealization<T>, ICodePriority {
+public interface IBusiness<T> extends IExtensionPointGroupImplementation<T>, Priority {
 
     /**
-     * priority of extension point that implements by business
+     * Business used abilities.
      *
-     * @return priority
-     */
-    Integer priority();
-
-    /**
-     * abilities used by business
-     *
-     * @return abilities
+     * @return abilities used by business
      */
     List<UsedAbility> usedAbilities();
 }

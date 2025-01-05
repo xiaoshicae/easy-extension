@@ -1,31 +1,39 @@
 package io.github.xiaoshicae.extension.core.business;
 
-import io.github.xiaoshicae.extension.core.exception.BusinessException;
+import io.github.xiaoshicae.extension.core.exception.QueryException;
+import io.github.xiaoshicae.extension.core.exception.QueryNotFoundException;
+import io.github.xiaoshicae.extension.core.exception.QueryParamException;
+import io.github.xiaoshicae.extension.core.exception.RegisterDuplicateException;
+import io.github.xiaoshicae.extension.core.exception.RegisterException;
+import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 import java.util.List;
 
 public interface IBusinessManager<T> {
 
     /**
-     * register business with the manager
+     * Register business by code.
      *
-     * @param business business need to be registered with the manager
-     * @throws BusinessException business invalid
+     * @param business business instance
+     * @throws RegisterParamException     if {@code business} is null, implement extension point class not an interface type,
+     *                                    or {@code ability} is not instance of extension point class
+     * @throws RegisterDuplicateException if business code duplicate register
      */
-    void registerBusiness(IBusiness<T> business) throws BusinessException;
+    void registerBusiness(IBusiness<T> business) throws RegisterException;
 
     /**
-     * get business form the manager
+     * Get business by code.
      *
      * @param businessCode code of business
-     * @throws BusinessException businessCode is null or ability not found(BusinessNotFoundException)
+     * @throws QueryParamException    if {@code businessCode} is null
+     * @throws QueryNotFoundException if business not found
      */
-    IBusiness<T> getBusiness(String businessCode) throws BusinessException;
+    IBusiness<T> getBusiness(String businessCode) throws QueryException;
 
     /**
-     * get all businesses from the manager
+     * Get all businesses.
      *
-     * @return businesses
+     * @return all businesses
      */
     List<IBusiness<T>> listAllBusinesses();
 }

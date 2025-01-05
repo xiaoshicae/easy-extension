@@ -1,10 +1,11 @@
 package io.github.xiaoshicae.extension.core.business;
 
-import io.github.xiaoshicae.extension.core.extension.AbstractExtGroupRealization;
+import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointGroupImplementation;
 
 import java.util.List;
 
-public abstract class AbstractBusiness<T> extends AbstractExtGroupRealization<T> implements IBusiness<T> {
+public abstract class AbstractBusiness<T> extends AbstractExtensionPointGroupImplementation<T> implements IBusiness<T> {
+
     @Override
     public abstract Integer priority();
 

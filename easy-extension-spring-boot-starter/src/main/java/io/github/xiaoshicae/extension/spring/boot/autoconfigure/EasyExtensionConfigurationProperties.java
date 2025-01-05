@@ -1,6 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "easy-extension")
 public class EasyExtensionConfigurationProperties {
@@ -21,6 +21,9 @@ public class EasyExtensionConfigurationProperties {
         return enableLog;
     }
 
+    /**
+     * @see enableLog
+     */
     public void setEnableLog(Boolean enableLog) {
         this.enableLog = enableLog;
     }
@@ -29,6 +32,9 @@ public class EasyExtensionConfigurationProperties {
         return allowUnknownBusiness;
     }
 
+    /**
+     * @see allowUnknownBusiness
+     */
     public void setAllowUnknownBusiness(Boolean allowUnknownBusiness) {
         this.allowUnknownBusiness = allowUnknownBusiness;
     }

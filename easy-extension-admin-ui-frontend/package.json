@@ -1,0 +1,70 @@
+{
+  "name": "easy-extension",
+  "version": "3.0.1",
+  "private": true,
+  "homepage": ".",
+  "description": "Easy Extension",
+  "scripts": {
+    "build": "cross-env REACT_APP_ENV=prod max build",
+    "dev": "cross-env REACT_APP_ENV=dev MOCK=none UMI_ENV=dev max dev",
+    "lint": "npm run lint:js && npm run lint:prettier",
+    "lint:fix": "eslint --fix --cache --ext .js,.jsx,.ts,.tsx --format=pretty ./src ",
+    "lint:js": "eslint --cache --ext .js,.jsx,.ts,.tsx --format=pretty ./src",
+    "lint:prettier": "prettier -c --write \"**/**.{js,jsx,tsx,ts,less,md,json}\" --end-of-line auto",
+    "prettier": "prettier -c --write \"**/**.{js,jsx,tsx,ts,less,md,json}\""
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 10"
+  ],
+  "dependencies": {
+    "@ant-design/icons": "^4.8.1",
+    "@ant-design/pro-components": "^2.6.44",
+    "@umijs/route-utils": "^2.2.2",
+    "antd": "^5.12.7",
+    "antd-style": "^3.6.1",
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.10",
+    "numeral": "^2.0.6",
+    "omit.js": "^2.0.2",
+    "prism-react-renderer": "^2.4.1",
+    "prismjs": "^1.29.0",
+    "querystring": "^0.2.1",
+    "rc-util": "^5.38.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-fittext": "^1.0.0"
+  },
+  "devDependencies": {
+    "@ant-design/pro-cli": "^2.1.5",
+    "@testing-library/react": "^13.4.0",
+    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@types/classnames": "^2.3.1",
+    "@types/express": "^4.17.21",
+    "@types/history": "^4.7.11",
+    "@types/jest": "^29.5.11",
+    "@types/lodash": "^4.14.202",
+    "@types/lodash.debounce": "^4.0.9",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
+    "@types/react-helmet": "^6.1.11",
+    "@umijs/fabric": "^2.14.1",
+    "@umijs/lint": "^4.1.0",
+    "@umijs/max": "^4.1.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.56.0",
+    "express": "^4.18.2",
+    "prettier": "^3.1.1",
+    "prettier-plugin-organize-imports": "^3.2.4",
+    "prettier-plugin-packagejson": "^2.4.8",
+    "prettier-plugin-two-style-order": "^1.0.1",
+    "react-dev-inspector": "^1.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^4.9.5",
+    "umi-presets-pro": "^2.0.3"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}

@@ -1,11 +1,6 @@
 package io.github.xiaoshicae.extension.core.business;
 
-import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
-
 import java.util.List;
-
-public class Business {
-}
 
 class Business1 extends AbstractBusiness<Object> {
     @Override
@@ -16,6 +11,11 @@ class Business1 extends AbstractBusiness<Object> {
     @Override
     public Boolean match(Object param) {
         return param.toString().contains("Business1");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of();
     }
 
     @Override
@@ -41,6 +41,11 @@ class Business2 extends AbstractBusiness<Object> implements Ext1 {
     }
 
     @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(String.class);
+    }
+
+    @Override
     public Integer priority() {
         return 100;
     }
@@ -51,7 +56,61 @@ class Business2 extends AbstractBusiness<Object> implements Ext1 {
     }
 }
 
-@ExtensionPoint
-interface Ext1 {
 
+class Business3 extends AbstractBusiness<Object> {
+    @Override
+    public String code() {
+        return "Business3";
+    }
+
+    @Override
+    public Boolean match(Object param) {
+        return param.toString().contains("Business3");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(Ext1.class);
+    }
+
+    @Override
+    public Integer priority() {
+        return 100;
+    }
+
+    @Override
+    public List<UsedAbility> usedAbilities() {
+        return List.of(new UsedAbility("Ability1", 200));
+    }
+}
+
+
+class Business4 extends AbstractBusiness<Object> implements Ext1 {
+    @Override
+    public String code() {
+        return "Business4";
+    }
+
+    @Override
+    public Boolean match(Object param) {
+        return param.toString().contains("Business1");
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(Ext1.class);
+    }
+
+    @Override
+    public Integer priority() {
+        return 100;
+    }
+
+    @Override
+    public List<UsedAbility> usedAbilities() {
+        return List.of(new UsedAbility("Ability1", 200));
+    }
+}
+
+interface Ext1 {
 }

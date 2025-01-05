@@ -1,16 +1,18 @@
 package io.github.xiaoshicae.extension.core.business;
 
+import io.github.xiaoshicae.extension.core.common.Identifier;
+import io.github.xiaoshicae.extension.core.common.Priority;
 
-import io.github.xiaoshicae.extension.core.priority.ICodePriority;
+public class UsedAbility implements Identifier, Priority {
 
-public class UsedAbility implements ICodePriority {
     /**
-     * code of ability
+     * Code of ability used by business.
      */
     private final String code;
 
+
     /**
-     * priority of extension point that implements by ability
+     * Priority of ability used by business, compare with other ability or business priority.
      */
     private final Integer priority;
 
