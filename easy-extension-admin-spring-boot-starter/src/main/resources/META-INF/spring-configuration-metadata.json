@@ -12,7 +12,7 @@
       "type": "java.lang.Boolean",
       "description": "admin is enabled. 是否启用admin",
       "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
-      "defaultValue": false
+      "defaultValue": true
     },
     {
       "name": "easy-extension.admin.path",

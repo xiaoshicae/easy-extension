@@ -13,7 +13,7 @@ import org.springframework.core.io.ResourceLoader;
 
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty({"easy-extension.admin.enable"})
+@ConditionalOnProperty(value = "easy-extension.admin.enable", matchIfMissing = true)
 @EnableConfigurationProperties(EasyExtensionAdminConfigurationProperties.class)
 public class EasyExtensionAdminAutoConfiguration {
 

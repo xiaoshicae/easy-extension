@@ -8,13 +8,13 @@ public class EasyExtensionAdminConfigurationProperties {
      * 是否启用admin
      * admin is enabled
      */
-    private Boolean enable = false;
+    private Boolean enable = true;
 
     /**
      * 管理后台访问的path
      * path of admin
      */
-    private String path = Consts.DEFAULT_ROOT_PATH;
+    private String path = "/easy-extension-admin";
 
     /**
      * 项目接入文档
