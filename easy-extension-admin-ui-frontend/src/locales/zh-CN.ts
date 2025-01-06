@@ -33,7 +33,7 @@ export default {
 
   // page businesses
   'page.businesses.desc':
-    '业务即系统接入方，可以通过挂载能力来继承能力的扩展点实现，如果能力没有合适的实现，业务也可以对扩展点进行自定义实现。',
+    '业务即系统接入方，可以通过挂载能力来继承能力的扩展点实现，也可以对扩展点进行自定义实现。',
   'page.businesses.search-placeholder': '请输入业务名称，描述等信息',
   'page.businesses.card-modal.source-code': '业务定义',
   'page.businesses.card-btn.source-code': '业务定义',
