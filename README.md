@@ -10,7 +10,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
 
 ## 🖇️ 架构
 
-![](/doc/global-arc.svg)
+![](/doc/global-arc.png)
 
 ## ⭐️ 核心概念
 
