@@ -47,7 +47,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
   }
       
   // 业务A 挂载了能力("app.ability.x" 即能力X)
-  @Business(code = "biz.groupon.film", abilities = {"app.ability.x"})
+  @Business(code = "xxx.biz.a", abilities = {"app.ability.x"})
   public class BusinessA  implements Ext1 {
       String doSomething1() {
           return "BusinessA doSomething1";
