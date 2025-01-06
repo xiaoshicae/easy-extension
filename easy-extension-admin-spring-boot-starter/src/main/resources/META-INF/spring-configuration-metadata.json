@@ -1,0 +1,33 @@
+{
+  "groups": [
+    {
+      "name": "easy-extension.admin",
+      "type": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
+      "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "easy-extension.admin.enable",
+      "type": "java.lang.Boolean",
+      "description": "admin is enabled. 是否启用admin",
+      "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "easy-extension.admin.path",
+      "type": "java.lang.String",
+      "description": "path of admin. 管理后台访问的path",
+      "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
+      "defaultValue": "/easy-extension-admin"
+    },
+    {
+      "name": "easy-extension.admin.docUrl",
+      "type": "java.lang.String",
+      "description": "document of project. 项目接入文档",
+      "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
+      "defaultValue": ""
+    }
+  ],
+  "hints": []
+}

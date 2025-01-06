@@ -1,9 +1,14 @@
 package io.github.xiaoshicae.extension.core;
 
+import io.github.xiaoshicae.extension.core.ability.IAbility;
+import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.exception.ExtensionException;
 
 import java.util.List;
 
+import io.github.xiaoshicae.extension.core.exception.QueryException;
+import io.github.xiaoshicae.extension.core.exception.RegisterException;
+import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -11,131 +16,181 @@ import static org.junit.jupiter.api.Assertions.*;
 public class DefaultExtContextTest {
 
     @Test
-    public void testRegister() throws Exception {
-        ExtensionException e;
-        DefaultExtContext<Object> context = new DefaultExtContext<>(true, true);
+    public void testRegisterExtensionPoint() throws Exception {
+        RegisterException e;
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(true, true);
 
-        context.registerBusiness(new BusinessX());
-        e = assertThrows(ExtensionException.class, () -> context.registerBusiness(new BusinessX()));
-        assertEquals("business BusinessX already registered", e.getMessage());
+        // param invalid
+        e = assertThrows(RegisterException.class, () -> context.registerExtensionPoint(null));
+        assertEquals("clazz should not be null", e.getMessage());
 
-        context.registerBusiness(new BusinessY());
-        context.registerBusiness(new BusinessZ());
+        class NotInterface {
+        }
 
-        e = assertThrows(ExtensionException.class, () -> context.registerAbility(new AbilityL()));
-        assertEquals("ability AbilityL should implement at least one interface that annotated with @ExtensionPoint", e.getMessage());
+        Class<?> clazz = NotInterface.class;
+        e = assertThrows(RegisterException.class, () -> context.registerExtensionPoint(clazz));
+        assertEquals("clazz should be an interface type", e.getMessage());
 
-        context.registerAbility(new AbilityM());
-        e = assertThrows(ExtensionException.class, () -> context.registerAbility(new AbilityM()));
-        assertEquals("ability AbilityM already registered", e.getMessage());
+        // duplicate register
+        interface ExtensionPoint1 {
+        }
 
-        context.registerAbility(new AbilityN());
-        context.registerAbility(new ExtDefaultAbility());
-
-        context.registerBusiness(new BusinessPriorityConflict());
+        interface ExtensionPoint2 {
+        }
+        context.registerExtensionPoint(ExtensionPoint1.class);
+        context.registerExtensionPoint(ExtensionPoint2.class);
+        e = assertThrows(RegisterException.class, () -> context.registerExtensionPoint(ExtensionPoint1.class));
+        assertEquals("class [" + ExtensionPoint1.class.getName() + "] already registered", e.getMessage());
     }
 
     @Test
-    public void testValidateContext() throws Exception {
+    public void testRegisterMatcherParamClass() throws Exception {
+        RegisterException e;
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(true, true);
+
+        e = assertThrows(RegisterException.class, () -> context.registerMatcherParamClass(null));
+        assertEquals("matcher param class should not be null", e.getMessage());
+
+        context.registerMatcherParamClass(Object.class);
+        e = assertThrows(RegisterException.class, () -> context.registerMatcherParamClass(Object.class));
+        assertEquals("matcher param class already registered", e.getMessage());
+
+        Class<Object> matcherParamClass = context.getMatcherParamClass();
+        assertNotNull(matcherParamClass);
+    }
+
+    @Test
+    public void testRegisterExtensionPointDefaultImplementation() throws Exception {
         ExtensionException e;
-        DefaultExtContext<Object> context = new DefaultExtContext<>(false, false);
-        context.validateContext();
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(true, true);
 
-        context.registerBusiness(new BusinessUnknownAbilityCode());
-        e = assertThrows(ExtensionException.class, context::validateContext);
-        assertEquals("ability Unknown not found", e.getMessage());
+        e = assertThrows(ExtensionException.class, () -> context.registerExtensionPointDefaultImplementation(null));
+        assertEquals("extension point default implementation should not be null", e.getMessage());
 
-        context = new DefaultExtContext<>(false, false);
-        context.registerAbility(new AbilityM());
-        context.registerBusiness(new BusinessUsedAbilityCodeDuplicate());
-        e = assertThrows(ExtensionException.class, context::validateContext);
-        assertEquals("business BusinessUsedAbilityCodeDuplicate used ability code AbilityM duplicate", e.getMessage());
+        class DefaultExtensionPointImpl extends AbstractExtensionPointDefaultImplementation<Object> {
+            @Override
+            public List<Class<?>> implementExtensionPoints() {
+                return List.of();
+            }
+        }
+        context.registerExtensionPointDefaultImplementation(new DefaultExtensionPointImpl());
 
-        context = new DefaultExtContext<>(false, false);
-        context.registerAbility(new AbilityM());
+        DefaultExtensionPointImpl defaultExtension = new DefaultExtensionPointImpl();
+        e = assertThrows(ExtensionException.class, () -> context.registerExtensionPointDefaultImplementation(defaultExtension));
+        assertEquals("extension point default implementation already registered", e.getMessage());
+
+        IExtensionPointGroupDefaultImplementation<Object> instance = context.getExtensionPointDefaultImplementation();
+        assertNotNull(instance);
+    }
+
+    @Test
+    public void testAbility() throws Exception {
+        RegisterException e;
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(true, true);
+
+        context.registerExtensionPoint(ExtA.class);
+        context.registerExtensionPoint(ExtB.class);
+        context.registerExtensionPoint(ExtC.class);
+
+        e = assertThrows(RegisterException.class, () -> context.registerAbility(null));
+        assertEquals("ability should not be null", e.getMessage());
+
+        e = assertThrows(RegisterException.class, () -> context.registerAbility(new AbilityL()));
+        assertEquals("extension point [io.github.xiaoshicae.extension.core.ExtD] not registered", e.getMessage());
+
+        e = assertThrows(RegisterException.class, () -> context.registerAbility(new AbilityM()));
+        assertEquals("ability [AbilityM] should implement at least one extension point", e.getMessage());
+
         context.registerAbility(new AbilityN());
-        context.registerBusiness(new BusinessUsedAbilityPriorityDuplicate());
-        e = assertThrows(ExtensionException.class, context::validateContext);
-        assertEquals("business BusinessUsedAbilityPriorityDuplicate used ability priority 200 duplicate", e.getMessage());
+        e = assertThrows(RegisterException.class, () -> context.registerAbility(new AbilityN()));
+        assertEquals("ability [AbilityN] already registered", e.getMessage());
 
-        context = new DefaultExtContext<>(false, false);
-        context.registerAbility(new AbilityM());
-        context.registerAbility(new AbilityN());
-        context.registerAbility(new ExtDefaultAbilityInvalid());
-        context.registerBusiness(new BusinessUsedAbilityPriority());
-        e = assertThrows(ExtensionException.class, context::validateContext);
-        assertEquals("default ability should implements all extension interface, but current default ability not implements extension [io.github.xiaoshicae.extension.core.ExtA]", e.getMessage());
+        List<IAbility<Object>> abilities = context.listAllAbility();
+        assertEquals(abilities.size(), 1);
+        assertEquals(abilities.get(0).code(), "AbilityN");
+    }
 
-        context = new DefaultExtContext<>(false, false);
-        context.registerAbility(new AbilityM());
+    @Test
+    public void testBusiness() throws Exception {
+        RegisterException e;
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(true, true);
+
+        context.registerExtensionPoint(ExtA.class);
+        context.registerExtensionPoint(ExtB.class);
+        context.registerExtensionPoint(ExtC.class);
         context.registerAbility(new AbilityN());
-        context.registerAbility(new ExtDefaultAbility());
-        context.registerBusiness(new BusinessUsedAbilityPriority());
+        context.registerAbility(new AbilityNN());
+
+        e = assertThrows(RegisterException.class, () -> context.registerBusiness(null));
+        assertEquals("business should not be null", e.getMessage());
+
+        e = assertThrows(RegisterException.class, () -> context.registerBusiness(new BusinessX()));
+        assertEquals("extension point [io.github.xiaoshicae.extension.core.ExtD] not registered", e.getMessage());
+
+        e = assertThrows(RegisterException.class, () -> context.registerBusiness(new BusinessY()));
+        assertEquals("business [BusinessY] used ability [Unknown] not found", e.getMessage());
+
+        e = assertThrows(RegisterException.class, () -> context.registerBusiness(new BusinessZ()));
+        assertEquals("business [BusinessZ] used ability [AbilityN] duplicate", e.getMessage());
+
+        context.registerBusiness(new BusinessZZZ());
+        List<IBusiness<Object>> businesses = context.listAllBusiness();
+        assertEquals(businesses.size(), 1);
+        assertEquals(businesses.get(0).code(), "BusinessZZZ");
     }
 
     @Test
     public void testInitSession() throws Exception {
         ExtensionException e;
-        DefaultExtContext<Object> context = new DefaultExtContext<>(false, true);
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(false, true);
 
-        context.registerBusiness(new BusinessX());
-        context.registerBusiness(new BusinessY());
-        context.registerBusiness(new BusinessZ());
-        context.registerBusiness(new BusinessZZ());
+        context.registerMatcherParamClass(Object.class);
+        context.registerExtensionPointDefaultImplementation(new ExtensionPointDefaultImplementation());
+
+        context.registerExtensionPoint(ExtA.class);
+        context.registerExtensionPoint(ExtB.class);
+        context.registerExtensionPoint(ExtC.class);
+        context.registerAbility(new AbilityN());
+        context.registerAbility(new AbilityNN());
+        context.registerBusiness(new BusinessZZZ());
+        context.registerBusiness(new BusinessC1());
+        context.registerBusiness(new BusinessC2());
 
         e = assertThrows(ExtensionException.class, () -> context.initSession("UnknownBiz"));
-        assertEquals("business not found", e.getMessage());
+        assertEquals("no business matched", e.getMessage());
 
-        e = assertThrows(ExtensionException.class, () -> context.initSession("BusinessZZ"));
-        assertEquals("multiple business found, matched business codes: [BusinessZ, BusinessZZ]", e.getMessage());
-
-        e = assertThrows(ExtensionException.class, () -> context.initSession("BusinessX"));
-        assertEquals("ability AbilityM not found", e.getMessage());
-
-        context.registerAbility(new AbilityM());
-
-        e = assertThrows(ExtensionException.class, () -> context.initSession("BusinessX"));
-        assertEquals("ability ability.application.default not found", e.getMessage());
-
-        context.registerAbility(new ExtDefaultAbility());
-
-        context.initSession("BusinessX");
-
-        context.validateContext();
+        e = assertThrows(ExtensionException.class, () -> context.initSession("BusinessC"));
+        assertEquals("multiple business found, matched business codes: [BusinessC1, BusinessC2]", e.getMessage());
     }
 
     @Test
-    public void testGetExtension() throws Exception {
-        List<ExtA> extAList;
-        ExtA extA;
-        DefaultExtContext<Object> context = new DefaultExtContext<>(false, false);
+    public void testGetMatchedExtension() throws Exception {
+        ExtensionException e;
+        DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(false, true);
 
-        context.registerBusiness(new BusinessX());
-        context.registerBusiness(new BusinessY());
-        context.registerBusiness(new BusinessZ());
-        context.registerBusiness(new BusinessZZ());
-        context.registerAbility(new AbilityM());
+        context.registerMatcherParamClass(Object.class);
+        context.registerExtensionPointDefaultImplementation(new ExtensionPointDefaultImplementation());
+
+        context.registerExtensionPoint(ExtA.class);
+        context.registerExtensionPoint(ExtB.class);
+        context.registerExtensionPoint(ExtC.class);
         context.registerAbility(new AbilityN());
-        context.registerAbility(new ExtDefaultAbility());
+        context.registerAbility(new AbilityNN());
+        context.registerBusiness(new BusinessZZZ());
+        context.registerBusiness(new BusinessC1());
+        context.registerBusiness(new BusinessC2());
 
         assertThrows(ExtensionException.class, () -> context.getAllMatchedExtension(ExtA.class));
         assertThrows(ExtensionException.class, () -> context.getFirstMatchedExtension(ExtA.class));
 
         context.initSession("XXX");
-        extAList = context.getAllMatchedExtension(ExtA.class);
+        List<ExtA> extAList = context.getAllMatchedExtension(ExtA.class);
         assertEquals(1, extAList.size());
-        extA = context.getFirstMatchedExtension(ExtA.class);
-        assertEquals("ExtDefaultAbility do extA", extA.extA());
 
-        context.initSession("BusinessX-BusinessY");
-        extAList = context.getAllMatchedExtension(ExtA.class);
-        assertEquals(2, extAList.size());
-        assertEquals("BusinessX exec extA", extAList.get(0).extA());
-        assertEquals("ExtDefaultAbility do extA", extAList.get(1).extA());
-        extA = context.getFirstMatchedExtension(ExtA.class);
-        assertEquals("BusinessX exec extA", extA.extA());
+        List<ExtB> extBList = context.getAllMatchedExtension(ExtB.class);
+        assertEquals(3, extBList.size());
 
         context.removeSession();
-        assertThrows(ExtensionException.class, () -> context.getAllMatchedExtension(ExtA.class));
+        assertThrows(QueryException.class, () -> context.getAllMatchedExtension(ExtA.class));
     }
 }

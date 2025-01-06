@@ -1,16 +1,14 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean;
 
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.proxy.ExtensionProxyFactory;
+import io.github.xiaoshicae.extension.proxy.extpoint.MatchedExtensionDynamicProxyFactory;
 import org.springframework.beans.factory.FactoryBean;
 
 public class FirstMatchedExtensionFactoryBean<T> implements FactoryBean<T> {
+    private final Class<T> extensionPointClass;
+    private MatchedExtensionDynamicProxyFactory<T> extensionProxyFactory;
 
-    private Class<T> extensionInterface;
-
-    private ExtensionProxyFactory<T> extensionProxyFactory;
-
-    public FirstMatchedExtensionFactoryBean(Class<T> extensionInterface) {
-        this.extensionInterface = extensionInterface;
+    public FirstMatchedExtensionFactoryBean(Class<T> extensionPointClass) {
+        this.extensionPointClass = extensionPointClass;
     }
 
     @Override
@@ -20,7 +18,7 @@ public class FirstMatchedExtensionFactoryBean<T> implements FactoryBean<T> {
 
     @Override
     public Class<T> getObjectType() {
-        return this.extensionInterface;
+        return extensionPointClass;
     }
 
     @Override
@@ -28,19 +26,11 @@ public class FirstMatchedExtensionFactoryBean<T> implements FactoryBean<T> {
         return true;
     }
 
-    public Class<T> getExtensionInterface() {
-        return extensionInterface;
-    }
-
-    public void setExtensionInterface(Class<T> extensionInterface) {
-        this.extensionInterface = extensionInterface;
-    }
-
-    public ExtensionProxyFactory<T> getExtensionProxyFactory() {
+    public MatchedExtensionDynamicProxyFactory<T> getExtensionProxyFactory() {
         return extensionProxyFactory;
     }
 
-    public void setExtensionProxyFactory(ExtensionProxyFactory<T> extensionProxyFactory) {
+    public void setExtensionProxyFactory(MatchedExtensionDynamicProxyFactory<T> extensionProxyFactory) {
         this.extensionProxyFactory = extensionProxyFactory;
     }
 }

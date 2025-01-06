@@ -1,18 +1,18 @@
 package io.github.xiaoshicae.extension.core;
 
-import io.github.xiaoshicae.extension.core.exception.ExtensionException;
+import io.github.xiaoshicae.extension.core.exception.SessionException;
 
 public interface ISessionManager<T> {
 
     /**
-     * init session before process
+     * Init session before process.
      *
-     * @param param used to match business or ability
+     * @param param for business or ability match test
      */
-    void initSession(T param) throws ExtensionException;
+    void initSession(T param) throws SessionException;
 
     /**
-     * remove session after process
+     * Remove session after process.
      */
     void removeSession();
 }

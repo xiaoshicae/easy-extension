@@ -1,28 +1,23 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation;
 
-import org.springframework.context.annotation.Import;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.ExtensionScannerRegistrar;
+import org.springframework.context.annotation.Import;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
 @Import(ExtensionScannerRegistrar.class)
 public @interface ExtensionScan {
-    /**
-     * Alias for the {@link #basePackages()} attribute. Allows for more concise annotation declarations e.g.:
-     * {@code @ExtensionScan("org.my.pkg")} instead of {@code @ExtensionScan(basePackages = "org.my.pkg"})}.
-     *
-     * @return base package names
-     */
-    String[] value() default {};
 
     /**
-     * Base packages to scan for Extension interfaces. Note that only interfaces with at least one method will be
-     * registered; concrete classes will be ignored.
-     *
-     * @return base package names for scanning extension interface
+     * Packages to scan for annotated components (extension point, ability, business).
+     * @return packages to scan
      */
-    String[] basePackages() default {};
+    String[] scanPackages() default {};
 }

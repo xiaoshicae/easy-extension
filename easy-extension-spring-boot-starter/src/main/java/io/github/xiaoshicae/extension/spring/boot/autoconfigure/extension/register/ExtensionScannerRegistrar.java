@@ -1,6 +1,7 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register;
 
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionScan;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAnnotationBeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -15,9 +16,6 @@ import java.util.List;
 
 public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar {
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
         AnnotationAttributes mapperScanAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
@@ -29,14 +27,16 @@ public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar 
 
     void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionRegistry registry, String beanName) {
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ExtensionScannerConfigurer.class);
-        List<String> basePackages = new ArrayList<>();
-        basePackages.addAll(Arrays.stream(annoAttrs.getStringArray("value")).filter(StringUtils::hasText).toList());
-        basePackages.addAll(Arrays.stream(annoAttrs.getStringArray("basePackages")).filter(StringUtils::hasText).toList());
+        addPropertyPackages(annoMeta, annoAttrs, builder, "scanPackages");
+        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
+    }
+
+    void addPropertyPackages(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionBuilder builder, String packageName) {
+        List<String> basePackages = new ArrayList<>(Arrays.stream(annoAttrs.getStringArray(packageName)).filter(StringUtils::hasText).toList());
         if (basePackages.isEmpty()) {
             basePackages.add(getDefaultBasePackage(annoMeta));
         }
-        builder.addPropertyValue("basePackage", StringUtils.collectionToCommaDelimitedString(basePackages));
-        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
+        builder.addPropertyValue(packageName, StringUtils.collectionToCommaDelimitedString(basePackages));
     }
 
     void registerExtensionInjectBeanDefinitions(BeanDefinitionRegistry registry) {
