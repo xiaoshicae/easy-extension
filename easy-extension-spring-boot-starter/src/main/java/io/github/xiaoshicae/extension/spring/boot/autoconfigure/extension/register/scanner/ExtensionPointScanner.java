@@ -39,6 +39,7 @@ public class ExtensionPointScanner extends ClassPathBeanDefinitionScanner {
         return beanDefinitions;
     }
 
+    @Override
     public void registerBeanDefinition(BeanDefinitionHolder holder, BeanDefinitionRegistry registry) {
         String extensionPointClassName = holder.getBeanDefinition().getBeanClassName();
 

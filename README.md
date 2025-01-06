@@ -41,7 +41,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
   // 能力X
   @Ability(code = "app.ability.x")
   public class AbilityX implements Ext1 {
-      String doSomething1() {
+      public String doSomething1() {
           return "AbilityX doSomething1";
       }
   }
@@ -49,7 +49,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
   // 业务A 挂载了能力("app.ability.x" 即能力X)
   @Business(code = "xxx.biz.a", abilities = {"app.ability.x"})
   public class BusinessA  implements Ext1 {
-      String doSomething1() {
+      public String doSomething1() {
           return "BusinessA doSomething1";
       }
   }
@@ -61,7 +61,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
     public class Controller {
         /**
          * 系统提供的扩展点1
-         * @ExtensionInject注解 会注入扩展点1的动态代理
+         * 注解@ExtensionInject会注入扩展点1的动态代理
          * 运行时会根据匹配到的业务及使用的能力，选择有最高优先级的生效的扩展点实现
          * 如果业务及使用的能力都没有实现该扩展点，则会走默认实现进行兜底
          */
@@ -77,7 +77,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
     
         /**
          * 系统提供的扩展点3
-         * @ExtensionInject注解 会注入List<Extension>的动态代理，包含所有生效的实现
+         * 注解@ExtensionInject会注入List<Extension>的动态代理，包含所有生效的实现
          * 运行时会根据匹配到的业务及使用的能力，按照优先级依次包含生效的扩展实现
          * List当然也包含扩展点的默认实现
          */
@@ -93,7 +93,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，适用于有�
             for (Ext3 ext3 : ext3List) {
                 s3List.add(ext3.doSomething3()); // 按优先级从高到低，依次执行扩展点3的业务或生效能力的实现
             }
-            return String.format("res: ext1 = %s, ext2 = %s, ext3List = %s", s1, s2, Arrays.toString(s3List));
+            return String.format("res: ext1 = %s, ext2 = %s, ext3List = %s", s1, s2, Arrays.toString(s3List.toArray()));
         }
     }
     ```

@@ -24,6 +24,7 @@ public class AbilityScanner extends ClassPathBeanDefinitionScanner {
         addIncludeFilter(new AnnotationTypeFilter(annClass));
     }
 
+    @Override
     public void registerBeanDefinition(BeanDefinitionHolder holder, BeanDefinitionRegistry registry) {
         AbilityProxyFactory<?> abilityProxyFactory = new AbilityProxyFactory<>();
 

@@ -36,6 +36,7 @@ public class ExtensionPointDefaultImplScanner extends ClassPathBeanDefinitionSca
         return beanDefinitions;
     }
 
+    @Override
     public void registerBeanDefinition(BeanDefinitionHolder holder, BeanDefinitionRegistry registry) {
         ExtensionPointDefaultImplProxyFactory<?> factory = new ExtensionPointDefaultImplProxyFactory<>();
 

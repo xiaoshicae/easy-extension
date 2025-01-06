@@ -29,6 +29,7 @@ public class MatcherParamScanner extends ClassPathBeanDefinitionScanner {
         return beanDefinitions;
     }
 
+    @Override
     public void registerBeanDefinition(BeanDefinitionHolder holder, BeanDefinitionRegistry registry) {
         String beanClassName = Objects.requireNonNull(holder.getBeanDefinition().getBeanClassName());
 
@@ -41,6 +42,10 @@ public class MatcherParamScanner extends ClassPathBeanDefinitionScanner {
 
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(MatcherParamHolder.class);
         builder.addConstructorArgValue(beanClass);
-        registry.registerBeanDefinition(ExtensionPointBeanNameGenerator.genMatcherParamClassBeanName(beanClassName), builder.getBeanDefinition());
+        String beanName = ExtensionPointBeanNameGenerator.genMatcherParamClassBeanName(beanClassName);
+        if (registry.containsBeanDefinition(beanName)) {
+            throw new IllegalArgumentException("Duplicate @MatcherParam instance found ");
+        }
+        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
     }
 }

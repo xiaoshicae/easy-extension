@@ -24,6 +24,7 @@ public class BusinessScanner extends ClassPathBeanDefinitionScanner {
         addIncludeFilter(new AnnotationTypeFilter(annClass));
     }
 
+    @Override
     public void registerBeanDefinition(BeanDefinitionHolder holder, BeanDefinitionRegistry registry) {
         BusinessProxyFactory<?> businessProxyFactory = new BusinessProxyFactory<>();
 
