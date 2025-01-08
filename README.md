@@ -9,14 +9,14 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
 * 提供可视化[管理后台](#-管理后台)，方便管理扩展点、能力及业务
 * v2、v3能力和业务定义简单对比，v3更简洁灵活
 
-| 框架版本   | v2                                         | v3                                         |
-|--------|--------------------------------------------|--------------------------------------------|
-| 能力定义对比 | <img src="/doc/v2-ability.png" width=500>  | <img src="/doc/v3-ability.png" width=500>  |
-| 业务定义对比 | <img src="/doc/v2-business.png" width=500> | <img src="/doc/v3-business.png" width=500> |
+| 框架版本   | v2 & v3 API对比                                            |
+|--------|----------------------------------------------------------|
+| 能力定义对比 | <img src="/doc/v2-v3-ability.png" width=800 alt="对比图">   |
+| 业务定义对比 | <img src="/doc/v2-v3-business.png" width=800 alt="对比图">> |
 
-## 🖇️ 架构
+## 🖇️ 整体架构
 
-![](/doc/global-arc.png)
+<img src="/doc/global-arc.png" width=900 alt="架构图">
 
 ## ⭐️ 核心概念
 
