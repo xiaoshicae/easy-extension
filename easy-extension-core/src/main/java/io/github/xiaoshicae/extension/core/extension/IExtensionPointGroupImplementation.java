@@ -8,9 +8,9 @@ import java.util.List;
 public interface IExtensionPointGroupImplementation<T> extends Matcher<T>, Identifier {
 
     /**
-     * An implementation instance that implements group of extension point
+     * A group of extension point classes of the instance implements
      *
-     * @return extension points that instance implements
+     * @return extension point classes of the instance implements
      */
     List<Class<?>> implementExtensionPoints();
 }

@@ -21,9 +21,6 @@ public class EasyExtensionConfigurationProperties {
         return enableLog;
     }
 
-    /**
-     * @see enableLog
-     */
     public void setEnableLog(Boolean enableLog) {
         this.enableLog = enableLog;
     }
@@ -32,9 +29,6 @@ public class EasyExtensionConfigurationProperties {
         return allowUnknownBusiness;
     }
 
-    /**
-     * @see allowUnknownBusiness
-     */
     public void setAllowUnknownBusiness(Boolean allowUnknownBusiness) {
         this.allowUnknownBusiness = allowUnknownBusiness;
     }

@@ -27,8 +27,8 @@ public class ExtensionContextProxyRegisterHelperTest {
 
     @Test
     public void testRegisterByAnn() throws ProxyException, RegisterException {
-        ExtensionContextProxyRegisterHelper<MyParam> helper = new ExtensionContextProxyRegisterHelper<>();
         IExtensionContext<MyParam> extensionContext = new DefaultExtensionContext<>();
+        ExtensionContextProxyRegisterHelper<MyParam> helper = new ExtensionContextProxyRegisterHelper<>(extensionContext);
 
         helper.setMatcherParamClass(MyParam.class);
         helper.setExtensionPointDefaultImplementation(new DefaultImpl());
@@ -36,7 +36,7 @@ public class ExtensionContextProxyRegisterHelperTest {
         helper.addAbilities(new A1(), new A2(), new A3());
         helper.addBusinesses(new B1(), new B2(), new B3());
 
-        helper.doRegister(extensionContext);
+        helper.doRegister();
 
         Class<MyParam> matcherParamClass = extensionContext.getMatcherParamClass();
         assertEquals(MyParam.class, matcherParamClass);

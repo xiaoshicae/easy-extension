@@ -4,7 +4,7 @@ package io.github.xiaoshicae.extension.core.common;
 public interface Priority {
 
     /**
-     * Priority of extension point instance.
+     * Priority of instance that implements a group of extension point.
      *
      * @return priority
      */

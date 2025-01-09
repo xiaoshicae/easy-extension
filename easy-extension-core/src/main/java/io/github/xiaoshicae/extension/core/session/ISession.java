@@ -11,8 +11,8 @@ public interface ISession {
     /**
      * Set matched code with priority into session.
      *
-     * @param code     code of matched business or ability instance
-     * @param priority priority of matched business or ability instance
+     * @param code     code of matched business or matched business's used ability
+     * @param priority priority of matched business or matched business's used ability
      * @throws SessionParamException if {@code code} is null or {@code priority} is null
      */
     void setMatchedCode(String code, Integer priority) throws SessionException;
@@ -20,8 +20,8 @@ public interface ISession {
     /**
      * Get matched codes from session.
      *
-     * @return code of matched business or ability instance
-     * @throws SessionNotFoundException matched code not found
+     * @return codes of matched business and matched business's used abilities
+     * @throws SessionNotFoundException matched codes is empty
      */
     List<String> getMatchedCodes() throws SessionException;
 

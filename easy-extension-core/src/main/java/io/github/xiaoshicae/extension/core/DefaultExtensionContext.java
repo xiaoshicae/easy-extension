@@ -118,7 +118,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
 
         extensionPointDefaultImplementation = instance;
-        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance, resolveDefaultImplementation(instance));
+        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance);
+
         if (enableLogger) {
             logger.info(String.format("%s register extension point default implementation: [%s]", logPrefix, instance.getClass().getSimpleName()));
         }
@@ -137,7 +138,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
 
         abilityManager.registerAbility(ability);
-        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability, resolveAbilityName(ability));
+        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability);
+
         if (enableLogger) {
             logger.info(String.format("%s register ability: [%s]", logPrefix, ability.code()));
         }
@@ -178,7 +180,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
 
         businessManager.registerBusiness(business);
-        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business, resolveBusinessName(business));
+        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business);
+
         if (enableLogger) {
             logger.info(String.format("%s register business: [%s]", logPrefix, business.code()));
         }
@@ -211,8 +214,10 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public void initSession(T param) throws SessionException {
+        long startTime = System.currentTimeMillis();
+
         if (enableLogger) {
-            logger.info(String.format("%s session init", logPrefix));
+            logger.info(String.format("%s session init start", logPrefix));
         }
 
         session.remove();
@@ -242,7 +247,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                 logger.info(String.format("%s init session match business:[%s], priority:[%d]", logPrefix, matchedBusiness.code(), matchedBusiness.priority()));
             }
 
-            session.setMatchedCode(resolveBusinessName(matchedBusiness), matchedBusiness.priority());
+            session.setMatchedCode(matchedBusiness.code(), matchedBusiness.priority());
             for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
                 IAbility<T> ability;
                 try {
@@ -251,7 +256,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                     throw new SessionException(String.format("business [%s] used ability [%s] not found", matchedBusiness.code(), usedAbility.code()));
                 }
                 if (ability.match(param)) {
-                    session.setMatchedCode(resolveAbilityName(ability), usedAbility.priority());
+                    session.setMatchedCode(ability.code(), usedAbility.priority());
                     if (enableLogger) {
                         logger.info(String.format("%s init session match ability:[%s], priority:[%d]", logPrefix, usedAbility.code(), usedAbility.priority()));
                     }
@@ -259,9 +264,16 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             }
         }
 
-        session.setMatchedCode(resolveDefaultImplementation(extensionPointDefaultImplementation), extensionPointDefaultImplementation.priority());
+        session.setMatchedCode(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
+
         if (enableLogger) {
-            logger.info(String.format("%s init session match extension point default implementation:[%s], priority:[%d]", logPrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority()));
+            logger.info(String.format("%s init session match extension point default implementation:[%s], priority:[%d]",
+                            logPrefix,
+                            extensionPointDefaultImplementation.code(),
+                            extensionPointDefaultImplementation.priority()
+                    )
+            );
+            logger.info(String.format("%s session init completed, cost:[%d ms]", logPrefix, System.currentTimeMillis() - startTime));
         }
     }
 
@@ -332,17 +344,5 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         } catch (SessionException e) {
             throw new QueryNotFoundException(e.getMessage());
         }
-    }
-
-    private String resolveDefaultImplementation(IExtensionPointGroupDefaultImplementation<T> instance) {
-        return "default-implementation@" + instance.code();
-    }
-
-    private String resolveAbilityName(IAbility<T> ability) {
-        return "ability@" + ability.code();
-    }
-
-    private String resolveBusinessName(IBusiness<T> ability) {
-        return "business@" + ability.code();
     }
 }

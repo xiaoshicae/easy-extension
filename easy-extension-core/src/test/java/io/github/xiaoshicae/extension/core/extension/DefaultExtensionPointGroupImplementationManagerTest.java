@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DefaultExtensionPointGroupImplementationManagerTest {
@@ -17,19 +17,21 @@ public class DefaultExtensionPointGroupImplementationManagerTest {
         RegisterException e;
         DefaultExtensionPointGroupImplementationManager<Object> manager = new DefaultExtensionPointGroupImplementationManager<>();
 
-        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(null, null));
+        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(null));
         assertEquals("instance should not be null", e.getMessage());
 
-        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceX(), null));
-        assertEquals("name should not be null", e.getMessage());
+        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceCodeNone()));
+        assertEquals("instance code should not be null", e.getMessage());
 
-        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceX(), "n"));
-        assertEquals("instance implement extension point class [" + String.class.getName() + "] invalid, class should be an interface type", e.getMessage());
-
-        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceY(), "n"));
+        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceNotImplIFace()));
         assertEquals("instance not implement extension point class [" + IFace.class.getName() + "]", e.getMessage());
 
-        manager.registerExtensionPointImplementationInstance(new InstanceZ(), "n");
+        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceImplClassNotInterface()));
+        assertEquals("instance implement extension point class [" + String.class.getName() + "] invalid, class should be an interface type", e.getMessage());
+
+        manager.registerExtensionPointImplementationInstance(new InstanceX());
+        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceX()));
+        assertEquals(String.format("extension point [%s] with name [%s] already registered", IFace.class.getName(), "InstanceX"), e.getMessage());
     }
 
     @Test
@@ -38,12 +40,13 @@ public class DefaultExtensionPointGroupImplementationManagerTest {
 
         DefaultExtensionPointGroupImplementationManager<Object> manager = new DefaultExtensionPointGroupImplementationManager<>();
 
-        e = assertThrows(QueryException.class, () -> manager.getExtensionPointImplementationInstance(IFace.class, "InstanceZ"));
-        assertEquals("instance with name [InstanceZ] of extension point [" + IFace.class.getSimpleName() + "] not found", e.getMessage());
+        e = assertThrows(QueryException.class, () -> manager.getExtensionPointImplementationInstance(IFace.class, "InstanceX"));
+        assertEquals("instance not found by extension point class [InstanceX] + name [IFace]", e.getMessage());
 
-        manager.registerExtensionPointImplementationInstance(new InstanceZ(), "n");
-        IFace instance = manager.getExtensionPointImplementationInstance(IFace.class, "n");
-        assertNotNull(instance);
+        InstanceX instanceX = new InstanceX();
+        manager.registerExtensionPointImplementationInstance(instanceX);
+        IFace instance = manager.getExtensionPointImplementationInstance(IFace.class, "InstanceX");
+        assertSame(instanceX, instance);
     }
 }
 
@@ -64,31 +67,56 @@ class BaseInstance implements IExtensionPointGroupImplementation<Object> {
     }
 }
 
-class InstanceX extends BaseInstance {
+
+class InstanceCodeNone extends BaseInstance {
+    @Override
+    public String code() {
+        return null;
+    }
+
     @Override
     public List<Class<?>> implementExtensionPoints() {
         return List.of(String.class);
     }
 }
 
+
+class InstanceImplClassNotInterface extends BaseInstance {
+    @Override
+    public String code() {
+        return "InstanceImplClassNotInterface";
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(String.class);
+    }
+}
+
+
 interface IFace {
 }
 
-class InstanceY extends BaseInstance {
+class InstanceNotImplIFace extends BaseInstance {
+    @Override
+    public String code() {
+        return "InstanceNotImplIFace";
+    }
+
     @Override
     public List<Class<?>> implementExtensionPoints() {
         return List.of(IFace.class);
     }
 }
 
-class InstanceZ extends BaseInstance implements IFace {
+class InstanceX extends BaseInstance implements IFace {
     @Override
-    public List<Class<?>> implementExtensionPoints() {
-        return List.of(IFace.class);
+    public String code() {
+        return "InstanceX";
     }
 
     @Override
-    public String code() {
-        return "InstanceZ";
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(IFace.class);
     }
 }

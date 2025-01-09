@@ -4,7 +4,7 @@ package io.github.xiaoshicae.extension.core.common;
 public interface Identifier {
 
     /**
-     * Identifier represent instance unique code
+     * Instance unique code
      *
      * @return unique code
      */

@@ -8,13 +8,15 @@ import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class DefaultAbilityManager<T> implements IAbilityManager<T> {
-    private final Map<String, IAbility<T>> abilities = new LinkedHashMap<>();
+    private final Map<String, IAbility<T>> abilities = new ConcurrentHashMap<>();
+    private final List<String> abilityCodes = new CopyOnWriteArrayList<>();
 
     @Override
     public void registerAbility(IAbility<T> ability) throws RegisterException {
@@ -40,6 +42,7 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
         }
 
         abilities.put(ability.code(), ability);
+        abilityCodes.add(ability.code());
     }
 
     @Override
@@ -58,6 +61,8 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
 
     @Override
     public List<IAbility<T>> listAllAbilities() {
-        return new ArrayList<>(abilities.values());
+        List<IAbility<T>> allAbilities = new ArrayList<>(abilityCodes.size());
+        abilityCodes.forEach(code -> allAbilities.add(abilities.get(code)));
+        return allAbilities;
     }
 }

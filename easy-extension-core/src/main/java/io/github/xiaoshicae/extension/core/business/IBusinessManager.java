@@ -15,14 +15,13 @@ public interface IBusinessManager<T> {
      * Register business by code.
      *
      * @param business business instance
-     * @throws RegisterParamException     if {@code business} is null, implement extension point class not an interface type,
-     *                                    or {@code ability} is not instance of extension point class
-     * @throws RegisterDuplicateException if business code duplicate register
+     * @throws RegisterParamException     if {@code business} is null or implement extension point class not an interface type
+     * @throws RegisterDuplicateException if business by code duplicate register
      */
     void registerBusiness(IBusiness<T> business) throws RegisterException;
 
     /**
-     * Get business by code.
+     * Get business instance by code.
      *
      * @param businessCode code of business
      * @throws QueryParamException    if {@code businessCode} is null

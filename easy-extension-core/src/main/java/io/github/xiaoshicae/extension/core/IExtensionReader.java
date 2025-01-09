@@ -10,11 +10,11 @@ public interface IExtensionReader<T> {
 
     /**
      * Get all extension point class.
+     * Please note that the list may be unordered.
      *
      * @return all extension point class
      */
     List<Class<?>> listAllExtensionPoint();
-
 
     /**
      * Get matcher param class.
@@ -36,7 +36,6 @@ public interface IExtensionReader<T> {
      * @return all ability instance
      */
     List<IAbility<T>> listAllAbility();
-
 
     /**
      * Get all business.

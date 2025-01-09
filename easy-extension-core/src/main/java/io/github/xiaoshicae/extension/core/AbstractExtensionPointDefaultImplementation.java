@@ -4,7 +4,8 @@ import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointGroup
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 
 /**
- * Default implementation of the extension, as a fallback when no business identity or capability matches.
+ * Default implementation which implements all extension point, as a fallback when neither business nor used abilities have implemented specified extension point.
+ * @param <T> matcher param class
  */
 public abstract class AbstractExtensionPointDefaultImplementation<T> extends AbstractExtensionPointGroupImplementation<T> implements IExtensionPointGroupDefaultImplementation<T> {
     public static final String DEFAULT_CODE = "system.extension.point.default.implementation";

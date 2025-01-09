@@ -17,20 +17,21 @@ public @interface Business {
     String code();
 
     /**
-     * Priority of extension point that implements by business,
-     * priority is used to compare with abilities
+     * Priority of business,
+     * compare with priority of abilities used by business.
      */
     int priority() default 0;
 
     /**
      * Abilities used by business,
-     * item format:<br>
+     * item format:
+     * <p>
      * <code>
-     * ${abilityCode}[::${priority}]<br>
-     * i.e {"abilityX", "abilityY::10"}
+     * ${abilityCode}[::${priority}], e.g. {"abilityX", "abilityY::10"}
      * </code>
-     * <br>
-     * priority is used to compare with priority of other ability or business
+     * </p>
+     * Priority of ability used by business is used to
+     * compare with priority of other abilities used by business or business's own priority.
      */
     String[] abilities() default {};
 }

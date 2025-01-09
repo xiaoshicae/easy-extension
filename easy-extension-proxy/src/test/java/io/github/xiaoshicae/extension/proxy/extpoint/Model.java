@@ -48,7 +48,7 @@ class AbilityA extends AbstractAbility<MyParam> implements ExtA, ExtB {
 
     @Override
     public String code() {
-        return "a";
+        return "AbilityA";
     }
 
     @Override
@@ -76,7 +76,7 @@ class AbilityB extends AbstractAbility<MyParam> implements ExtA, ExtB {
 
     @Override
     public String code() {
-        return "b";
+        return "AbilityB";
     }
 
     @Override
@@ -110,7 +110,7 @@ class BizA extends AbstractBusiness<MyParam> implements ExtA, ExtB {
 
     @Override
     public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("a", 5), new UsedAbility("b", 10));
+        return List.of(new UsedAbility("AbilityA", 5), new UsedAbility("AbilityB", 10));
     }
 
     @Override
@@ -149,7 +149,7 @@ class BizB extends AbstractBusiness<MyParam> implements ExtA, ExtB {
 
     @Override
     public List<UsedAbility> usedAbilities() {
-        return List.of(new UsedAbility("a", -10), new UsedAbility("b", -5));
+        return List.of(new UsedAbility("AbilityA", -10), new UsedAbility("AbilityB", -5));
     }
 
     @Override

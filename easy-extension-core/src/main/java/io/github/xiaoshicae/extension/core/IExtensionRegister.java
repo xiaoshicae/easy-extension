@@ -35,7 +35,7 @@ public interface IExtensionRegister<T> {
      *
      * @param instance extension point default implementation instance
      * @throws RegisterParamException     if {@code instance} is null or {@code instance} not implement all the extension point class
-     * @throws RegisterDuplicateException if instance duplicate register
+     * @throws RegisterDuplicateException if {@code instance} duplicate register
      */
     void registerExtensionPointDefaultImplementation(IExtensionPointGroupDefaultImplementation<T> instance) throws RegisterException;
 

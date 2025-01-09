@@ -3,7 +3,7 @@
 /* globals workbox */
 workbox.core.setCacheNameDetails({
   prefix: 'easy-extension',
-  suffix: 'v3.0.1',
+  suffix: 'v3.0.2',
 });
 
 // Control all opened tabs ASAP

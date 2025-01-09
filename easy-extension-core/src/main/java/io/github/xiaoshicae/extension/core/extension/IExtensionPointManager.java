@@ -8,36 +8,44 @@ import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 /**
- * Because there are different implementations of the extension point,
- * this manager is primarily designed to manage different implementations
- * based on their respective names.
+ * Since an extension point may have multiple implementations,
+ * and the manager is designed to manage the mapping relationship
+ * between the extension point type + instance's unique name and the instance.
+ *
+ * <p>
+ * An instance may implement multiple extension points, and the manager is used to manage one of them.
+ * If you want to understand the management of all the extension points of an instance,
+ * you can refer to {@link  IExtensionPointGroupImplementationManager}
+ * </p>
  */
 public interface IExtensionPointManager {
 
     /**
-     * Register an instance with name that implements the given extension point,
-     * note that in manager {@code extensionPoint} + {@code name} should be uniq.
+     * Register an instance with the manager
+     * through the unique name of the extension point and the type of the extension point.
+     * <br>Note: {@code extensionPointType} + {@code name} must be unique in the manager.
      *
-     * @param <T>            extension point class type
-     * @param extensionPoint extension point class
-     * @param name           name of instance
-     * @param instance       instance that implements the given extension point
-     * @throws RegisterParamException     if {@code extensionPoint} is null,
-     *                                    {@code extensionPoint} is not an interface,
+     * @param <T>                 extension point type
+     * @param extensionPointClass extension point type
+     * @param name                name of instance
+     * @param instance            instance that implement {@code extensionPointClass}
+     * @throws RegisterParamException     if {@code extensionPointClass} is null,
+     *                                    {@code extensionPointClass} is not an interface,
      *                                    {@code name} is null
      *                                    or {@code instance} is null
-     * @throws RegisterDuplicateException if ({@code extensionPoint} + {@code name}) already register
+     * @throws RegisterDuplicateException if ({@code extensionPointClass} + {@code name}) already register
      */
-    <T> void registerExtensionPointImplementationInstance(Class<T> extensionPoint, String name, T instance) throws RegisterException;
+    <T> void registerExtensionPointImplementationInstance(Class<T> extensionPointClass, String name, T instance) throws RegisterException;
 
     /**
-     * Get an instance from the manager by {@code extensionPoint} + {@code name}.
+     * Get an instance from the manager by {@code extensionPointClass} + {@code name}.
      *
-     * @param extensionPoint extension point class
-     * @param name           name of instance
-     * @return instance that implement the given extension point class
-     * @throws QueryParamException    if {@code extensionPoint} is null, {@code extensionPoint} is not an interface type or {@code name} is null
+     * @param extensionPointClass extension point type
+     * @param name                name of instance
+     * @return instance that implement {@code extensionPointClass}
+     * @throws QueryParamException    if {@code extensionPointClass} is null, {@code extensionPointClass} is not an interface
+     *                                or {@code name} is null
      * @throws QueryNotFoundException if instance not found
      */
-    <T> T getExtensionPointImplementationInstance(Class<T> extensionPoint, String name) throws QueryException;
+    <T> T getExtensionPointImplementationInstance(Class<T> extensionPointClass, String name) throws QueryException;
 }
