@@ -1,26 +1,28 @@
 package io.github.xiaoshicae.extension.proxy;
 
-import io.github.xiaoshicae.extension.core.ExtensionContextRegisterHelper;
-import io.github.xiaoshicae.extension.core.IExtensionContext;
+import io.github.xiaoshicae.extension.core.IExtensionRegister;
 import io.github.xiaoshicae.extension.core.ability.IAbility;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
+import io.github.xiaoshicae.extension.core.util.ExtensionContextRegisterHelper;
 import io.github.xiaoshicae.extension.proxy.ability.AbilityProxyFactory;
 import io.github.xiaoshicae.extension.proxy.business.BusinessProxyFactory;
-import io.github.xiaoshicae.extension.proxy.exception.ProxyException;
 import io.github.xiaoshicae.extension.proxy.defaultimpl.ExtensionPointDefaultImplProxyFactory;
+import io.github.xiaoshicae.extension.proxy.exception.ProxyException;
 
 public class ExtensionContextProxyRegisterHelper<T> {
-    ExtensionContextRegisterHelper<T> extensionContextRegisterHelper = new ExtensionContextRegisterHelper<>();
-    ExtensionPointDefaultImplProxyFactory<T> extensionPointDefaultImplProxyFactory = new ExtensionPointDefaultImplProxyFactory<>();
-    AbilityProxyFactory<T> abilityProxyFactory = new AbilityProxyFactory<>();
-    BusinessProxyFactory<T> businessProxyFactory = new BusinessProxyFactory<>();
+    private final ExtensionPointDefaultImplProxyFactory<T> extensionPointDefaultImplProxyFactory = new ExtensionPointDefaultImplProxyFactory<>();
+    private final AbilityProxyFactory<T> abilityProxyFactory = new AbilityProxyFactory<>();
+    private final BusinessProxyFactory<T> businessProxyFactory = new BusinessProxyFactory<>();
 
-    ExtensionContextProxyRegisterHelper() {
+    private final ExtensionContextRegisterHelper<T> extensionContextRegisterHelper;
+
+    ExtensionContextProxyRegisterHelper(IExtensionRegister<T> register) {
+        this.extensionContextRegisterHelper = new ExtensionContextRegisterHelper<>(register);
     }
 
-    public ExtensionContextProxyRegisterHelper<T> addExtensionPointClasses(Class<?> ...clazz) {
+    public ExtensionContextProxyRegisterHelper<T> addExtensionPointClasses(Class<?>... clazz) {
         extensionContextRegisterHelper.addExtensionPointClasses(clazz);
         return this;
     }
@@ -33,7 +35,7 @@ public class ExtensionContextProxyRegisterHelper<T> {
     @SuppressWarnings("unchecked")
     public ExtensionContextProxyRegisterHelper<T> setExtensionPointDefaultImplementation(Object instance) throws ProxyException {
         if (instance instanceof IExtensionPointGroupDefaultImplementation<?> im) {
-            IExtensionPointGroupDefaultImplementation<T> implementation = (IExtensionPointGroupDefaultImplementation<T>)im;
+            IExtensionPointGroupDefaultImplementation<T> implementation = (IExtensionPointGroupDefaultImplementation<T>) im;
             extensionContextRegisterHelper.setExtensionPointDefaultImplementation(implementation);
             return this;
         }
@@ -70,7 +72,7 @@ public class ExtensionContextProxyRegisterHelper<T> {
         return this;
     }
 
-    public void doRegister(IExtensionContext<T> extensionContext) throws RegisterException {
-        extensionContextRegisterHelper.doRegister(extensionContext);
+    public void doRegister() throws RegisterException {
+        extensionContextRegisterHelper.doRegister();
     }
 }

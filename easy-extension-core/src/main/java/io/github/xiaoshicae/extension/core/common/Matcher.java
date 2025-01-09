@@ -1,12 +1,15 @@
 package io.github.xiaoshicae.extension.core.common;
 
+
+/**
+ * The design purpose of the Matcher interface is to determine
+ * whether an instance is effective during a single request process.
+ */
 @FunctionalInterface
 public interface Matcher<T> {
 
     /**
-     * The Matcher interface is used to determine
-     * whether the instance of an extension point implementation takes effect
-     * in a single request.
+     * Match predict.
      *
      * @param param for match predict
      * @return if match

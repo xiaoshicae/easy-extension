@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 public @interface ExtensionScan {
 
     /**
-     * Packages to scan for annotated components (extension point, ability, business).
+     * Packages to scan for annotated components (extension point, ability, business ...) .
      * @return packages to scan
      */
     String[] scanPackages() default {};

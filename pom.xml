@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>3.0.1</version>
+    <version>3.0.2</version>
     <packaging>pom</packaging>
 
     <description>
@@ -24,7 +24,7 @@
     </modules>
 
     <properties>
-        <easy-extension.version>3.0.1</easy-extension.version>
+        <easy-extension.version>3.0.2</easy-extension.version>
 
         <spring-boot-starter.version>3.3.6</spring-boot-starter.version>
         <spring-boot-starter-web.version>3.3.6</spring-boot-starter-web.version>

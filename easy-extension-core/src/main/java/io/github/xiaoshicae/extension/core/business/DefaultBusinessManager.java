@@ -7,14 +7,12 @@ import io.github.xiaoshicae.extension.core.exception.RegisterDuplicateException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class DefaultBusinessManager<T> implements IBusinessManager<T> {
-    private final Map<String, IBusiness<T>> businesses = new LinkedHashMap<>();
+    private final List<IBusiness<T>> businesses = new CopyOnWriteArrayList<>();
 
     @Override
     public void registerBusiness(IBusiness<T> business) throws RegisterException {
@@ -31,11 +29,12 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
             }
         }
 
-        if (businesses.containsKey(business.code())) {
-            throw new RegisterDuplicateException(String.format("business [%s] already registered", business.code()));
+        boolean codeExist = businesses.stream().anyMatch(b -> b.code().equals(business.code()));
+        if (codeExist) {
+            throw new RegisterDuplicateException(String.format("business with code [%s] already register", business.code()));
         }
 
-        businesses.put(business.code(), business);
+        businesses.add(business);
     }
 
     @Override
@@ -43,17 +42,14 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
         if (Objects.isNull(businessCode)) {
             throw new QueryParamException("businessCode should not be null");
         }
-
-        IBusiness<T> business = businesses.get(businessCode);
-        if (Objects.isNull(business)) {
-            throw new QueryNotFoundException(String.format("business not found by code [%s]", businessCode));
-        }
-
-        return business;
+        return businesses.stream().
+                filter(b -> b.code().equals(businessCode)).
+                findFirst().
+                orElseThrow(() -> new QueryNotFoundException(String.format("business not found by code [%s]", businessCode)));
     }
 
     @Override
     public List<IBusiness<T>> listAllBusinesses() {
-        return new ArrayList<>(businesses.values());
+        return businesses;
     }
 }

@@ -1,7 +1,7 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure;
 
 import io.github.xiaoshicae.extension.core.DefaultExtensionContext;
-import io.github.xiaoshicae.extension.core.ExtensionContextRegisterHelper;
+import io.github.xiaoshicae.extension.core.util.ExtensionContextRegisterHelper;
 import io.github.xiaoshicae.extension.core.IExtensionContext;
 import io.github.xiaoshicae.extension.core.ability.IAbility;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
@@ -33,42 +33,43 @@ public class EasyExtensionAutoConfiguration<T> {
         Boolean enableLog = properties.getEnableLog();
         Boolean allowUnknownBusiness = properties.getAllowUnknownBusiness();
 
-        DefaultExtensionContext<T> manager = new DefaultExtensionContext<>(enableLog, !allowUnknownBusiness);
-        ExtensionContextRegisterHelper<T> helper = new ExtensionContextRegisterHelper<>();
+        IExtensionContext<T> extensionContext = new DefaultExtensionContext<>(enableLog, !allowUnknownBusiness);
+        ExtensionContextRegisterHelper<T> helper = new ExtensionContextRegisterHelper<>(extensionContext);
 
+        // 1. register extension point class
         if (Objects.isNull(extensionPointHolders) || extensionPointHolders.isEmpty()) {
-            // empty IExtensionContext
-            return manager;
+            return extensionContext;  // empty IExtensionContext
         }
-
         for (ExtensionPointHolder holder : extensionPointHolders) {
             helper.addExtensionPointClasses(holder.getExtensionPointClass());
         }
 
+        // 2. register matcher param class
         if (Objects.isNull(matcherParamHolder)) {
             throw new RegisterParamException("MatcherParam not found, please check instance with @MatcherParam annotation if exist");
         }
         helper.setMatcherParamClass(matcherParamHolder.getMatcherParamClass());
 
+        // 3. register extension point default implementation
         helper.setExtensionPointDefaultImplementation(extensionPointGroupImplementation);
         if (Objects.isNull(extensionPointGroupImplementation)) {
             throw new RegisterParamException("extension point default implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist");
         }
 
+        // 4. register abilities
         if (!Objects.isNull(abilities) && !abilities.isEmpty()) {
-            for (IAbility<T> ability : abilities) {
-                helper.addAbilities(ability);
-            }
+            abilities.forEach(helper::addAbilities);
         }
 
+        // 5. register businesses
         if (!Objects.isNull(businesses) && !businesses.isEmpty()) {
-            for (IBusiness<T> business : businesses) {
-                helper.addBusinesses(business);
-            }
+            businesses.forEach(helper::addBusinesses);
         }
 
-        helper.doRegister(manager);
-        return manager;
+        // 6. do register
+        helper.doRegister();
+
+        return extensionContext;
     }
 
     @Autowired(required = false)

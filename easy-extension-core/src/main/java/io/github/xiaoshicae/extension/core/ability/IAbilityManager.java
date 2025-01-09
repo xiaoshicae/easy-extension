@@ -15,10 +15,10 @@ public interface IAbilityManager<T> {
      * Register ability by code.
      *
      * @param ability ability instance
-     * @throws RegisterParamException     if {@code ability} is null, implement extension points is empty,
-     *                                    implement extension point class not an interface type,
+     * @throws RegisterParamException     if {@code ability} is null, implements extension points is empty or
+     *                                    implemented extension point class not an interface type,
      *                                    or {@code ability} is not instance of extension point class
-     * @throws RegisterDuplicateException if ability code duplicate register
+     * @throws RegisterDuplicateException if ability by code duplicate register
      */
     void registerAbility(IAbility<T> ability) throws RegisterException;
 

@@ -29,7 +29,7 @@ public class DefaultBusinessManagerTest {
         assertEquals("business [Business3] not implement extension point class [" + Ext1.class.getName() + "]", e.getMessage());
 
         e = assertThrows(RegisterException.class, () -> manager.registerBusiness(new Business1()));
-        assertEquals("business [Business1] already registered", e.getMessage());
+        assertEquals("business with code [Business1] already register", e.getMessage());
     }
 
     @Test

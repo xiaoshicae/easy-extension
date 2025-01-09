@@ -12,7 +12,8 @@ public class UsedAbility implements Identifier, Priority {
 
 
     /**
-     * Priority of ability used by business, compare with other ability or business priority.
+     * Priority of ability used by business,
+     * compare with priority of other abilities used by business or business's own priority.
      */
     private final Integer priority;
 

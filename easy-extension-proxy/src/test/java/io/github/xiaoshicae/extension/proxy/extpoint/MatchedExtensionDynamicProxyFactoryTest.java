@@ -1,7 +1,7 @@
 package io.github.xiaoshicae.extension.proxy.extpoint;
 
 import io.github.xiaoshicae.extension.core.DefaultExtensionContext;
-import io.github.xiaoshicae.extension.core.ExtensionContextRegisterHelper;
+import io.github.xiaoshicae.extension.core.util.ExtensionContextRegisterHelper;
 import io.github.xiaoshicae.extension.core.IExtensionContext;
 import io.github.xiaoshicae.extension.core.exception.SessionException;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,12 +17,12 @@ public class MatchedExtensionDynamicProxyFactoryTest {
 
     @BeforeAll
     public static void setUp() throws Exception {
-        ExtensionContextRegisterHelper<MyParam> helper = new ExtensionContextRegisterHelper<>();
+        ExtensionContextRegisterHelper<MyParam> helper = new ExtensionContextRegisterHelper<>(extensionContext);
         helper.addAbilities(new AbilityA(), new AbilityB()).
                 setMatcherParamClass(MyParam.class).
                 addExtensionPointClasses(ExtA.class, ExtB.class).
                 setExtensionPointDefaultImplementation(new DefaultImpl()).addBusinesses(new BizA(), new BizB());
-        helper.doRegister(extensionContext);
+        helper.doRegister();
     }
 
     @Test

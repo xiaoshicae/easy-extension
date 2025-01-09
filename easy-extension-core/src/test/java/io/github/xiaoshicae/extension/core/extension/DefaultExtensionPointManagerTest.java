@@ -61,7 +61,7 @@ public class DefaultExtensionPointManagerTest {
         assertEquals("name should not be null", exception.getMessage());
 
         exception = assertThrows(QueryException.class, () -> manager.getExtensionPointImplementationInstance(ExtensionPoint.class, "n"));
-        assertEquals("instance with name [n] of extension point ["+ExtensionPoint.class.getSimpleName()+"] not found", exception.getMessage());
+        assertEquals("instance not found by extension point class [n] + name [ExtensionPoint]", exception.getMessage());
 
         class ExtensionPointImpl1 implements ExtensionPoint {}
         ExtensionPointImpl1 instance = new ExtensionPointImpl1();
