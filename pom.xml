@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>3.0.3</version>
+    <version>3.0.4</version>
     <packaging>pom</packaging>
 
     <description>
@@ -23,7 +23,7 @@
     </modules>
 
     <properties>
-        <easy-extension.version>3.0.3</easy-extension.version>
+        <easy-extension.version>3.0.4</easy-extension.version>
 
         <spring-boot-starter.version>3.3.6</spring-boot-starter.version>
         <spring-boot-starter-web.version>3.3.6</spring-boot-starter-web.version>
@@ -76,22 +76,15 @@
             </dependency>
 
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-configuration-processor</artifactId>
-                <version>${spring-boot-configuration-processor.version}</version>
-                <scope>provided</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-core</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-webmvc</artifactId>
                 <version>${spring.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>webjars-locator-lite</artifactId>
+                <version>${webjars-locator-lite.version}</version>
             </dependency>
 
             <dependency>
@@ -101,9 +94,10 @@
             </dependency>
 
             <dependency>
-                <groupId>org.webjars</groupId>
-                <artifactId>webjars-locator-lite</artifactId>
-                <version>${webjars-locator-lite.version}</version>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-configuration-processor</artifactId>
+                <version>${spring-boot-configuration-processor.version}</version>
+                <scope>provided</scope>
             </dependency>
 
             <dependency>

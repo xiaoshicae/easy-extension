@@ -8,8 +8,6 @@ import java.beans.Introspector;
 public class ExtensionPointBeanNameGenerator {
     private static final String extensionBeanNameSuffix = "#FirstMatchedExtensionProxy";
     private static final String extensionListBeanNameSuffix = "#AllMatchedExtensionProxy";
-    private static final String extensionProxyFactoryBeanNameSuffix = "#MatchedExtensionProxyFactory";
-
 
     public static String genFirstMatchedExtensionBeanName(String beanClassName) {
         return getClassShortName(beanClassName) + extensionBeanNameSuffix;
@@ -17,10 +15,6 @@ public class ExtensionPointBeanNameGenerator {
 
     public static String genAllMatchedExtensionBeanName(String beanClassName) {
         return getClassShortName(beanClassName) + extensionListBeanNameSuffix;
-    }
-
-    public static String genExtensionProxyFactoryBeanName(String beanClassName) {
-        return getClassShortName(beanClassName) + extensionProxyFactoryBeanNameSuffix;
     }
 
     private static String getClassShortName(String beanClassName) {
