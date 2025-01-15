@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.xiaoshicae</groupId>
         <artifactId>easy-extension</artifactId>
-        <version>3.0.2</version>
+        <version>3.0.3</version>
     </parent>
 
     <artifactId>easy-extension-spring-boot-starter</artifactId>
@@ -17,11 +17,6 @@
         <dependency>
             <groupId>io.github.xiaoshicae</groupId>
             <artifactId>easy-extension-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.xiaoshicae</groupId>
-            <artifactId>easy-extension-proxy</artifactId>
         </dependency>
 
         <dependency>
@@ -38,12 +33,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

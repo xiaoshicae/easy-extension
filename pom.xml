@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>3.0.2</version>
+    <version>3.0.3</version>
     <packaging>pom</packaging>
 
     <description>
@@ -18,13 +18,12 @@
 
     <modules>
         <module>easy-extension-core</module>
-        <module>easy-extension-proxy</module>
         <module>easy-extension-spring-boot-starter</module>
         <module>easy-extension-admin-spring-boot-starter</module>
     </modules>
 
     <properties>
-        <easy-extension.version>3.0.2</easy-extension.version>
+        <easy-extension.version>3.0.3</easy-extension.version>
 
         <spring-boot-starter.version>3.3.6</spring-boot-starter.version>
         <spring-boot-starter-web.version>3.3.6</spring-boot-starter-web.version>
@@ -49,12 +48,6 @@
             <dependency>
                 <groupId>io.github.xiaoshicae</groupId>
                 <artifactId>easy-extension-core</artifactId>
-                <version>${easy-extension.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>io.github.xiaoshicae</groupId>
-                <artifactId>easy-extension-proxy</artifactId>
                 <version>${easy-extension.version}</version>
             </dependency>
 

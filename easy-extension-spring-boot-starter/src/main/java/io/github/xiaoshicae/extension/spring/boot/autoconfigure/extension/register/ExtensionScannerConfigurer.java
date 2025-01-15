@@ -40,7 +40,6 @@ public class ExtensionScannerConfigurer implements BeanDefinitionRegistryPostPro
 
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-        // left intentionally blank
     }
 
     @Override
@@ -50,24 +49,14 @@ public class ExtensionScannerConfigurer implements BeanDefinitionRegistryPostPro
         extensionPointScanner.setResourceLoader(getApplicationContext());
         extensionPointScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
 
-        // scan @ExtensionPointDefaultImplementation
-        ExtensionPointDefaultImplScanner extDefaultScanner = new ExtensionPointDefaultImplScanner(registry);
-        extDefaultScanner.setResourceLoader(getApplicationContext());
-        extDefaultScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
-
         // scan @MatcherParam
-        MatcherParamScanner matcherParamScanner = new MatcherParamScanner(registry);
-        matcherParamScanner.setResourceLoader(getApplicationContext());
-        matcherParamScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+        ClassScanner classScanner = new ClassScanner(registry);
+        classScanner.setResourceLoader(getApplicationContext());
+        classScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
 
-        // scan @Ability
-        AbilityScanner abilityScanner = new AbilityScanner(registry);
-        abilityScanner.setResourceLoader(getApplicationContext());
-        abilityScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
-
-        // scan @Business
-        BusinessScanner businessScanner = new BusinessScanner(registry);
-        businessScanner.setResourceLoader(getApplicationContext());
-        businessScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+        // scan @Ability, @Business, @ExtensionPointDefaultImplementation ...
+        InstanceScanner scanner = new InstanceScanner(registry);
+        scanner.setResourceLoader(getApplicationContext());
+        scanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
     }
 }

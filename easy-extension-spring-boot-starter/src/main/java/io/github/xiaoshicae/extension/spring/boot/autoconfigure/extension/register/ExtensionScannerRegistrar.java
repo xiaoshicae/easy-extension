@@ -13,30 +13,36 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar {
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
-        AnnotationAttributes mapperScanAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
-        if (mapperScanAttrs != null) {
-            registerBeanDefinitions(importingClassMetadata, mapperScanAttrs, registry, generateBaseBeanName(importingClassMetadata, 0));
+        AnnotationAttributes scanAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
+
+        if (!Objects.isNull(scanAttrs)) {
+            // scan components with @ExtensionScan
+            registerBeanDefinitions(importingClassMetadata, scanAttrs, registry);
         }
+
+        // filed autowired inject
         registerExtensionInjectBeanDefinitions(registry);
     }
 
-    void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionRegistry registry, String beanName) {
+    void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ExtensionScannerConfigurer.class);
-        addPropertyPackages(annoMeta, annoAttrs, builder, "scanPackages");
-        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
+        addPropertyPackages(annoMeta, annoAttrs, builder);
+        registry.registerBeanDefinition(generateBaseBeanName(annoMeta), builder.getBeanDefinition());
     }
 
-    void addPropertyPackages(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionBuilder builder, String packageName) {
-        List<String> basePackages = new ArrayList<>(Arrays.stream(annoAttrs.getStringArray(packageName)).filter(StringUtils::hasText).toList());
-        if (basePackages.isEmpty()) {
-            basePackages.add(getDefaultBasePackage(annoMeta));
-        }
-        builder.addPropertyValue(packageName, StringUtils.collectionToCommaDelimitedString(basePackages));
+    void addPropertyPackages(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionBuilder builder) {
+        List<String> basePackages = new ArrayList<>(Arrays.stream(annoAttrs.getStringArray("scanPackages")).filter(StringUtils::hasText).toList());
+//        if (basePackages.isEmpty()) {
+//            basePackages.add(getDefaultBasePackage(annoMeta));
+//        }
+        basePackages.add(getDefaultBasePackage(annoMeta));
+        builder.addPropertyValue("scanPackages", StringUtils.collectionToCommaDelimitedString(basePackages));
     }
 
     void registerExtensionInjectBeanDefinitions(BeanDefinitionRegistry registry) {
@@ -44,8 +50,8 @@ public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar 
         registry.registerBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class.getName(), builder.getBeanDefinition());
     }
 
-    private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata, int index) {
-        return importingClassMetadata.getClassName() + "#" + ExtensionScannerRegistrar.class.getSimpleName() + "#" + index;
+    private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata) {
+        return importingClassMetadata.getClassName() + "#" + ExtensionScannerRegistrar.class.getSimpleName();
     }
 
     private static String getDefaultBasePackage(AnnotationMetadata importingClassMetadata) {
