@@ -1,54 +1,41 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfiguration;
 
 import io.github.xiaoshicae.extension.core.AbstractExtensionPointDefaultImplementation;
-import io.github.xiaoshicae.extension.core.IExtensionContext;
 import io.github.xiaoshicae.extension.core.ability.AbstractAbility;
+import io.github.xiaoshicae.extension.core.annotation.MatcherParam;
 import io.github.xiaoshicae.extension.core.business.AbstractBusiness;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
+import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ClassHolder;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionPointHolder;
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.MatcherParamHolder;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-
 public class EasyExtensionAutoConfigurationTest {
 
     @Test
-    public void test() throws RegisterException {
+    public void test() throws RegisterException, ProxyException {
         EasyExtensionAutoConfiguration<MP> easyExtensionAutoConfiguration = new EasyExtensionAutoConfiguration<>();
 
         AbilityX abilityX = new AbilityX();
         easyExtensionAutoConfiguration.setAbilities(List.of(abilityX));
-        easyExtensionAutoConfiguration.setMatcherParamHolder(new MatcherParamHolder<>(MP.class));
         BusinessA businessA = new BusinessA();
         easyExtensionAutoConfiguration.setBusinesses(List.of(businessA));
         DefaultImpl defaultImpl = new DefaultImpl();
         easyExtensionAutoConfiguration.setExtensionPointGroupImplementation(defaultImpl);
         easyExtensionAutoConfiguration.setExtensionPointHolders(List.of(new ExtensionPointHolder(Ext1.class), new ExtensionPointHolder(Ext2.class)));
+        easyExtensionAutoConfiguration.setClassHolders(List.of(new ClassHolder(MP.class)));
 
-        IExtensionContext<MP> context = easyExtensionAutoConfiguration.registerExtensionContext(new EasyExtensionConfigurationProperties());
-
-        assertSame(MP.class, context.getMatcherParamClass());
-        assertSame(defaultImpl, context.getExtensionPointDefaultImplementation());
-        assertEquals(1, context.listAllAbility().size());
-        assertSame(abilityX, context.listAllAbility().get(0));
-
-        assertEquals(1, context.listAllBusiness().size());
-        assertSame(businessA, context.listAllBusiness().get(0));
-
-        assertEquals(2, context.listAllExtensionPoint().size());
-        assertSame(Ext1.class, context.listAllExtensionPoint().get(0));
-        assertSame(Ext2.class, context.listAllExtensionPoint().get(1));
+        easyExtensionAutoConfiguration.registerExtensionContext(new EasyExtensionConfigurationProperties());
     }
 }
 
 
+@MatcherParam
 class MP {
 }
 

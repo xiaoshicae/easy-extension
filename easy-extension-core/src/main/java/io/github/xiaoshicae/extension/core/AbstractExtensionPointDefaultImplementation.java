@@ -13,13 +13,13 @@ public abstract class AbstractExtensionPointDefaultImplementation<T> extends Abs
     private static final Integer PRIORITY = Integer.MAX_VALUE;
 
     @Override
-    public final Boolean match(T param) {
-        return true;
+    public final String code() {
+        return DEFAULT_CODE;
     }
 
     @Override
-    public final String code() {
-        return DEFAULT_CODE;
+    public final Boolean match(T param) {
+        return true;
     }
 
     @Override

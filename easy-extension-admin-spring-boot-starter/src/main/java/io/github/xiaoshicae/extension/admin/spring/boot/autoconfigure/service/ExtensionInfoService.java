@@ -18,6 +18,7 @@ import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
+import io.github.xiaoshicae.extension.core.proxy.IProxy;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -46,7 +47,12 @@ public class ExtensionInfoService {
 
     public DefaultImplInfo getDefaultImplInfo() {
         IExtensionPointGroupDefaultImplementation<?> defaultImpl = context.getExtensionPointDefaultImplementation();
-        Class<?> clazz = resolveClassWithAnn(defaultImpl.getClass(), ExtensionPointDefaultImplementation.class);
+        Class<?> clazz;
+        if (defaultImpl instanceof IProxy<?> proxy) {
+            clazz = proxy.getInstance().getClass();
+        } else {
+            clazz = resolveClassWithAnn(defaultImpl.getClass(), ExtensionPointDefaultImplementation.class);
+        }
         return new DefaultImplInfo(resolveClassInfo(clazz));
     }
 
@@ -68,7 +74,12 @@ public class ExtensionInfoService {
         for (IAbility<?> ability : context.listAllAbility()) {
             String code = ability.code();
             List<String> implExtensionPoints = ability.implementExtensionPoints().stream().map(Class::getName).toList();
-            Class<?> clazz = resolveClassWithAnn(ability.getClass(), Ability.class);
+            Class<?> clazz;
+            if (ability instanceof IProxy<?> proxy) {
+                clazz = proxy.getInstance().getClass();
+            } else {
+                clazz = resolveClassWithAnn(ability.getClass(), Ability.class);
+            }
             result.add(new AbilityInfo(code, implExtensionPoints, resolveClassInfo(clazz)));
         }
         return result;
@@ -81,7 +92,12 @@ public class ExtensionInfoService {
             Integer priority = business.priority();
             List<BusinessInfo.UsedAbility> usedAbilities = business.usedAbilities().stream().map(e -> new BusinessInfo.UsedAbility(e.code(), e.priority())).toList();
             List<String> implementExtensionPoints = business.implementExtensionPoints().stream().map(Class::getName).toList();
-            Class<?> clazz = resolveClassWithAnn(business.getClass(), Business.class);
+            Class<?> clazz;
+            if (business instanceof IProxy<?> proxy) {
+                clazz = proxy.getInstance().getClass();
+            } else {
+                clazz = resolveClassWithAnn(business.getClass(), Business.class);
+            }
             result.add(new BusinessInfo(code, priority, usedAbilities, implementExtensionPoints, resolveClassInfo(clazz)));
         }
         return result;
