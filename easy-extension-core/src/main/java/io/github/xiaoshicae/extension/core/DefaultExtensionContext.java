@@ -21,11 +21,14 @@ import io.github.xiaoshicae.extension.core.session.DefaultSession;
 import io.github.xiaoshicae.extension.core.session.ISession;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -216,11 +219,52 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public void initSession(T param) throws SessionException {
         long startTime = System.currentTimeMillis();
 
+        session.remove(); // remove session first
+
         if (enableLogger) {
             logger.info(String.format("%s session init start", logPrefix));
         }
 
-        session.remove();
+        Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(param);
+        for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
+            session.setMatchedCode(entry.getKey(), entry.getValue());
+        }
+
+        if (enableLogger) {
+            logger.info(String.format("%s session init completed, cost:[%d ms]", logPrefix, System.currentTimeMillis() - startTime));
+        }
+    }
+
+    @Override
+    public void initScopedSession(String scope, T param) throws SessionException {
+        long startTime = System.currentTimeMillis();
+        if (enableLogger) {
+            logger.info(String.format("%s scope [%s] session init start", scope, logPrefix));
+        }
+
+        Map<String, Integer> codePriorityMap;
+        try {
+            codePriorityMap = resolveMatchedCodeAndPriority(scope, param);
+        } catch (SessionException e) {
+            throw new SessionException(String.format("scope [%s], ", e.getMessage()));
+        }
+
+        for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
+            session.setScopedMatchedCode(scope, entry.getKey(), entry.getValue());
+        }
+        if (enableLogger) {
+            logger.info(String.format("%s scope [%s] session init completed, cost:[%d ms]", scope, logPrefix, System.currentTimeMillis() - startTime));
+        }
+    }
+
+    private Map<String, Integer> resolveMatchedCodeAndPriority(T param) throws SessionException {
+        return resolveMatchedCodeAndPriority("", param);
+    }
+
+    private Map<String, Integer> resolveMatchedCodeAndPriority(String scope, T param) throws SessionException {
+        String scopePrefix = scope.isEmpty() ? "" : "scope [%s], ".formatted(scope);
+
+        Map<String, Integer> codePriorityMap = new HashMap<>();
 
         IBusiness<T> matchedBusiness = null;
         List<String> matchedBusinessCodes = new ArrayList<>();
@@ -244,10 +288,10 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         if (!Objects.isNull(matchedBusiness)) {
             if (enableLogger) {
-                logger.info(String.format("%s init session match business:[%s], priority:[%d]", logPrefix, matchedBusiness.code(), matchedBusiness.priority()));
+                logger.info(String.format("%s init %s session match business:[%s], priority:[%d]", logPrefix, scopePrefix, matchedBusiness.code(), matchedBusiness.priority()));
             }
 
-            session.setMatchedCode(matchedBusiness.code(), matchedBusiness.priority());
+            codePriorityMap.put(matchedBusiness.code(), matchedBusiness.priority());
             for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
                 IAbility<T> ability;
                 try {
@@ -256,32 +300,27 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                     throw new SessionException(String.format("business [%s] used ability [%s] not found", matchedBusiness.code(), usedAbility.code()));
                 }
                 if (ability.match(param)) {
-                    session.setMatchedCode(ability.code(), usedAbility.priority());
+                    codePriorityMap.put(ability.code(), usedAbility.priority());
                     if (enableLogger) {
-                        logger.info(String.format("%s init session match ability:[%s], priority:[%d]", logPrefix, usedAbility.code(), usedAbility.priority()));
+                        logger.info(String.format("%s init %s session match ability:[%s], priority:[%d]", logPrefix, scopePrefix, usedAbility.code(), usedAbility.priority()));
                     }
                 }
             }
         }
 
-        session.setMatchedCode(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
-
+        codePriorityMap.put(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
         if (enableLogger) {
-            logger.info(String.format("%s init session match extension point default implementation:[%s], priority:[%d]",
-                            logPrefix,
-                            extensionPointDefaultImplementation.code(),
-                            extensionPointDefaultImplementation.priority()
-                    )
-            );
-            logger.info(String.format("%s session init completed, cost:[%d ms]", logPrefix, System.currentTimeMillis() - startTime));
+            logger.info(String.format("%s init %s session match extension point default implementation:[%s], priority:[%d]", logPrefix, scopePrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority()));
         }
+
+        return codePriorityMap;
     }
 
     @Override
     public void removeSession() {
         session.remove();
         if (enableLogger) {
-            logger.info(String.format("%s session removed", logPrefix));
+            logger.info(String.format("%s session include scoped has been removed", logPrefix));
         }
     }
 
@@ -291,51 +330,98 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         if (enableLogger) {
             logger.info(String.format("%s Extension<%s> get first matched instance, all matched candidate codes:[%s]", logPrefix, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
         }
-
-        for (String code : matchedCodes) {
-            try {
-                E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
-                if (enableLogger) {
-                    logger.info(String.format("%s Extension<%s> get first matched instance:[%s]", logPrefix, extensionType.getSimpleName(), code));
-                }
-                return extension;
-            } catch (QueryNotFoundException e) {
-                if (enableLogger) {
-                    logger.fine(String.format("%s Extension<%s> get first matched instance, code:[%s] not matched", logPrefix, extensionType.getSimpleName(), code));
-                }
-            }
-        }
-
-        throw new QueryNotFoundException(String.format("Extension<%s> not found", extensionType.getName()));
+        return getFirstMatchedExtensionByMatchedCodes(extensionType, matchedCodes);
     }
 
     @Override
     public <E> List<E> getAllMatchedExtension(Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getAllMatchedCodes();
-
         if (enableLogger) {
             logger.info(String.format("%s Extension<%s> get all matched instance, all matched candidate candidate codes:[%s]", logPrefix, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
         }
+        return getAllMatchedExtensionByMatchedCodes(extensionType, matchedCodes);
+    }
+
+    @Override
+    public <E> E getScopedFirstMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
+        List<String> matchedCodes = getScopedAllMatchedCodes(scope);
+        if (enableLogger) {
+            logger.info(String.format("%s Extension<%s> get scope [%s] first matched instance, all matched candidate codes:[%s]", logPrefix, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
+        }
+
+        E extension;
+        try {
+            extension = getFirstMatchedExtensionByMatchedCodes(scope, extensionType, matchedCodes);
+        } catch (QueryException e) {
+            throw new QueryException(String.format("scope [%s], ", e.getMessage()));
+        }
+        return extension;
+    }
+
+    public <E> List<E> getScopedAllMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
+        List<String> matchedCodes = getScopedAllMatchedCodes(scope);
+        if (enableLogger) {
+            logger.info(String.format("%s Extension<%s> get scope [%s] all matched instance, all matched candidate candidate codes:[%s]", logPrefix, scope, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
+        }
+
+        List<E> extensions;
+        try {
+            extensions = getAllMatchedExtensionByMatchedCodes(scope, extensionType, matchedCodes);
+        } catch (QueryException e) {
+            throw new QueryException(String.format("scope [%s], ", e.getMessage()));
+        }
+        return extensions;
+    }
+
+    private <E> List<E> getAllMatchedExtensionByMatchedCodes(Class<E> extensionType, List<String> matchedCodes) throws QueryException {
+        return getAllMatchedExtensionByMatchedCodes("", extensionType, matchedCodes);
+    }
+
+    private <E> List<E> getAllMatchedExtensionByMatchedCodes(String scope, Class<E> extensionType, List<String> matchedCodes) throws QueryException {
+        String scopePrefix = scope.isEmpty() ? "" : "scope [%s], ".formatted(scope);
 
         List<E> extensions = new ArrayList<>();
+        List<String> allMatchedCodes = new ArrayList<>();
         for (String code : matchedCodes) {
             try {
                 E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
                 if (!Objects.isNull(extension)) {
                     extensions.add(extension);
+                    allMatchedCodes.add(code);
                 }
             } catch (QueryNotFoundException ignored) {
                 if (enableLogger) {
-                    logger.fine(String.format("%s Extension<%s> get all matched instance, code:[%s] not matched", logPrefix, extensionType.getSimpleName(), code));
+                    logger.fine(String.format("%s Extension<%s> get %s all matched instance, code:[%s] not matched", logPrefix, scopePrefix, extensionType.getSimpleName(), code));
                 }
             }
         }
 
         if (enableLogger) {
-            String allMatchedCodes = extensions.stream().map(e -> ((Identifier) e).code()).collect(Collectors.joining(" > "));
-            logger.info(String.format("%s Extension<%s> get all matched instance:[%s]", logPrefix, extensionType.getSimpleName(), allMatchedCodes));
+            logger.info(String.format("%s Extension<%s> get %s all matched instance:[%s]", logPrefix, scopePrefix, extensionType.getSimpleName(), String.join(" > ", allMatchedCodes)));
         }
         return extensions;
+    }
+
+    private <E> E getFirstMatchedExtensionByMatchedCodes(Class<E> extensionType, List<String> matchedCodes) throws QueryException {
+        return getFirstMatchedExtensionByMatchedCodes("", extensionType, matchedCodes);
+    }
+
+    private <E> E getFirstMatchedExtensionByMatchedCodes(String scope, Class<E> extensionType, List<String> matchedCodes) throws QueryException {
+        String scopePrefix = scope.isEmpty() ? "" : "scope [%s]".formatted(scope);
+        for (String code : matchedCodes) {
+            try {
+                E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
+                if (enableLogger) {
+                    logger.info(String.format("%s Extension<%s> get %s first matched instance:[%s]", logPrefix, scopePrefix, extensionType.getSimpleName(), code));
+                }
+                return extension;
+            } catch (QueryNotFoundException e) {
+                if (enableLogger) {
+                    logger.fine(String.format("%s Extension<%s> get %s first matched instance, code:[%s] not matched", logPrefix, scopePrefix, extensionType.getSimpleName(), code));
+                }
+            }
+        }
+        throw new QueryNotFoundException(String.format("Extension<%s> not found", extensionType.getName()));
     }
 
     private List<String> getAllMatchedCodes() throws QueryException {
@@ -344,5 +430,47 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         } catch (SessionException e) {
             throw new QueryNotFoundException(e.getMessage());
         }
+    }
+
+    private List<String> getScopedAllMatchedCodes(String scope) throws QueryException {
+        try {
+            return session.getScopedMatchedCodes(scope);
+        } catch (SessionException e) {
+            throw new QueryNotFoundException(e.getMessage());
+        }
+    }
+
+    @Override
+    public <E,R> R invoke(Class<E> extensionType, Function<E,R> invoker) throws QueryException {
+        E extension = getFirstMatchedExtension(extensionType);
+        return invoker.apply(extension);
+    }
+
+    @Override
+    public <E,R> List<R> invokeAll( Class<E> extensionType, Function<E,R> invoker) throws QueryException {
+        List<E> extensions = getAllMatchedExtension(extensionType);
+        List<R> resList = new ArrayList<>();
+        for (E extension : extensions) {
+            R res = invoker.apply(extension);
+            resList.add(res);
+        }
+        return resList;
+    }
+
+    @Override
+    public <E,R> R scopedInvoke(String scope, Class<E> extensionType, Function<E,R> invoker) throws QueryException {
+        E extension = getScopedFirstMatchedExtension(scope, extensionType);
+        return invoker.apply(extension);
+    }
+
+    @Override
+    public <E,R> List<R> scopedInvokeAll(String scope, Class<E> extensionType, Function<E,R> invoker) throws QueryException {
+        List<E> extensions = getScopedAllMatchedExtension(scope, extensionType);
+        List<R> resList = new ArrayList<>();
+        for (E extension : extensions) {
+            R res = invoker.apply(extension);
+            resList.add(res);
+        }
+        return resList;
     }
 }
