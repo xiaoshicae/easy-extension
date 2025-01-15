@@ -7,7 +7,7 @@ import io.github.xiaoshicae.extension.core.business.DefaultBusinessManager;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.business.IBusinessManager;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
-import io.github.xiaoshicae.extension.core.common.Identifier;
+import io.github.xiaoshicae.extension.core.exception.InvokeException;
 import io.github.xiaoshicae.extension.core.exception.QueryException;
 import io.github.xiaoshicae.extension.core.exception.QueryNotFoundException;
 import io.github.xiaoshicae.extension.core.exception.RegisterDuplicateException;
@@ -441,14 +441,24 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     }
 
     @Override
-    public <E,R> R invoke(Class<E> extensionType, Function<E,R> invoker) throws QueryException {
-        E extension = getFirstMatchedExtension(extensionType);
+    public <E, R> R invoke(Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
+        E extension;
+        try {
+            extension = getFirstMatchedExtension(extensionType);
+        } catch (QueryException e) {
+            throw new InvokeException("invoke failed, " + e.getMessage(), e);
+        }
         return invoker.apply(extension);
     }
 
     @Override
-    public <E,R> List<R> invokeAll( Class<E> extensionType, Function<E,R> invoker) throws QueryException {
-        List<E> extensions = getAllMatchedExtension(extensionType);
+    public <E, R> List<R> invokeAll(Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
+        List<E> extensions;
+        try {
+            extensions = getAllMatchedExtension(extensionType);
+        } catch (QueryException e) {
+            throw new InvokeException("invokeAll failed, " + e.getMessage(), e);
+        }
         List<R> resList = new ArrayList<>();
         for (E extension : extensions) {
             R res = invoker.apply(extension);
@@ -458,14 +468,24 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     }
 
     @Override
-    public <E,R> R scopedInvoke(String scope, Class<E> extensionType, Function<E,R> invoker) throws QueryException {
-        E extension = getScopedFirstMatchedExtension(scope, extensionType);
+    public <E, R> R scopedInvoke(String scope, Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
+        E extension;
+        try {
+            extension = getScopedFirstMatchedExtension(scope, extensionType);
+        } catch (QueryException e) {
+            throw new InvokeException("scope %s scopedInvoke failed, %s".formatted(scope, e.getMessage()), e);
+        }
         return invoker.apply(extension);
     }
 
     @Override
-    public <E,R> List<R> scopedInvokeAll(String scope, Class<E> extensionType, Function<E,R> invoker) throws QueryException {
-        List<E> extensions = getScopedAllMatchedExtension(scope, extensionType);
+    public <E, R> List<R> scopedInvokeAll(String scope, Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
+        List<E> extensions;
+        try {
+            extensions = getScopedAllMatchedExtension(scope, extensionType);
+        } catch (QueryException e) {
+            throw new InvokeException("scope %s scopedInvokeAll failed, %s".formatted(scope, e.getMessage()), e);
+        }
         List<R> resList = new ArrayList<>();
         for (E extension : extensions) {
             R res = invoker.apply(extension);
