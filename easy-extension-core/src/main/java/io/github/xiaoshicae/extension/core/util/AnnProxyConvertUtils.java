@@ -9,8 +9,10 @@ import io.github.xiaoshicae.extension.core.business.UsedAbility;
 import io.github.xiaoshicae.extension.core.common.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.ProxyParamException;
+import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 import io.github.xiaoshicae.extension.core.proxy.AbilityProxyFactory;
 import io.github.xiaoshicae.extension.core.proxy.BusinessProxyFactory;
+import io.github.xiaoshicae.extension.core.proxy.ExtPointDefaultImplProxyFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +24,12 @@ import java.util.Set;
 public class AnnProxyConvertUtils {
     private static final String abilityPriorityDelimiter = "::";
     private static final Integer maxAbilityItemsCnt = 2;
+
+    public static <T> IExtensionPointGroupDefaultImplementation<T> convertAnnExtensionPointGroupDefaultImplementation(Object instance) throws ProxyException {
+        List<Class<?>> implExtPoints = Arrays.stream(instance.getClass().getInterfaces()).filter(i -> i.isAnnotationPresent(ExtensionPoint.class)).toList();
+        ExtPointDefaultImplProxyFactory<T> extPointDefaultImplProxyFactory = new ExtPointDefaultImplProxyFactory<>(instance, implExtPoints);
+        return extPointDefaultImplProxyFactory.getProxy();
+    }
 
     public static <T> IAbility<T> convertAnnAbilityToProxy(Matcher<T> instance) throws ProxyException {
         Ability ann = instance.getClass().getAnnotation(Ability.class);
