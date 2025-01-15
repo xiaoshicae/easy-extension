@@ -168,12 +168,13 @@ public class DefaultExtContextTest {
         ExtensionException e;
         DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(false, true);
 
-        context.registerMatcherParamClass(Object.class);
-        context.registerExtensionPointDefaultImplementation(new ExtensionPointDefaultImplementation());
-
         context.registerExtensionPoint(ExtA.class);
         context.registerExtensionPoint(ExtB.class);
         context.registerExtensionPoint(ExtC.class);
+
+        context.registerMatcherParamClass(Object.class);
+        context.registerExtensionPointDefaultImplementation(new ExtensionPointDefaultImplementation());
+
         context.registerAbility(new AbilityN());
         context.registerAbility(new AbilityNN());
         context.registerBusiness(new BusinessZZZ());
@@ -185,10 +186,25 @@ public class DefaultExtContextTest {
 
         context.initSession("XXX");
         List<ExtA> extAList = context.getAllMatchedExtension(ExtA.class);
-        assertEquals(1, extAList.size());
+        assertEquals(2, extAList.size());
 
         List<ExtB> extBList = context.getAllMatchedExtension(ExtB.class);
-        assertEquals(3, extBList.size());
+        assertEquals(4, extBList.size());
+
+        String invokeRes = context.invoke(ExtA.class, ExtA::extA);
+        assertEquals("BusinessZZZ extA", invokeRes);
+
+        List<String> invokeResList = context.invokeAll(ExtA.class, ExtA::extA);
+        assertEquals(List.of("BusinessZZZ extA", "ExtDefaultAbility do extA"), invokeResList);
+
+        assertThrows(QueryException.class, () -> context.getScopedFirstMatchedExtension("xxx", ExtA.class));
+
+        context.initScopedSession("xxx", "XXX");
+        invokeRes = context.scopedInvoke("xxx", ExtA.class, ExtA::extA);
+        assertEquals("BusinessZZZ extA", invokeRes);
+
+        invokeResList = context.scopedInvokeAll("xxx", ExtA.class, ExtA::extA);
+        assertEquals(List.of("BusinessZZZ extA", "ExtDefaultAbility do extA"), invokeResList);
 
         context.removeSession();
         assertThrows(QueryException.class, () -> context.getAllMatchedExtension(ExtA.class));

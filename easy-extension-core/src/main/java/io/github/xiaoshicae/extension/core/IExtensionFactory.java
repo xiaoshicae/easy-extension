@@ -23,5 +23,24 @@ public interface IExtensionFactory {
      * @return all matched extension instance.
      * @throws QueryNotFoundException if instance not found
      */
-    <E> List<E> getAllMatchedExtension(Class<E> extensionPointType) throws QueryException;
+    <T> List<T> getAllMatchedExtension(Class<T> extensionPointType) throws QueryException;
+
+    /**
+     * Get scoped matched extension implementation instance with max priority.
+     *
+     * @param scope namespace of session
+     * @param extensionPointType extension point type
+     * @return scoped all matched extension instance.
+     * @throws QueryNotFoundException if instance not found
+     */
+    <T> T getScopedFirstMatchedExtension(String scope, Class<T> extensionPointType) throws QueryException;
+
+    /**
+     * Get scoped all matched extension instance.
+     *
+     * @param extensionPointType extension point type
+     * @return scoped all matched extension instance.
+     * @throws QueryNotFoundException if instance not found
+     */
+    <T> List<T> getScopedAllMatchedExtension(String scope, Class<T> extensionPointType) throws QueryException;
 }

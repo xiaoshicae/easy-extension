@@ -353,19 +353,6 @@ class ExtensionPointDefaultImplementation extends AbstractExtensionPointDefaultI
 
     @Override
     public List<Class<?>> implementExtensionPoints() {
-        return List.of();
-    }
-}
-
-
-class ExtensionPointDefaultImplementationInvalid extends AbstractExtensionPointDefaultImplementation<Object> implements ExtB {
-    @Override
-    public String extB() {
-        return "ExtDefaultAbility do extB";
-    }
-
-    @Override
-    public List<Class<?>> implementExtensionPoints() {
-        return List.of();
+        return List.of(ExtA.class, ExtB.class, ExtC.class);
     }
 }

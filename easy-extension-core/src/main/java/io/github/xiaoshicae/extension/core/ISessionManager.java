@@ -12,6 +12,13 @@ public interface ISessionManager<T> {
     void initSession(T param) throws SessionException;
 
     /**
+     * Init scoped session before process.
+     *
+     * @param param for business or ability match test
+     */
+    void initScopedSession(String scope, T param) throws SessionException;
+
+    /**
      * Remove session after process.
      */
     void removeSession();
