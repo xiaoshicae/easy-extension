@@ -14,6 +14,7 @@ import io.github.xiaoshicae.extension.core.exception.RegisterDuplicateException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 import io.github.xiaoshicae.extension.core.exception.SessionException;
+import io.github.xiaoshicae.extension.core.exception.SessionParamException;
 import io.github.xiaoshicae.extension.core.extension.DefaultExtensionPointGroupImplementationManager;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImplementationManager;
@@ -218,8 +219,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     @Override
     public void initSession(T param) throws SessionException {
         long startTime = System.currentTimeMillis();
-
-        session.remove(); // remove session first
+        session.removeSession();
 
         if (enableLogger) {
             logger.info(String.format("%s session init start", logPrefix));
@@ -237,7 +237,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public void initScopedSession(String scope, T param) throws SessionException {
+        if (Objects.isNull(scope)) {
+            throw new SessionParamException("scope should not be null");
+        }
+
         long startTime = System.currentTimeMillis();
+        session.removeScopedSession(scope);
+
         if (enableLogger) {
             logger.info(String.format("%s scope [%s] session init start", scope, logPrefix));
         }
@@ -318,7 +324,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public void removeSession() {
-        session.remove();
+        session.removeAllSession();
         if (enableLogger) {
             logger.info(String.format("%s session include scoped has been removed", logPrefix));
         }

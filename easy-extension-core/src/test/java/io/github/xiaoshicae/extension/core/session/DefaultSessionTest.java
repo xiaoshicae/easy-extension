@@ -15,7 +15,7 @@ public class DefaultSessionTest {
 
     @AfterEach
     public void clear() {
-        session.remove();
+        session.removeAllSession();
     }
 
     @Test
@@ -88,6 +88,10 @@ public class DefaultSessionTest {
         assertEquals("b", codes.get(1));
         assertEquals("e", codes.get(2));
         assertEquals("d", codes.get(3));
+
+        session.removeSession();
+        e = assertThrows(SessionException.class, session::getMatchedCodes);
+        assertEquals("matched codes is empty, may be no code register", e.getMessage());
     }
 
     private void testScopedSession() throws SessionException {
@@ -110,7 +114,6 @@ public class DefaultSessionTest {
         e = assertThrows(SessionException.class, () -> session.setScopedMatchedCode("xxx","a", 1));
         assertEquals("scope [xxx], code [a] already exist", e.getMessage());
 
-
         session.setScopedMatchedCode("xxx","b", 1);
         e = assertThrows(SessionException.class, () -> session.setScopedMatchedCode("xxx","c", 1));
         assertEquals("scope [xxx], priority [1] already exist", e.getMessage());
@@ -124,8 +127,16 @@ public class DefaultSessionTest {
         assertEquals("e", codes.get(2));
         assertEquals("d", codes.get(3));
 
-        e = assertThrows(SessionException.class, () -> session.getScopedMatchedCodes("yyy"));
-        assertEquals("scope [yyy], matched codes is empty, may be no code register", e.getMessage());
+        session.setScopedMatchedCode("yyy","b", 1);
+        session.getScopedMatchedCodes("yyy");
 
+        session.removeScopedSession("xxx");
+        e = assertThrows(SessionException.class, () -> session.getScopedMatchedCodes("xxx"));
+        assertEquals("scope [xxx], matched codes is empty, may be no code register", e.getMessage());
+
+        session.removeAllScopedSession();
+
+        e = assertThrows(SessionException.class, () -> session.getScopedMatchedCodes("yyy"));
+        assertEquals("scope [yyy], matched codes is empty, may be session not init", e.getMessage());
     }
 }

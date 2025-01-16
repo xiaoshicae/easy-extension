@@ -8,6 +8,7 @@ import java.util.List;
 
 import io.github.xiaoshicae.extension.core.exception.QueryException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
+import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 import org.junit.jupiter.api.*;
 

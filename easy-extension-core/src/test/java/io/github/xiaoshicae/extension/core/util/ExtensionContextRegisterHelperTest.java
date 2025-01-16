@@ -1,6 +1,6 @@
 package io.github.xiaoshicae.extension.core.util;
 
-import io.github.xiaoshicae.extension.core.AbstractExtensionPointDefaultImplementation;
+import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.DefaultExtensionContext;
 import io.github.xiaoshicae.extension.core.IExtensionContext;
 import io.github.xiaoshicae.extension.core.ability.AbstractAbility;

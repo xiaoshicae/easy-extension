@@ -54,9 +54,27 @@ public class DefaultSession implements ISession {
     }
 
     @Override
-    public void remove() {
+    public void removeAllSession() {
+        removeSession();
+        removeAllScopedSession();
+    }
+
+    @Override
+    public void removeSession() {
         matchedCodePriorityLocal.remove();
+    }
+
+    @Override
+    public void removeAllScopedSession() {
         scopedMatchedCodePriorityLocal.remove();
+    }
+
+    @Override
+    public void removeScopedSession(String scope) {
+        Map<String, TreeMap<Integer, String>> scopedCodePriorityMap = scopedMatchedCodePriorityLocal.get();
+        if (!Objects.isNull(scopedCodePriorityMap)) {
+            scopedCodePriorityMap.remove(scope);
+        }
     }
 
     private Map<String, TreeMap<Integer, String>> registerScopedCodePriorityMap(String scope, String code, Integer priority, Map<String, TreeMap<Integer, String>> scopedCodePriorityMap) throws SessionParamException {

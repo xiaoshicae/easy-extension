@@ -3,6 +3,7 @@ package io.github.xiaoshicae.extension.core;
 import io.github.xiaoshicae.extension.core.ability.AbstractAbility;
 import io.github.xiaoshicae.extension.core.business.AbstractBusiness;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
+import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointDefaultImplementation;
 
 import java.util.List;
 
