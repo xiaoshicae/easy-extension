@@ -88,7 +88,7 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
                 MergedAnnotation<?> ann = findAutowiredAnnotation(field);
                 if (ann != null) {
                     if (Modifier.isStatic(field.getModifiers())) {
-                        throw new BeanCreationException("ExtensionInject annotation is not supported on static fields: " + field);
+                        throw new BeanCreationException("@ExtensionInject annotation is not supported on static fields: " + field);
                     }
                     fieldElements.add(new AutowiredFieldElement(field));
                 }
@@ -130,9 +130,9 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
 
         private Class<?> getGenericFromField(Field field) {
             ResolvableType resolvableType = ResolvableType.forField(field);
-            if (!resolvableType.hasGenerics()) {
-                return null;
-            }
+//            if (!resolvableType.hasGenerics()) {
+//                return null;
+//            }
             return resolvableType.getGeneric(0).resolve();
         }
     }

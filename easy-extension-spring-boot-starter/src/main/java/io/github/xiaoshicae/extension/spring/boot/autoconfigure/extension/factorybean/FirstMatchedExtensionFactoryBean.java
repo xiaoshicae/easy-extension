@@ -22,9 +22,4 @@ public class FirstMatchedExtensionFactoryBean<T> implements FactoryBean<T> {
     public Class<T> getObjectType() {
         return extensionPointClass;
     }
-
-    @Override
-    public boolean isSingleton() {
-        return true;
-    }
 }

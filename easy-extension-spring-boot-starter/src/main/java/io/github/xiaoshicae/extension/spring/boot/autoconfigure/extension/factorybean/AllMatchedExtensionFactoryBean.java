@@ -7,11 +7,9 @@ import org.springframework.beans.factory.FactoryBean;
 import java.util.List;
 
 public class AllMatchedExtensionFactoryBean<T> implements FactoryBean<List<T>> {
-    private final Class<T> extensionPointClass;
     private final AllMatchedExtPointProxyFactory<T> allMatchedExtPointProxyFactory;
 
     public AllMatchedExtensionFactoryBean(Class<T> extensionPointClass, IExtensionFactory extensionFactory) {
-        this.extensionPointClass = extensionPointClass;
         this.allMatchedExtPointProxyFactory = new AllMatchedExtPointProxyFactory<>(extensionPointClass, extensionFactory);
     }
 
@@ -22,12 +20,7 @@ public class AllMatchedExtensionFactoryBean<T> implements FactoryBean<List<T>> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Class<T> getObjectType() {
-        return (Class<T>) List.class;
-    }
-
-    @Override
-    public boolean isSingleton() {
-        return true;
+    public Class<List<T>> getObjectType() {
+        return (Class<List<T>>) (Class<?>) List.class;
     }
 }

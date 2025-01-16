@@ -25,11 +25,14 @@ import org.springframework.context.annotation.Configuration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 
 @Configuration
 @EnableConfigurationProperties(EasyExtensionConfigurationProperties.class)
 public class EasyExtensionAutoConfiguration<T> {
+    private static final Logger logger = Logger.getLogger(EasyExtensionAutoConfiguration.class.getName());
+
     private List<ExtensionPointHolder> extensionPointHolders;
     private IExtensionPointGroupDefaultImplementation<T> extensionPointGroupImplementation;
     private List<IBusiness<T>> businesses;
@@ -44,6 +47,9 @@ public class EasyExtensionAutoConfiguration<T> {
 
         // if no extension point found, return empty context
         if (Objects.isNull(this.extensionPointHolders) || this.extensionPointHolders.isEmpty()) {
+            if (properties.getEnableLog()) {
+                logger.info("No extension point found. Please check your configuration.");
+            }
             return extensionContext;
         }
 
@@ -113,7 +119,6 @@ public class EasyExtensionAutoConfiguration<T> {
                 }
             }
         }
-
 
         // register by bean
         if (!Objects.isNull(this.extensionPointGroupImplementation)) {

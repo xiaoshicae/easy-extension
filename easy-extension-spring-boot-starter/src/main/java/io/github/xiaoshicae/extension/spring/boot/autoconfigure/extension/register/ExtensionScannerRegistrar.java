@@ -20,14 +20,10 @@ public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
         AnnotationAttributes scanAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
-
         if (!Objects.isNull(scanAttrs)) {
-            // scan components with @ExtensionScan
-            registerBeanDefinitions(importingClassMetadata, scanAttrs, registry);
+            registerBeanDefinitions(importingClassMetadata, scanAttrs, registry); // scan components with @ExtensionScan
         }
-
-        // filed autowired inject
-        registerExtensionInjectBeanDefinitions(registry);
+        registerExtensionInjectBeanDefinitions(registry); // filed autowired inject
     }
 
     void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionRegistry registry) {
