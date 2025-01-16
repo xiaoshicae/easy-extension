@@ -6,6 +6,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
 ## ✨ v3 新特性
 
 * 支持通过注解@Ability、@Business方式定义能力和业务
+* 支持一次请求命中多业务场景
 * 提供可视化[管理后台](#-管理后台)，方便管理扩展点、能力及业务
 * v2、v3能力和业务定义简单对比，v3更简洁灵活
 
@@ -33,7 +34,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
     <dependency>
         <groupId>io.github.xiaoshicae</groupId>
         <artifactId>easy-extension-spring-boot-starter</artifactId>
-        <version>3.0.6</version>
+        <version>3.0.7</version>
     </dependency>
     ```
 * 第二步: 定义扩展点，能力及业务
@@ -111,7 +112,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
   <dependency>
       <groupId>io.github.xiaoshicae</groupId>
       <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
-      <version>3.0.6</version>
+      <version>3.0.7</version>
   </dependency>
   ```
 * 默认访问的url: /easy-extension-admin

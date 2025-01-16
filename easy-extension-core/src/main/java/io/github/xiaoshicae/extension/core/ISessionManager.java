@@ -19,7 +19,7 @@ public interface ISessionManager<T> {
     void initScopedSession(String scope, T param) throws SessionException;
 
     /**
-     * Remove session after process.
+     * Remove all session after process.
      */
     void removeSession();
 }

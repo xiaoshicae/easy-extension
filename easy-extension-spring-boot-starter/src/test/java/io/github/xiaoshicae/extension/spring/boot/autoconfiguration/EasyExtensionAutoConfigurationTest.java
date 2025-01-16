@@ -1,6 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfiguration;
 
-import io.github.xiaoshicae.extension.core.AbstractExtensionPointDefaultImplementation;
+import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.ability.AbstractAbility;
 import io.github.xiaoshicae.extension.core.annotation.MatcherParam;
 import io.github.xiaoshicae.extension.core.business.AbstractBusiness;

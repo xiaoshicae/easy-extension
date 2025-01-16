@@ -1,7 +1,4 @@
-package io.github.xiaoshicae.extension.core;
-
-import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointGroupImplementation;
-import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
+package io.github.xiaoshicae.extension.core.extension;
 
 /**
  * Default implementation which implements all extension point, as a fallback when neither business nor used abilities have implemented specified extension point.

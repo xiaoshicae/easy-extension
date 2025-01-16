@@ -45,7 +45,24 @@ public interface ISession {
     List<String> getScopedMatchedCodes(String scope) throws SessionException;
 
     /**
-     * Clear session.
+     * Clear all session.
      */
-    void remove();
+    void removeAllSession();
+
+    /**
+     * Clear session not include scoped session.
+     */
+    void removeSession();
+
+    /**
+     * Clear all scoped session.
+     */
+    void removeAllScopedSession();
+
+    /**
+     * Clear scoped session.
+     *
+     * @param scope namespace of session area
+     */
+    void removeScopedSession(String scope);
 }
