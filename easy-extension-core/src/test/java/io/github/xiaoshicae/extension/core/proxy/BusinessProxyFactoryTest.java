@@ -3,6 +3,7 @@ package io.github.xiaoshicae.extension.core.proxy;
 import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
+import io.github.xiaoshicae.extension.core.common.IProxy;
 import io.github.xiaoshicae.extension.core.common.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.ProxyParamException;
