@@ -4,13 +4,16 @@ import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean.AllMatchedExtensionFactoryBean;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean.FirstMatchedExtensionFactoryBean;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.beannamegenerator.ExtensionPointBeanNameGenerator;
+import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
+import java.util.List;
 import java.util.Objects;
 
 public class ExtensionPointScanner extends ClassPathBeanDefinitionScanner {
@@ -30,15 +33,26 @@ public class ExtensionPointScanner extends ClassPathBeanDefinitionScanner {
     private void registerFirstMatchedExtensionFactoryBeanDefinition(String extensionPointClassName, BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(FirstMatchedExtensionFactoryBean.class);
         builder.addConstructorArgValue(extensionPointClassName);
+        AbstractBeanDefinition beanDefinition = builder.getBeanDefinition();
+
+        try {
+            Class<?> beanClass = Class.forName(extensionPointClassName);
+            beanDefinition.setAttribute(FactoryBean.OBJECT_TYPE_ATTRIBUTE, beanClass);
+        } catch (ClassNotFoundException ignore) {
+            // ignore
+        }
+
         String beanName = ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(extensionPointClassName);
-        Objects.requireNonNull(registry).registerBeanDefinition(beanName, builder.getBeanDefinition());
+        Objects.requireNonNull(registry).registerBeanDefinition(beanName, beanDefinition);
     }
 
     private void registerAllMatchedExtensionBeanFactoryDefinition(String extensionPointClassName, BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(AllMatchedExtensionFactoryBean.class);
         builder.addConstructorArgValue(extensionPointClassName);
+        AbstractBeanDefinition beanDefinition = builder.getBeanDefinition();
+        beanDefinition.setAttribute(FactoryBean.OBJECT_TYPE_ATTRIBUTE, List.class);
         String beanName = ExtensionPointBeanNameGenerator.genAllMatchedExtensionBeanName(extensionPointClassName);
-        Objects.requireNonNull(registry).registerBeanDefinition(beanName, builder.getBeanDefinition());
+        Objects.requireNonNull(registry).registerBeanDefinition(beanName, beanDefinition);
     }
 
     private void registerExtensionPointHolderBeanDefinition(String extensionPointClassName, BeanDefinitionRegistry registry) {

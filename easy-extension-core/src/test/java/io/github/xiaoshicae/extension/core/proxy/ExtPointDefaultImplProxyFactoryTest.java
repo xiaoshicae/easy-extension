@@ -1,6 +1,7 @@
 package io.github.xiaoshicae.extension.core.proxy;
 
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation;
+import io.github.xiaoshicae.extension.core.common.IProxy;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.ProxyParamException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
