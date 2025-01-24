@@ -48,11 +48,11 @@ public class DefaultSessionTest {
         assertEquals("scope should not be null", e.getMessage());
 
         e = assertThrows(SessionException.class, () -> session.setScopedMatchedCode("xxx",null, null));
-        assertEquals("scope [xxx], code should not be null", e.getMessage());
+        assertEquals("code should not be null", e.getMessage());
 
 
         e = assertThrows(SessionException.class, () -> session.setScopedMatchedCode("xxx","zzz", null));
-        assertEquals("scope [xxx], priority should not be null", e.getMessage());
+        assertEquals("priority should not be null", e.getMessage());
 
 
         session.setScopedMatchedCode("xxx","a", 0);
@@ -77,7 +77,7 @@ public class DefaultSessionTest {
 
         session.removeScopedSession("xxx");
         e = assertThrows(SessionException.class, () -> session.getScopedMatchedCodes("xxx"));
-        assertEquals("scope [xxx], matched codes is empty, may be no code register", e.getMessage());
+        assertEquals("scope [xxx], matched codes is empty, may be session not init", e.getMessage());
 
         session.removeAllSession();
 

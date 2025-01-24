@@ -34,7 +34,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
     <dependency>
         <groupId>io.github.xiaoshicae</groupId>
         <artifactId>easy-extension-spring-boot-starter</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.1</version>
     </dependency>
     ```
 * 第二步: 定义扩展点，能力及业务
@@ -112,7 +112,7 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
   <dependency>
       <groupId>io.github.xiaoshicae</groupId>
       <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
-      <version>3.1.0</version>
+      <version>3.1.1</version>
   </dependency>
   ```
 * 默认访问的url: /easy-extension-admin
