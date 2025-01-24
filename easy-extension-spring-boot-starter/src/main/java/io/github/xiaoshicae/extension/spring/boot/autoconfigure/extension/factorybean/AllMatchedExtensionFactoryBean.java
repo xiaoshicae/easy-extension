@@ -1,7 +1,7 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean;
 
 import io.github.xiaoshicae.extension.core.IExtensionFactory;
-import io.github.xiaoshicae.extension.core.proxy.AllMatchedExtPointProxyFactory;
+import io.github.xiaoshicae.extension.core.AllMatchedExtPointProxyFactory;
 import org.springframework.beans.factory.FactoryBean;
 
 import java.util.List;

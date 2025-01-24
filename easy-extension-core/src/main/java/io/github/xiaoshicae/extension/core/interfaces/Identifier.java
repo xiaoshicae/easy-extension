@@ -1,10 +1,11 @@
-package io.github.xiaoshicae.extension.core.common;
+package io.github.xiaoshicae.extension.core.interfaces;
+
 
 @FunctionalInterface
 public interface Identifier {
 
     /**
-     * Instance unique code
+     * Unique code of instance.
      *
      * @return unique code
      */

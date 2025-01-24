@@ -1,7 +1,7 @@
 package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties;
 
 public class Consts {
-    public static final String VERSION = "3.0.9";
+    public static final String VERSION = "3.1.0";
 
     public static final String DEFAULT_ROOT_PATH = "/easy-extension-admin";
 

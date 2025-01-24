@@ -10,33 +10,12 @@ import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class DefaultSessionTest {
-    private final DefaultSession session = new DefaultSession();
+    private final DefaultScopedSessionManager session = new DefaultScopedSessionManager();
     private final ExecutorService executor = Executors.newFixedThreadPool(3);
 
     @AfterEach
     public void clear() {
         session.removeAllSession();
-    }
-
-    @Test
-    public void testSessionInSingleThread() throws Exception {
-        testSession();
-    }
-
-    @Test
-    public void testSessionInMultiThread() throws Exception {
-        for (int i = 0; i < 3; i++) {
-            executor.execute(() -> {
-                try {
-                    testSession();
-                } catch (SessionException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
-
-        executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.MINUTES);
     }
 
     @Test
@@ -58,40 +37,6 @@ public class DefaultSessionTest {
 
         executor.shutdown();
         executor.awaitTermination(1, TimeUnit.MINUTES);
-    }
-
-    private void testSession() throws SessionException {
-        SessionException e;
-        e = assertThrows(SessionException.class, session::getMatchedCodes);
-        assertEquals("matched codes is empty, may be no code register", e.getMessage());
-
-        e = assertThrows(SessionException.class, () -> session.setMatchedCode(null, null));
-        assertEquals("code should not be null", e.getMessage());
-
-        e = assertThrows(SessionException.class, () -> session.setMatchedCode("m", null));
-        assertEquals("priority should not be null", e.getMessage());
-
-        session.setMatchedCode("a", 0);
-        e = assertThrows(SessionException.class, () -> session.setMatchedCode("a", 1));
-        assertEquals("code [a] already exist", e.getMessage());
-
-        session.setMatchedCode("b", 1);
-        e = assertThrows(SessionException.class, () -> session.setMatchedCode("c", 1));
-        assertEquals("priority [1] already exist", e.getMessage());
-
-        session.setMatchedCode("d", 100);
-        session.setMatchedCode("e", 10);
-
-        List<String> codes = session.getMatchedCodes();
-        assertEquals(4, codes.size());
-        assertEquals("a", codes.get(0));
-        assertEquals("b", codes.get(1));
-        assertEquals("e", codes.get(2));
-        assertEquals("d", codes.get(3));
-
-        session.removeSession();
-        e = assertThrows(SessionException.class, session::getMatchedCodes);
-        assertEquals("matched codes is empty, may be no code register", e.getMessage());
     }
 
     private void testScopedSession() throws SessionException {
@@ -134,7 +79,7 @@ public class DefaultSessionTest {
         e = assertThrows(SessionException.class, () -> session.getScopedMatchedCodes("xxx"));
         assertEquals("scope [xxx], matched codes is empty, may be no code register", e.getMessage());
 
-        session.removeAllScopedSession();
+        session.removeAllSession();
 
         e = assertThrows(SessionException.class, () -> session.getScopedMatchedCodes("yyy"));
         assertEquals("scope [yyy], matched codes is empty, may be session not init", e.getMessage());

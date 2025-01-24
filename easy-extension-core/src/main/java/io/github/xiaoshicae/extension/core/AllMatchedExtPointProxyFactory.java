@@ -1,6 +1,4 @@
-package io.github.xiaoshicae.extension.core.proxy;
-
-import io.github.xiaoshicae.extension.core.IExtensionFactory;
+package io.github.xiaoshicae.extension.core;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

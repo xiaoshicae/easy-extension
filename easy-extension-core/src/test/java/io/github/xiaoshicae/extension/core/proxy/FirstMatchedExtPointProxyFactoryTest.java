@@ -4,7 +4,8 @@ import io.github.xiaoshicae.extension.core.DefaultExtensionContext;
 import io.github.xiaoshicae.extension.core.IExtensionContext;
 import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation;
-import io.github.xiaoshicae.extension.core.common.Matcher;
+import io.github.xiaoshicae.extension.core.interfaces.Matcher;
+import io.github.xiaoshicae.extension.core.FirstMatchedExtPointProxyFactory;
 import io.github.xiaoshicae.extension.core.util.AnnProxyConvertUtils;
 import org.junit.jupiter.api.Test;
 

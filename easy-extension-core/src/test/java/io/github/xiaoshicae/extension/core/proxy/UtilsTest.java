@@ -9,17 +9,17 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class ValidateInstanceUtilsTest {
+public class UtilsTest {
     @Test
     public void test() throws ProxyParamException {
         Exception e;
-        e = assertThrows(ProxyParamException.class, () -> ValidateInstanceUtils.validateInstance(new Object(), List.of(Object.class)));
+        e = assertThrows(ProxyParamException.class, () -> Utils.validateInstance(new Object(), List.of(Object.class)));
         assertEquals("The extension point should be an interface: java.lang.Object", e.getMessage());
 
-        e = assertThrows(ProxyParamException.class, () -> ValidateInstanceUtils.validateInstance(new Object(), List.of(Ext1.class)));
+        e = assertThrows(ProxyParamException.class, () -> Utils.validateInstance(new Object(), List.of(Ext1.class)));
         assertEquals("The instance does not implement the extension point: " + Ext1.class.getName(), e.getMessage());
 
-        e = assertThrows(ProxyParamException.class, () -> ValidateInstanceUtils.validateInstance(new InnerClass(), List.of(InnerInterface.class)));
+        e = assertThrows(ProxyParamException.class, () -> Utils.validateInstance(new InnerClass(), List.of(InnerInterface.class)));
         assertEquals("Modifier of extension point [%s] should be public".formatted(InnerInterface.class.getName()), e.getMessage());
     }
 }

@@ -1,4 +1,4 @@
-package io.github.xiaoshicae.extension.core.common;
+package io.github.xiaoshicae.extension.core.proxy;
 
 public interface IProxy<T> {
     /**
