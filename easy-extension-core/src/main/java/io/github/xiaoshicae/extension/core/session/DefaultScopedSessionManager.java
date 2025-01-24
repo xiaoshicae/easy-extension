@@ -11,27 +11,33 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 public class DefaultScopedSessionManager implements IScopedSessionManager {
-    private final ThreadLocal<Map<String, TreeMap<Integer, String>>> scopedMatchedCodePriorityLocal = new ThreadLocal<>();
+    private final ThreadLocal<Map<String, TreeMap<Integer, String>>> scopedMatchedCodePriorityLocal = ThreadLocal.withInitial(HashMap::new);
 
     @Override
     public void setScopedMatchedCode(String scope, String code, Integer priority) throws SessionException {
-        Map<String, TreeMap<Integer, String>> scopedCodePriorityMap = scopedMatchedCodePriorityLocal.get();
-        scopedCodePriorityMap = registerScopedCodePriorityMap(scope, code, priority, scopedCodePriorityMap);
-        scopedMatchedCodePriorityLocal.set(scopedCodePriorityMap);
+        assertNotNull(scope, "scope");
+        assertNotNull(code, "code");
+        assertNotNull(priority, "priority");
+
+        // get scoped matched code priority map
+        TreeMap<Integer, String> codePriorityMap = scopedMatchedCodePriorityLocal.get().computeIfAbsent(scope, k -> new TreeMap<>());
+        if (codePriorityMap.containsKey(priority)) {
+            throw new SessionParamException(String.format("scope [%s], priority [%d] already exist", scope, priority));
+        }
+        // TODO: optimize performance
+        if (codePriorityMap.containsValue(code)) {
+            throw new SessionParamException(String.format("scope [%s], code [%s] already exist", scope, code));
+        }
+        codePriorityMap.put(priority, code);
     }
 
     @Override
     public List<String> getScopedMatchedCodes(String scope) throws SessionException {
-        if (Objects.isNull(scope)) {
-            throw new SessionParamException("scope should not be null");
-        }
-        Map<String, TreeMap<Integer, String>> scopedCodePriorityMap = scopedMatchedCodePriorityLocal.get();
-        if (Objects.isNull(scopedCodePriorityMap) || scopedCodePriorityMap.isEmpty()) {
-            throw new SessionNotFoundException(String.format("scope [%s], matched codes is empty, may be session not init", scope));
-        }
-        TreeMap<Integer, String> codePriorityMap = scopedCodePriorityMap.get(scope);
+        assertNotNull(scope, "scope");
+
+        TreeMap<Integer, String> codePriorityMap = scopedMatchedCodePriorityLocal.get().get(scope);
         if (Objects.isNull(codePriorityMap) || codePriorityMap.isEmpty()) {
-            throw new SessionNotFoundException(String.format("scope [%s], matched codes is empty, may be no code register", scope));
+            throw new SessionNotFoundException(String.format("scope [%s], matched codes is empty, may be session not init", scope));
         }
         return codePriorityMap.values().stream().toList();
     }
@@ -43,49 +49,12 @@ public class DefaultScopedSessionManager implements IScopedSessionManager {
 
     @Override
     public void removeScopedSession(String scope) {
-        Map<String, TreeMap<Integer, String>> scopedCodePriorityMap = scopedMatchedCodePriorityLocal.get();
-        if (!Objects.isNull(scopedCodePriorityMap)) {
-            scopedCodePriorityMap.remove(scope);
-        }
+        scopedMatchedCodePriorityLocal.get().remove(scope);
     }
 
-    private Map<String, TreeMap<Integer, String>> registerScopedCodePriorityMap(String scope, String code, Integer priority, Map<String, TreeMap<Integer, String>> scopedCodePriorityMap) throws SessionParamException {
-        if (Objects.isNull(scope)) {
-            throw new SessionParamException("scope should not be null");
+    private void assertNotNull(Object obj, String paramName) throws SessionParamException {
+        if (Objects.isNull(obj)) {
+            throw new SessionParamException(paramName + " should not be null");
         }
-        if (Objects.isNull(scopedCodePriorityMap)) {
-            scopedCodePriorityMap = new HashMap<>();
-        }
-        TreeMap<Integer, String> codePriorityMap = scopedCodePriorityMap.get(scope);
-        try {
-            codePriorityMap = registerCodePriorityMap(code, priority, codePriorityMap);
-        } catch (SessionParamException e) {
-            throw new SessionParamException("scope [%s], ".formatted(scope) + e.getMessage());
-        }
-        scopedCodePriorityMap.put(scope, codePriorityMap);
-        return scopedCodePriorityMap;
-    }
-
-    private TreeMap<Integer, String> registerCodePriorityMap(String code, Integer priority, TreeMap<Integer, String> codePriorityMap) throws SessionParamException {
-        if (Objects.isNull(code)) {
-            throw new SessionParamException("code should not be null");
-        }
-        if (Objects.isNull(priority)) {
-            throw new SessionParamException("priority should not be null");
-        }
-
-        if (codePriorityMap == null) {
-            codePriorityMap = new TreeMap<>();
-        }
-
-        if (codePriorityMap.containsKey(priority)) {
-            throw new SessionParamException(String.format("priority [%d] already exist", priority));
-        }
-        if (codePriorityMap.containsValue(code)) {
-            throw new SessionParamException(String.format("code [%s] already exist", code));
-        }
-
-        codePriorityMap.put(priority, code);
-        return codePriorityMap;
     }
 }

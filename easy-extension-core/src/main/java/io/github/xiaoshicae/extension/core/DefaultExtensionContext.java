@@ -23,6 +23,7 @@ import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
 import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     private static final Logger logger = Logger.getLogger(DefaultExtensionContext.class.getName());
     private static final String logPrefix = "[Easy Extension]";
+    private final static String EASY_EXTENSION_DEFAULT_SCOPE = "__easy__extension__default__scope__";
 
     /**
      * Whether to match business strict.
@@ -55,11 +57,6 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * Scoped session manager.
      */
     private final IScopedSessionManager session = new DefaultScopedSessionManager();
-
-    /**
-     * Default scope.
-     */
-    private final static String EASY_EXTENSION_DEFAULT_SCOPE = "__easy__extension__default__scope__";
 
     /**
      * Ability manager.
@@ -81,7 +78,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     /**
      * All extension point classes.
      */
-    private final Set<Class<?>> allExtensionPointClasses = new LinkedHashSet<>();
+    private final Set<Class<?>> allExtensionPointClasses = Collections.synchronizedSet(new LinkedHashSet<>());
 
     /**
      * Matcher param class.
@@ -147,13 +144,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             throw new RegisterDuplicateException("extension point default implementation already registered");
         }
 
-        List<Class<?>> implementsExtension = instance.implementExtensionPoints();
-        List<Class<?>> notImplementClasses = new ArrayList<>();
-        for (Class<?> extensionPointClass : allExtensionPointClasses) {
-            if (!implementsExtension.contains(extensionPointClass)) {
-                notImplementClasses.add(extensionPointClass);
-            }
-        }
+        List<Class<?>> mustImplementExtensionPoints = instance.implementExtensionPoints();
+        List<Class<?>> notImplementClasses = allExtensionPointClasses.stream().filter(clazz -> !mustImplementExtensionPoints.contains(clazz)).toList();
         if (!notImplementClasses.isEmpty()) {
             throw new RegisterParamException(String.format("extension point default implementation should implement all extension point, but in fact, it has not implement [%s]", notImplementClasses.stream().map(Class::getName).collect(Collectors.joining(", "))));
         }
@@ -162,12 +154,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance);
 
         if (enableLogger) {
-            String name;
-            if (instance instanceof IProxy<?> proxy) {
-                name = proxy.getInstance().getClass().getSimpleName();
-            } else {
-                name = instance.getClass().getSimpleName();
-            }
+            String name = instance instanceof IProxy<?> proxy ? proxy.getInstance().getClass().getSimpleName() : instance.getClass().getSimpleName();
             logger.info(String.format("%s register extension point default implementation: [%s]", logPrefix, name));
         }
     }
