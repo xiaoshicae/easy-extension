@@ -5,7 +5,7 @@ import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
-import io.github.xiaoshicae.extension.core.common.Identifier;
+import io.github.xiaoshicae.extension.core.interfaces.Identifier;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;

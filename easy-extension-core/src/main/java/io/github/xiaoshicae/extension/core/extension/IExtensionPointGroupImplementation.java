@@ -1,7 +1,7 @@
 package io.github.xiaoshicae.extension.core.extension;
 
-import io.github.xiaoshicae.extension.core.common.Identifier;
-import io.github.xiaoshicae.extension.core.common.Matcher;
+import io.github.xiaoshicae.extension.core.interfaces.Identifier;
+import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 
 import java.util.List;
 

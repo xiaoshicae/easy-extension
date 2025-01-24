@@ -1,6 +1,6 @@
 package io.github.xiaoshicae.extension.core.business;
 
-import io.github.xiaoshicae.extension.core.common.Priority;
+import io.github.xiaoshicae.extension.core.interfaces.Priority;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImplementation;
 
 import java.util.List;

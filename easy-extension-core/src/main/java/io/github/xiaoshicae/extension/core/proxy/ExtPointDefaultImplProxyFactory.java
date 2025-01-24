@@ -1,6 +1,5 @@
 package io.github.xiaoshicae.extension.core.proxy;
 
-import io.github.xiaoshicae.extension.core.common.IProxy;
 import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
@@ -41,7 +40,7 @@ public class ExtPointDefaultImplProxyFactory<T> {
         private final List<Class<?>> implExtPoints;
 
         public ExtensionPointGroupDefaultImplementationTemplate(Object extImplInstance, List<Class<?>> implExtPoints) throws ProxyException {
-            ValidateInstanceUtils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateInstance(extImplInstance, implExtPoints);
             this.extImplInstance = extImplInstance;
             this.implExtPoints = implExtPoints;
         }

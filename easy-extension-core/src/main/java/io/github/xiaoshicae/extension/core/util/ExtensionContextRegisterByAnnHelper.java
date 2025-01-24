@@ -5,7 +5,7 @@ import io.github.xiaoshicae.extension.core.IExtensionRegister;
 import io.github.xiaoshicae.extension.core.ability.IAbility;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
-import io.github.xiaoshicae.extension.core.common.Matcher;
+import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;

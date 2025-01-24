@@ -1,7 +1,7 @@
 package io.github.xiaoshicae.extension.core.business;
 
-import io.github.xiaoshicae.extension.core.common.Identifier;
-import io.github.xiaoshicae.extension.core.common.Priority;
+import io.github.xiaoshicae.extension.core.interfaces.Identifier;
+import io.github.xiaoshicae.extension.core.interfaces.Priority;
 
 public class UsedAbility implements Identifier, Priority {
 

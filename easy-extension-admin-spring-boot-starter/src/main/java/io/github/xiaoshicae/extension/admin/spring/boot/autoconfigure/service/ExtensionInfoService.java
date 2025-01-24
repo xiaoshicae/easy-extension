@@ -18,7 +18,7 @@ import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
-import io.github.xiaoshicae.extension.core.common.IProxy;
+import io.github.xiaoshicae.extension.core.proxy.IProxy;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;

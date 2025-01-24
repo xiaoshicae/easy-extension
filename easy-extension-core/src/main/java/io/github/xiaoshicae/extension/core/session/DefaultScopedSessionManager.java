@@ -10,25 +10,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-public class DefaultSession implements ISession {
-    private final ThreadLocal<TreeMap<Integer, String>> matchedCodePriorityLocal = new ThreadLocal<>();
+public class DefaultScopedSessionManager implements IScopedSessionManager {
     private final ThreadLocal<Map<String, TreeMap<Integer, String>>> scopedMatchedCodePriorityLocal = new ThreadLocal<>();
-
-    @Override
-    public void setMatchedCode(String code, Integer priority) throws SessionException {
-        TreeMap<Integer, String> codePriorityMap = matchedCodePriorityLocal.get();
-        codePriorityMap = registerCodePriorityMap(code, priority, codePriorityMap);
-        matchedCodePriorityLocal.set(codePriorityMap);
-    }
-
-    @Override
-    public List<String> getMatchedCodes() throws SessionException {
-        TreeMap<Integer, String> codePriorityMap = matchedCodePriorityLocal.get();
-        if (Objects.isNull(codePriorityMap) || codePriorityMap.isEmpty()) {
-            throw new SessionNotFoundException("matched codes is empty, may be no code register");
-        }
-        return codePriorityMap.values().stream().toList();
-    }
 
     @Override
     public void setScopedMatchedCode(String scope, String code, Integer priority) throws SessionException {
@@ -55,17 +38,6 @@ public class DefaultSession implements ISession {
 
     @Override
     public void removeAllSession() {
-        removeSession();
-        removeAllScopedSession();
-    }
-
-    @Override
-    public void removeSession() {
-        matchedCodePriorityLocal.remove();
-    }
-
-    @Override
-    public void removeAllScopedSession() {
         scopedMatchedCodePriorityLocal.remove();
     }
 

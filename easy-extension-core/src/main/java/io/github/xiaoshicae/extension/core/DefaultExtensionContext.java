@@ -18,9 +18,9 @@ import io.github.xiaoshicae.extension.core.exception.SessionParamException;
 import io.github.xiaoshicae.extension.core.extension.DefaultExtensionPointGroupImplementationManager;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImplementationManager;
-import io.github.xiaoshicae.extension.core.common.IProxy;
-import io.github.xiaoshicae.extension.core.session.DefaultSession;
-import io.github.xiaoshicae.extension.core.session.ISession;
+import io.github.xiaoshicae.extension.core.proxy.IProxy;
+import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
+import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,9 +52,14 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     private final Boolean enableLogger;
 
     /**
-     * Session manager.
+     * Scoped session manager.
      */
-    private final ISession session = new DefaultSession();
+    private final IScopedSessionManager session = new DefaultScopedSessionManager();
+
+    /**
+     * Default scope.
+     */
+    private final static String EASY_EXTENSION_DEFAULT_SCOPE = "__easy__extension__default__scope__";
 
     /**
      * Ability manager.
@@ -257,15 +262,15 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     @Override
     public void initSession(T param) throws SessionException {
         long startTime = System.currentTimeMillis();
-        session.removeSession();
+        session.removeScopedSession(EASY_EXTENSION_DEFAULT_SCOPE);
 
         if (enableLogger) {
             logger.info(String.format("%s session init start", logPrefix));
         }
 
-        Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(param);
+        Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(EASY_EXTENSION_DEFAULT_SCOPE, param);
         for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
-            session.setMatchedCode(entry.getKey(), entry.getValue());
+            session.setScopedMatchedCode(EASY_EXTENSION_DEFAULT_SCOPE, entry.getKey(), entry.getValue());
         }
 
         if (enableLogger) {
@@ -301,12 +306,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
     }
 
-    private Map<String, Integer> resolveMatchedCodeAndPriority(T param) throws SessionException {
-        return resolveMatchedCodeAndPriority("", param);
-    }
-
     private Map<String, Integer> resolveMatchedCodeAndPriority(String scope, T param) throws SessionException {
-        String scopePrefix = scope.isEmpty() ? "init session" : "init session with scope: [%s],".formatted(scope);
+        String scopePrefix = Objects.equals(scope, EASY_EXTENSION_DEFAULT_SCOPE) ? "init session" : "init session with scope: [%s],".formatted(scope);
 
         Map<String, Integer> codePriorityMap = new HashMap<>();
 
@@ -370,20 +371,20 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public <E> E getFirstMatchedExtension(Class<E> extensionType) throws QueryException {
-        List<String> matchedCodes = getAllMatchedCodes();
+        List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
         if (enableLogger) {
             logger.info(String.format("%s get first matched Extension<%s>, all candidate codes: [%s]", logPrefix, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
         }
-        return getFirstMatchedExtensionByMatchedCodes(extensionType, matchedCodes);
+        return getFirstMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
     }
 
     @Override
     public <E> List<E> getAllMatchedExtension(Class<E> extensionType) throws QueryException {
-        List<String> matchedCodes = getAllMatchedCodes();
+        List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
         if (enableLogger) {
             logger.info(String.format("%s get all matched Extension<%s>, all candidate codes: [%s]", logPrefix, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
         }
-        return getAllMatchedExtensionByMatchedCodes(extensionType, matchedCodes);
+        return getAllMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
     }
 
     @Override
@@ -417,12 +418,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         return extensions;
     }
 
-    private <E> List<E> getAllMatchedExtensionByMatchedCodes(Class<E> extensionType, List<String> matchedCodes) throws QueryException {
-        return getAllMatchedExtensionByMatchedCodes("", extensionType, matchedCodes);
-    }
-
     private <E> List<E> getAllMatchedExtensionByMatchedCodes(String scope, Class<E> extensionType, List<String> matchedCodes) throws QueryException {
-        String scopePrefix = scope.isEmpty() ? "" : " with scope: [%s]".formatted(scope);
+        String scopePrefix = scope.equals(EASY_EXTENSION_DEFAULT_SCOPE) ? "" : " with scope: [%s]".formatted(scope);
 
         List<E> extensions = new ArrayList<>();
         List<String> allMatchedCodes = new ArrayList<>();
@@ -446,12 +443,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         return extensions;
     }
 
-    private <E> E getFirstMatchedExtensionByMatchedCodes(Class<E> extensionType, List<String> matchedCodes) throws QueryException {
-        return getFirstMatchedExtensionByMatchedCodes("", extensionType, matchedCodes);
-    }
-
     private <E> E getFirstMatchedExtensionByMatchedCodes(String scope, Class<E> extensionType, List<String> matchedCodes) throws QueryException {
-        String scopePrefix = scope.isEmpty() ? "" : " with scope: [%s]".formatted(scope);
+        String scopePrefix = scope.equals(EASY_EXTENSION_DEFAULT_SCOPE) ? "" : " with scope: [%s]".formatted(scope);
         for (String code : matchedCodes) {
             try {
                 E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
@@ -466,14 +459,6 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             }
         }
         throw new QueryNotFoundException(String.format("Extension<%s> not found", extensionType.getName()));
-    }
-
-    private List<String> getAllMatchedCodes() throws QueryException {
-        try {
-            return session.getMatchedCodes();
-        } catch (SessionException e) {
-            throw new QueryNotFoundException(e.getMessage());
-        }
     }
 
     private List<String> getScopedAllMatchedCodes(String scope) throws QueryException {

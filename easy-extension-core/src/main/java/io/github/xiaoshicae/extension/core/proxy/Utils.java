@@ -5,7 +5,7 @@ import io.github.xiaoshicae.extension.core.exception.ProxyParamException;
 import java.lang.reflect.Modifier;
 import java.util.List;
 
-public class ValidateInstanceUtils {
+public class Utils {
     public static void validateInstance(Object instance, List<Class<?>> implExtPoints) throws ProxyParamException {
         for (Class<?> implExtPoint : implExtPoints) {
             if (!implExtPoint.isInterface()) {

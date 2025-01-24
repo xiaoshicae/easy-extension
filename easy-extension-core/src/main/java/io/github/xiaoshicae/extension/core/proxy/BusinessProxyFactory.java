@@ -2,8 +2,7 @@ package io.github.xiaoshicae.extension.core.proxy;
 
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
-import io.github.xiaoshicae.extension.core.common.IProxy;
-import io.github.xiaoshicae.extension.core.common.Matcher;
+import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 
 import java.lang.reflect.InvocationHandler;
@@ -45,7 +44,7 @@ public class BusinessProxyFactory<T>  {
         private final List<Class<?>> implExtPoints;
 
         public BusinessTemplate(String code, Integer priority, List<UsedAbility> usedAbilities, Matcher<T> extImplInstance, List<Class<?>> implExtPoints) throws ProxyException {
-            ValidateInstanceUtils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateInstance(extImplInstance, implExtPoints);
             this.code = code;
             this.priority = priority;
             this.usedAbilities = usedAbilities;

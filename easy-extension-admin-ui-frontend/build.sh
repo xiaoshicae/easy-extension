@@ -1,7 +1,7 @@
 set -e
 
 # package.json, src/service-worker.js need update version also.
-VERSION='3.0.9'
+VERSION='3.1.0'
 EASY_EXTENSION_ADMIN_UI_DIR='../easy-extension-admin-spring-boot-starter/src/main/resources/META-INF/resources/webjars/easy-extension-admin-ui'
 TARGET_DIR=${EASY_EXTENSION_ADMIN_UI_DIR}/${VERSION}
 

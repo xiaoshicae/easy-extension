@@ -1,8 +1,7 @@
 package io.github.xiaoshicae.extension.core.proxy;
 
 import io.github.xiaoshicae.extension.core.ability.IAbility;
-import io.github.xiaoshicae.extension.core.common.IProxy;
-import io.github.xiaoshicae.extension.core.common.Matcher;
+import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 
 import java.lang.reflect.InvocationHandler;
@@ -42,7 +41,7 @@ public class AbilityProxyFactory<T>  {
         private final List<Class<?>> implExtPoints;
 
         public AbilityTemplate(String code, Matcher<T> extImplInstance, List<Class<?>> implExtPoints) throws ProxyException {
-            ValidateInstanceUtils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateInstance(extImplInstance, implExtPoints);
             this.code = code;
             this.extImplInstance = extImplInstance;
             this.implExtPoints = implExtPoints;
