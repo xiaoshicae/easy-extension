@@ -106,21 +106,22 @@ Easy-Extension框架主要解决`复杂系统的扩展性问题`，系统提供`
     ```
 
 ## 🖥 管理后台
-
-* 引入依赖
-  ```xml
-  <dependency>
-      <groupId>io.github.xiaoshicae</groupId>
-      <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
-      <version>3.1.1</version>
-  </dependency>
-  ```
-* 默认访问的url: /easy-extension-admin
-* 管理后台提供的能力:
-    * 提供扩展点，能力和业务的可视化能力
-      ![](/doc/admin-extension.png)
-    * 提供了扩展点冲突检测能力 (业务及能力可能实现了相同的扩展点，可能存在冲突。发生冲突时，会选择优先级最高的实现)
-      ![](/doc/admin-business-conflict.png)
+* 在线体验地址: https://www.xlemon.site/easy-extension-admin
+* 接入步骤:
+  * 引入依赖
+    ```xml
+    <dependency>
+        <groupId>io.github.xiaoshicae</groupId>
+        <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
+        <version>3.1.1</version>
+    </dependency>
+    ```
+  * 默认访问的url: /easy-extension-admin
+  * 管理后台提供的能力:
+      * 提供扩展点，能力和业务的可视化能力
+        ![](/doc/admin-extension.png)
+      * 提供了扩展点冲突检测能力 (业务及能力可能实现了相同的扩展点，可能存在冲突。发生冲突时，会选择优先级最高的实现)
+        ![](/doc/admin-business-conflict.png)
 
 ## 📖 文档
 
