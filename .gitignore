@@ -82,3 +82,6 @@ screenshot
 build
 
 dist/
+
+# Claude Code
+.claude/
