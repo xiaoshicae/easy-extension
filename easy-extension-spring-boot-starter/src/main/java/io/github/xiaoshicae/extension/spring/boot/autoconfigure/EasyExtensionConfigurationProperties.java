@@ -17,6 +17,12 @@ public class EasyExtensionConfigurationProperties {
      */
     private Boolean allowUnknownBusiness = false;
 
+    /**
+     * 是否启用Session自动清理过滤器，在Web请求结束后自动清理ThreadLocal中的Session数据，防止内存泄漏
+     * whether to enable the session auto cleanup filter, which automatically cleans up session data in ThreadLocal after the web request ends to prevent memory leaks.
+     */
+    private Boolean enableSessionAutoCleanup = true;
+
     public Boolean getEnableLog() {
         return enableLog;
     }
@@ -31,5 +37,13 @@ public class EasyExtensionConfigurationProperties {
 
     public void setAllowUnknownBusiness(Boolean allowUnknownBusiness) {
         this.allowUnknownBusiness = allowUnknownBusiness;
+    }
+
+    public Boolean getEnableSessionAutoCleanup() {
+        return enableSessionAutoCleanup;
+    }
+
+    public void setEnableSessionAutoCleanup(Boolean enableSessionAutoCleanup) {
+        this.enableSessionAutoCleanup = enableSessionAutoCleanup;
     }
 }

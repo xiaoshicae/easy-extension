@@ -17,6 +17,8 @@ import io.github.xiaoshicae.extension.core.util.ExtensionContextRegisterByAnnHel
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ClassHolder;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionPointHolder;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.InstanceHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -25,13 +27,12 @@ import org.springframework.context.annotation.Configuration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Logger;
 
 
 @Configuration
 @EnableConfigurationProperties(EasyExtensionConfigurationProperties.class)
 public class EasyExtensionAutoConfiguration<T> {
-    private static final Logger logger = Logger.getLogger(EasyExtensionAutoConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(EasyExtensionAutoConfiguration.class);
 
     private List<ExtensionPointHolder> extensionPointHolders;
     private IExtensionPointGroupDefaultImplementation<T> extensionPointGroupImplementation;

@@ -1,1 +1,2 @@
 io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration
+io.github.xiaoshicae.extension.spring.boot.autoconfigure.web.EasyExtensionWebAutoConfiguration
