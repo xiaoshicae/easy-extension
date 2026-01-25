@@ -1,5 +1,7 @@
 package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
@@ -7,10 +9,9 @@ import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 public class SourceCodeReader {
-    private static final Logger logger = Logger.getLogger(SourceCodeReader.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SourceCodeReader.class);
 
     private static final String searchPathPrefix = "classpath:";
     private static final String sourceCodeSuffix = ".java";
@@ -35,7 +36,7 @@ public class SourceCodeReader {
         try {
             sourceCode = resource.getContentAsString(Charset.defaultCharset());
         } catch (Exception ignore) {
-            logger.fine(String.format("Easy Extension Admin readSourceCode failed, resource not found, searchPath: %s, maybe your pom.xml should include ${your-dependency}-sources.jar", searchPath));
+            logger.debug("Easy Extension Admin readSourceCode failed, resource not found, searchPath: {}, maybe your pom.xml should include ${{your-dependency}}-sources.jar", searchPath);
         }
 
         sourceCode = Objects.isNull(sourceCode) ? "" : sourceCode;

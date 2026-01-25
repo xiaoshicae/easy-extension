@@ -22,6 +22,9 @@ import io.github.xiaoshicae.extension.core.proxy.IProxy;
 import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
 import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,12 +35,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class DefaultExtensionContext<T> implements IExtensionContext<T> {
-    private static final Logger logger = Logger.getLogger(DefaultExtensionContext.class.getName());
-    private static final String logPrefix = "[Easy Extension]";
+    private static final Logger logger = LoggerFactory.getLogger(DefaultExtensionContext.class);
+    private static final String LOG_PREFIX = "[Easy Extension]";
     private final static String EASY_EXTENSION_DEFAULT_SCOPE = "__easy__extension__default__scope__";
 
     /**
@@ -114,7 +116,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         allExtensionPointClasses.add(clazz);
 
         if (enableLogger) {
-            logger.info(String.format("%s register extension point class: [%s]", logPrefix, clazz.getSimpleName()));
+            logger.info(String.format("%s register extension point class: [%s]", LOG_PREFIX, clazz.getSimpleName()));
         }
     }
 
@@ -131,7 +133,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         this.matcherParamClass = matcherParamClass;
 
         if (enableLogger) {
-            logger.info(String.format("%s register matcher param class: [%s]", logPrefix, matcherParamClass.getSimpleName()));
+            logger.info(String.format("%s register matcher param class: [%s]", LOG_PREFIX, matcherParamClass.getSimpleName()));
         }
     }
 
@@ -155,7 +157,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         if (enableLogger) {
             String name = instance instanceof IProxy<?> proxy ? proxy.getInstance().getClass().getSimpleName() : instance.getClass().getSimpleName();
-            logger.info(String.format("%s register extension point default implementation: [%s]", logPrefix, name));
+            logger.info(String.format("%s register extension point default implementation: [%s]", LOG_PREFIX, name));
         }
     }
 
@@ -175,7 +177,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability);
 
         if (enableLogger) {
-            logger.info(String.format("%s register ability: [%s]", logPrefix, ability.code()));
+            logger.info(String.format("%s register ability: [%s]", LOG_PREFIX, ability.code()));
         }
     }
 
@@ -217,7 +219,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business);
 
         if (enableLogger) {
-            logger.info(String.format("%s register business: [%s]", logPrefix, business.code()));
+            logger.info(String.format("%s register business: [%s]", LOG_PREFIX, business.code()));
         }
     }
 
@@ -252,7 +254,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         session.removeScopedSession(EASY_EXTENSION_DEFAULT_SCOPE);
 
         if (enableLogger) {
-            logger.info(String.format("%s session init start", logPrefix));
+            logger.info(String.format("%s session init start", LOG_PREFIX));
         }
 
         Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(EASY_EXTENSION_DEFAULT_SCOPE, param);
@@ -261,7 +263,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
 
         if (enableLogger) {
-            logger.info(String.format("%s session init completed, time cost: [%d ms]", logPrefix, System.currentTimeMillis() - startTime));
+            logger.info(String.format("%s session init completed, time cost: [%d ms]", LOG_PREFIX, System.currentTimeMillis() - startTime));
         }
     }
 
@@ -275,7 +277,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         session.removeScopedSession(scope);
 
         if (enableLogger) {
-            logger.info(String.format("%s session with scope: [%s], init start", logPrefix, scope));
+            logger.info(String.format("%s session with scope: [%s], init start", LOG_PREFIX, scope));
         }
 
         Map<String, Integer> codePriorityMap;
@@ -289,7 +291,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             session.setScopedMatchedCode(scope, entry.getKey(), entry.getValue());
         }
         if (enableLogger) {
-            logger.info(String.format("%s session with scope: [%s], init completed, time cost: [%d ms]", logPrefix, scope, System.currentTimeMillis() - startTime));
+            logger.info(String.format("%s session with scope: [%s], init completed, time cost: [%d ms]", LOG_PREFIX, scope, System.currentTimeMillis() - startTime));
         }
     }
 
@@ -320,7 +322,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         if (!Objects.isNull(matchedBusiness)) {
             if (enableLogger) {
-                logger.info(String.format("%s %s match business: [%s], priority: [%d]", logPrefix, scopePrefix, matchedBusiness.code(), matchedBusiness.priority()));
+                logger.info(String.format("%s %s match business: [%s], priority: [%d]", LOG_PREFIX, scopePrefix, matchedBusiness.code(), matchedBusiness.priority()));
             }
 
             codePriorityMap.put(matchedBusiness.code(), matchedBusiness.priority());
@@ -334,7 +336,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                 if (ability.match(param)) {
                     codePriorityMap.put(ability.code(), usedAbility.priority());
                     if (enableLogger) {
-                        logger.info(String.format("%s %s match ability: [%s], priority: [%d]", logPrefix, scopePrefix, usedAbility.code(), usedAbility.priority()));
+                        logger.info(String.format("%s %s match ability: [%s], priority: [%d]", LOG_PREFIX, scopePrefix, usedAbility.code(), usedAbility.priority()));
                     }
                 }
             }
@@ -342,7 +344,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         codePriorityMap.put(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
         if (enableLogger) {
-            logger.info(String.format("%s %s match extension point default implementation: [%s], priority: [%d]", logPrefix, scopePrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority()));
+            logger.info(String.format("%s %s match extension point default implementation: [%s], priority: [%d]", LOG_PREFIX, scopePrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority()));
         }
 
         return codePriorityMap;
@@ -352,7 +354,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public void removeSession() {
         session.removeAllSession();
         if (enableLogger) {
-            logger.info(String.format("%s all session (include scoped session) has been removed", logPrefix));
+            logger.info(String.format("%s all session (include scoped session) has been removed", LOG_PREFIX));
         }
     }
 
@@ -360,7 +362,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> E getFirstMatchedExtension(Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
         if (enableLogger) {
-            logger.info(String.format("%s get first matched Extension<%s>, all candidate codes: [%s]", logPrefix, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
+            logger.info(String.format("%s get first matched Extension<%s>, all candidate codes: [%s]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
         }
         return getFirstMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
     }
@@ -369,7 +371,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> List<E> getAllMatchedExtension(Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
         if (enableLogger) {
-            logger.info(String.format("%s get all matched Extension<%s>, all candidate codes: [%s]", logPrefix, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
+            logger.info(String.format("%s get all matched Extension<%s>, all candidate codes: [%s]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
         }
         return getAllMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
     }
@@ -378,7 +380,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> E getScopedFirstMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(scope);
         if (enableLogger) {
-            logger.info(String.format("%s get first matched Extension<%s> with scope: [%s], all candidate codes:[%s]", logPrefix, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
+            logger.info(String.format("%s get first matched Extension<%s> with scope: [%s], all candidate codes:[%s]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
         }
 
         E extension;
@@ -393,7 +395,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> List<E> getScopedAllMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(scope);
         if (enableLogger) {
-            logger.info(String.format("%s get all matched Extension<%s> with scope: [%s], all candidate candidate codes:[%s]", logPrefix, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
+            logger.info(String.format("%s get all matched Extension<%s> with scope: [%s], all candidate candidate codes:[%s]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
         }
 
         List<E> extensions;
@@ -419,13 +421,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                 }
             } catch (QueryNotFoundException ignored) {
                 if (enableLogger) {
-                    logger.fine(String.format("%s get all matched Extension<%s>%s, instance with code: [%s] not matched, will be ignored", logPrefix, extensionType.getSimpleName(), scopePrefix, code));
+                    logger.debug(String.format("%s get all matched Extension<%s>%s, instance with code: [%s] not matched, will be ignored", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code));
                 }
             }
         }
 
         if (enableLogger) {
-            logger.info(String.format("%s get all matched Extension<%s>%s, hit instance with codes: [%s]", logPrefix, extensionType.getSimpleName(), scopePrefix, String.join(" > ", allMatchedCodes)));
+            logger.info(String.format("%s get all matched Extension<%s>%s, hit instance with codes: [%s]", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, String.join(" > ", allMatchedCodes)));
         }
         return extensions;
     }
@@ -436,12 +438,12 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             try {
                 E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
                 if (enableLogger) {
-                    logger.info(String.format("%s get first matched Extension<%s>%s, hit instance with code: [%s]", logPrefix, extensionType.getSimpleName(), scopePrefix, code));
+                    logger.info(String.format("%s get first matched Extension<%s>%s, hit instance with code: [%s]", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code));
                 }
                 return extension;
             } catch (QueryNotFoundException e) {
                 if (enableLogger) {
-                    logger.fine(String.format("%s get first matched Extension<%s>%s, instance with code: [%s] not matched, will be ignored", logPrefix, extensionType.getSimpleName(), scopePrefix, code));
+                    logger.debug(String.format("%s get first matched Extension<%s>%s, instance with code: [%s] not matched, will be ignored", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code));
                 }
             }
         }
