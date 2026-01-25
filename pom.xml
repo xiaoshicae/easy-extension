@@ -6,9 +6,10 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>3.1.1</version>
+    <version>3.2.0</version>
     <packaging>pom</packaging>
 
+    <name>easy-extension</name>
     <description>
         easy-extension framework offers a simple and flexible mechanism for extension points, employing a plugin
         approach to endow the system with robust extensibility.
@@ -23,7 +24,7 @@
     </modules>
 
     <properties>
-        <easy-extension.version>3.1.1</easy-extension.version>
+        <easy-extension.version>3.2.0</easy-extension.version>
 
         <spring-boot-starter.version>3.3.6</spring-boot-starter.version>
         <spring-boot-starter-web.version>3.3.6</spring-boot-starter-web.version>
