@@ -1,46 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <defs>
-    <linearGradient id="face-left" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="core" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#3b82f6"/>
-      <stop offset="100%" style="stop-color:#2563eb"/>
-    </linearGradient>
-    <linearGradient id="face-right" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#60a5fa"/>
-      <stop offset="100%" style="stop-color:#3b82f6"/>
-    </linearGradient>
-    <linearGradient id="face-top" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#93c5fd"/>
-      <stop offset="100%" style="stop-color:#bfdbfe"/>
-    </linearGradient>
-    <linearGradient id="plug-left" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#2563eb"/>
       <stop offset="100%" style="stop-color:#1d4ed8"/>
     </linearGradient>
-    <linearGradient id="plug-right" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3b82f6"/>
-      <stop offset="100%" style="stop-color:#2563eb"/>
+    <linearGradient id="p1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
     </linearGradient>
-    <linearGradient id="plug-top" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#60a5fa"/>
-      <stop offset="100%" style="stop-color:#93c5fd"/>
+    <linearGradient id="p2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="p3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa"/>
+      <stop offset="100%" style="stop-color:#7c3aed"/>
     </linearGradient>
   </defs>
 
-  <!-- Main cube base -->
-  <path d="M18,72 L18,48 L60,26 L60,50 Z" fill="url(#face-left)"/>
-  <path d="M60,50 L60,26 L102,48 L102,72 Z" fill="url(#face-right)"/>
-  <path d="M60,26 L18,48 L60,70 L102,48 Z" fill="url(#face-top)"/>
-  <path d="M18,72 L60,94 L102,72 L60,50 Z" fill="#dbeafe"/>
+  <!-- Core puzzle piece (center) -->
+  <path d="
+    M 68,58
+    L 92,58
+    C 92,58 92,48 100,48
+    C 108,48 108,58 108,58
+    L 132,58
+    L 132,82
+    C 132,82 142,82 142,90
+    C 142,98 132,98 132,98
+    L 132,122
+    L 108,122
+    C 108,122 108,132 100,132
+    C 92,132 92,122 92,122
+    L 68,122
+    L 68,98
+    C 68,98 58,98 58,90
+    C 58,82 68,82 68,82
+    Z
+  " fill="url(#core)"/>
 
-  <!-- Small plug cube floating above -->
-  <path d="M48,38 L48,22 L60,15 L60,31 Z" fill="url(#plug-left)"/>
-  <path d="M60,31 L60,15 L72,22 L72,38 Z" fill="url(#plug-right)"/>
-  <path d="M60,15 L48,22 L60,29 L72,22 Z" fill="url(#plug-top)"/>
+  <!-- Top plugin (green) -->
+  <path d="
+    M 82,18
+    L 92,18 C 92,18 92,12 100,12 C 108,12 108,18 108,18
+    L 118,18 L 118,38 C 118,38 124,38 124,43 C 124,48 118,48 118,48
+    L 118,54 L 108,54 C 108,54 108,60 100,60 C 92,60 92,54 92,54
+    L 82,54 L 82,48 C 82,48 76,48 76,43 C 76,38 82,38 82,38 Z
+  " fill="url(#p1)" opacity="0.92"/>
 
-  <!-- Slot lines on main cube -->
-  <path d="M48,44 L48,50 L60,56 L72,50 L72,44" fill="none" stroke="#2563eb" stroke-width="0.8" opacity="0.4" stroke-dasharray="2,2"/>
+  <!-- Right plugin (yellow) -->
+  <path d="
+    M 146,72
+    L 146,82 C 146,82 152,82 152,90 C 152,98 146,98 146,98
+    L 146,108 L 170,108 C 170,108 170,114 177,114 C 184,114 184,108 184,108
+    L 184,72 C 184,72 184,66 177,66 C 170,66 170,72 170,72 Z
+  " fill="url(#p2)" opacity="0.92"/>
 
-  <!-- Subtle highlights -->
-  <line x1="36" y1="37" x2="36" y2="60" stroke="#fff" stroke-width="0.5" opacity="0.25"/>
-  <line x1="84" y1="37" x2="84" y2="60" stroke="#fff" stroke-width="0.5" opacity="0.15"/>
+  <!-- Bottom plugin (purple) -->
+  <path d="
+    M 82,136
+    L 92,136 C 92,136 92,130 100,130 C 108,130 108,136 108,136
+    L 118,136 L 118,156 C 118,156 124,156 124,161 C 124,166 118,166 118,166
+    L 118,172 L 108,172 C 108,172 108,178 100,178 C 92,178 92,172 92,172
+    L 82,172 L 82,166 C 82,166 76,166 76,161 C 76,156 82,156 82,156 Z
+  " fill="url(#p3)" opacity="0.92"/>
 </svg>

@@ -2,10 +2,13 @@ package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure;
 
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.Consts;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.LiteWebJarsResourceResolver;
+
+import java.time.Duration;
 
 import java.util.List;
 
@@ -57,14 +60,22 @@ public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String uiRootPath = properties.getPath();
+        // HTML files: no cache (ensures browser always gets latest chunk references)
+        registry.addResourceHandler(uiRootPath + "/easy-extension-admin-ui/**/index.html")
+                .addResourceLocations(webjarLocation)
+                .setCacheControl(CacheControl.noStore())
+                .resourceChain(false)
+                .addResolver(resourceResolver);
+        // JS/CSS/other assets: long cache (filenames contain content hash)
         registry.addResourceHandler(uiRootPath + easyExtensionUIUrlPattern)
                 .addResourceLocations(webjarLocation)
+                .setCacheControl(CacheControl.maxAge(Duration.ofDays(30)))
                 .resourceChain(false)
                 .addResolver(resourceResolver);
         registry.addResourceHandler("/favicon.ico")
-                .addResourceLocations(webjarLocation)
-                .resourceChain(false)
-                .addResolver(resourceResolver);
+                .addResourceLocations("classpath:/META-INF/resources/webjars/easy-extension-admin-ui/" + Consts.ADMIN_UI_VERSION + "/")
+                .setCacheControl(CacheControl.maxAge(Duration.ofDays(7)))
+                .resourceChain(false);
     }
 
     /**

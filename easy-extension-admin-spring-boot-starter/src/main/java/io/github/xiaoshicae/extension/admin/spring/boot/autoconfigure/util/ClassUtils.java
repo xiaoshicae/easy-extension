@@ -49,7 +49,7 @@ public class ClassUtils {
         if (declaredFields.length > 0 && declaredMethods.length > 0) {
             builder.append("\n\n");
         }
-        buildMethodInfo(builder, declaredMethods);
+        buildMethodInfo(builder, declaredMethods, clazz.isInterface());
 
         if (declaredFields.length > 0 || declaredMethods.length > 0) {
             builder.append("\n");
@@ -61,25 +61,28 @@ public class ClassUtils {
     private static void buildAnnotation(StringBuilder builder, Annotation[] annotations, String prefix) {
         for (Annotation ann : annotations) {
             builder.append(prefix);
-            builder.append("@").append(ann.annotationType().getSimpleName());
+            // Use toString() to include attribute values, then simplify to short name
+            String annStr = ann.toString();
+            String fqn = ann.annotationType().getName();
+            annStr = annStr.replace(fqn, ann.annotationType().getSimpleName());
+            builder.append(annStr);
             builder.append("\n");
         }
     }
 
     private static void buildClassInfo(StringBuilder builder, Class<?> clazz) {
-        String classModifier = Modifier.toString(clazz.getModifiers()).trim();
-        if (!classModifier.isBlank()) {
-            builder.append(classModifier).append(" ");
+        // Build modifiers manually to avoid duplicating "interface"/"class" from Modifier.toString()
+        int mods = clazz.getModifiers();
+        if (Modifier.isPublic(mods)) builder.append("public ");
+
+        if (clazz.isInterface()) {
+            builder.append("interface ");
+        } else {
+            if (Modifier.isAbstract(mods)) builder.append("abstract ");
+            builder.append("class ");
         }
 
-        String classType = classType(clazz);
-        if (!classType.isBlank()) {
-            builder.append(classType).append(" ");
-        }
-
-        String className = clazz.getSimpleName();
-        builder.append(className);
-
+        builder.append(clazz.getSimpleName());
 
         Class<?> superclass = clazz.getSuperclass();
         if (superclass != null && !superclass.equals(Object.class)) {
@@ -88,7 +91,7 @@ public class ClassUtils {
 
         Class<?>[] interfaces = clazz.getInterfaces();
         if (interfaces.length > 0) {
-            builder.append(" implements ");
+            builder.append(clazz.isInterface() ? " extends " : " implements ");
             for (int i = 0; i < interfaces.length; i++) {
                 builder.append(interfaces[i].getSimpleName());
                 if (i < interfaces.length - 1) {
@@ -124,16 +127,19 @@ public class ClassUtils {
         }
     }
 
-    private static void buildMethodInfo(StringBuilder builder, Method[] declaredMethods) {
+    private static void buildMethodInfo(StringBuilder builder, Method[] declaredMethods, boolean isInterface) {
         String prefix = "    ";
         for (int i = 0; i < declaredMethods.length; i++) {
             Method method = declaredMethods[i];
             buildAnnotation(builder, method.getDeclaredAnnotations(), prefix);
 
             builder.append(prefix);
-            String methodModifier = Modifier.toString(method.getModifiers()).trim();
-            if (!methodModifier.isBlank()) {
-                builder.append(methodModifier).append(" ");
+            // For interface methods, skip "public abstract" modifiers (they are implicit)
+            if (!isInterface) {
+                String methodModifier = Modifier.toString(method.getModifiers()).trim();
+                if (!methodModifier.isBlank()) {
+                    builder.append(methodModifier).append(" ");
+                }
             }
 
             String returnType = method.getReturnType().getSimpleName();
@@ -145,13 +151,18 @@ public class ClassUtils {
             Parameter[] parameters = method.getParameters();
             for (int j = 0; j < parameters.length; j++) {
                 Parameter p = parameters[j];
-                builder.append(p.getType().getSimpleName());
+                builder.append(p.getType().getSimpleName()).append(" ").append(p.getName());
                 if (j < parameters.length - 1) {
                     builder.append(", ");
                 }
             }
 
-            builder.append(") {}");
+            // Interface abstract methods use ";", concrete methods use "{}"
+            if (isInterface && Modifier.isAbstract(method.getModifiers())) {
+                builder.append(");");
+            } else {
+                builder.append(") {}");
+            }
             if (i < declaredMethods.length - 1) {
                 builder.append("\n\n");
             }

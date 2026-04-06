@@ -85,7 +85,7 @@ public class OrderController {
 <dependency>
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension-spring-boot-starter</artifactId>
-    <version>3.3.0</version>
+    <version>3.3.2</version>
 </dependency>
 ```
 
@@ -241,7 +241,7 @@ easy-extension:
 <dependency>
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
-    <version>3.3.0</version>
+    <version>3.3.2</version>
 </dependency>
 ```
 

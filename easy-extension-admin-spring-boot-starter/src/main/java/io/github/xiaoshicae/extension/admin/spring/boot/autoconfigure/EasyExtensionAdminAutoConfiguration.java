@@ -4,6 +4,7 @@ import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.auth.Admin
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.auth.AdminAuthenticationProvider;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.service.ExtensionInfoService;
+import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.MetadataJsonReader;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.SourceCodeReader;
 import io.github.xiaoshicae.extension.core.IExtensionReader;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -48,9 +49,18 @@ public class EasyExtensionAdminAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public MetadataJsonReader metadataJsonReader(ResourceLoader resourceLoader) {
+        MetadataJsonReader reader = new MetadataJsonReader();
+        reader.load(new org.springframework.core.io.support.PathMatchingResourcePatternResolver(resourceLoader));
+        return reader;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     @ConditionalOnBean(IExtensionReader.class)
-    public ExtensionInfoService extensionInfoService(IExtensionReader<?> reader, SourceCodeReader sourceCodeReader, EasyExtensionAdminConfigurationProperties properties) {
-        return new ExtensionInfoService(reader, sourceCodeReader, properties);
+    public ExtensionInfoService extensionInfoService(IExtensionReader<?> reader, SourceCodeReader sourceCodeReader,
+                                                     MetadataJsonReader metadataReader, EasyExtensionAdminConfigurationProperties properties) {
+        return new ExtensionInfoService(reader, sourceCodeReader, metadataReader, properties);
     }
 
     @Bean

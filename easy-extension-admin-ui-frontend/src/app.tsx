@@ -35,9 +35,9 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       docUrl && <Document key="doc" docUrl={docUrl || ''} />,
       <SelectLang key="SelectLang" />,
     ],
-    headerTitleRender: (logo: any, title: any) => (
+    headerTitleRender: (_logo: any, title: any) => (
       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {logo}{title}
+        <img src="./logo.svg" alt="logo" style={{ width: 32, height: 32 }} />{title}
         {version && (
           <span style={{
             fontSize: 12,
