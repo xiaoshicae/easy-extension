@@ -8,7 +8,6 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.LiteWebJarsResourceResolver;
 
-import java.time.Duration;
 
 import java.util.List;
 
@@ -30,11 +29,11 @@ public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
      * URL pattern for admin UI resources.
      * Matches paths like /easy-extension-admin-ui/latest/...
      */
-    private final String easyExtensionUIUrlPattern = "/easy-extension-admin-ui" + "*/**";
+    private final String easyExtensionUIUrlPattern = "/easy-extension-admin-ui/**";
     /**
      * URL pattern for admin API requests.
      */
-    private final String easyExtensionUIAPIPattern = "/easy-extension-api" + "*/**";
+    private final String easyExtensionUIAPIPattern = "/easy-extension-api/**";
     /**
      * Location of WebJar resources in the classpath.
      */
@@ -60,21 +59,16 @@ public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String uiRootPath = properties.getPath();
-        // HTML files: no cache (ensures browser always gets latest chunk references)
-        registry.addResourceHandler(uiRootPath + "/easy-extension-admin-ui/**/index.html")
-                .addResourceLocations(webjarLocation)
-                .setCacheControl(CacheControl.noStore())
-                .resourceChain(false)
-                .addResolver(resourceResolver);
-        // JS/CSS/other assets: long cache (filenames contain content hash)
+        // Point directly to the admin-ui webjar directory; no custom resolver needed.
+        // no-cache: browser revalidates every request, JS/CSS with content hash still benefit from 304.
+        String adminUiLocation = "classpath:/META-INF/resources/webjars/easy-extension-admin-ui/";
         registry.addResourceHandler(uiRootPath + easyExtensionUIUrlPattern)
-                .addResourceLocations(webjarLocation)
-                .setCacheControl(CacheControl.maxAge(Duration.ofDays(30)))
-                .resourceChain(false)
-                .addResolver(resourceResolver);
+                .addResourceLocations(adminUiLocation)
+                .setCacheControl(CacheControl.noCache())
+                .resourceChain(false);
         registry.addResourceHandler("/favicon.ico")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/easy-extension-admin-ui/" + Consts.ADMIN_UI_VERSION + "/")
-                .setCacheControl(CacheControl.maxAge(Duration.ofDays(7)))
+                .setCacheControl(CacheControl.maxAge(java.time.Duration.ofDays(7)))
                 .resourceChain(false);
     }
 

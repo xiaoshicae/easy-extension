@@ -85,3 +85,4 @@ dist/
 
 # Claude Code
 .claude/
+.playwright-mcp/
