@@ -146,6 +146,9 @@ export default defineConfig({
     { src: publicPath + 'scripts/loading.js', async: true },
   ],
 
+  // Use SVG logo as favicon for crisp rendering at all sizes
+  favicons: [publicPath + 'logo.svg'],
+
   //================ pro 插件配置 =================
   presets: ['umi-presets-pro'],
 

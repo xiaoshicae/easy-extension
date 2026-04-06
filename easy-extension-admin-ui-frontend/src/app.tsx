@@ -31,6 +31,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const docUrl = initialState?.configInfo?.docUrl;
   const version = initialState?.configInfo?.version;
   return {
+    pageTitleRender: () => 'Easy Extension',
     actionsRender: () => [
       docUrl && <Document key="doc" docUrl={docUrl || ''} />,
       <SelectLang key="SelectLang" />,
@@ -40,13 +41,9 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
         <img src="./logo.svg" alt="logo" style={{ width: 32, height: 32 }} />{title}
         {version && (
           <span style={{
-            fontSize: 12,
-            color: '#999',
+            fontSize: 10,
+            color: '#bbb',
             fontWeight: 'normal',
-            padding: '1px 6px',
-            border: '1px solid #d9d9d9',
-            borderRadius: 4,
-            lineHeight: '18px',
           }}>v{version}</span>
         )}
       </span>
