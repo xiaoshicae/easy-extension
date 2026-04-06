@@ -103,12 +103,40 @@ public class ClassUtilsTest {
     }
 
     @Test
-    public void testX() throws Exception {
-        String s = ClassUtils.transformSourceCodeWithInterface(fileContent, Extension1.class);
-//        System.out.println(s);
+    public void testParseClassInfo() {
+        ClassUtils.ClassInfoResult result = ClassUtils.parseClassInfo(fileContent);
+        assertNotNull(result);
+        assertFalse(result.getSourceCode().isEmpty());
+        assertFalse(result.getComment().isEmpty());
+        assertTrue(result.getComment().contains("扩展点的默认实现"));
+    }
 
-        s = ClassUtils.getClassComment(fileContent);
-        System.out.println(s);
+    @Test
+    public void testParseClassInfoEmpty() {
+        ClassUtils.ClassInfoResult result = ClassUtils.parseClassInfo("");
+        assertNotNull(result);
+        assertEquals("", result.getSourceCode());
+        assertEquals("", result.getComment());
+    }
+
+    @Test
+    public void testTransformSourceCodeWithInterface() {
+        String s = ClassUtils.transformSourceCodeWithInterface(fileContent, Extension1.class);
+        assertNotNull(s);
+        assertFalse(s.isEmpty());
+        assertTrue(s.contains("ext1DoSomeThing"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testGetClassAndCommentDeprecated() {
+        @SuppressWarnings("deprecation")
+        String classStr = ClassUtils.getClass(fileContent);
+        assertNotNull(classStr);
+        
+        @SuppressWarnings("deprecation")
+        String comment = ClassUtils.getClassComment(fileContent);
+        assertNotNull(comment);
     }
 
     private String fileContent = """
@@ -249,8 +277,8 @@ class MyBusiness1 extends MyBusiness implements IBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
-        return null;
+    public boolean match(Object param) {
+        return false;
     }
 }
 

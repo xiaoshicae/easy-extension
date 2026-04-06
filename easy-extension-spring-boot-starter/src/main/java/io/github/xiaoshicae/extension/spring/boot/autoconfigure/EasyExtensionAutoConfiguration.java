@@ -20,13 +20,13 @@ import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.regist
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 
 @Configuration
@@ -42,12 +42,13 @@ public class EasyExtensionAutoConfiguration<T> {
     private List<ClassHolder> classHolders;
 
     @Bean
+    @ConditionalOnMissingBean
     public IExtensionContext<T> registerExtensionContext(EasyExtensionConfigurationProperties properties) throws RegisterException, ProxyException {
-        IExtensionContext<T> extensionContext = new DefaultExtensionContext<>(properties.getEnableLog(), !properties.getAllowUnknownBusiness());
+        IExtensionContext<T> extensionContext = new DefaultExtensionContext<>(properties.getEnableLog(), !properties.getAllowUnknownBusiness(), properties.getBusinessMatchOrder());
         ExtensionContextRegisterByAnnHelper<T> helper = new ExtensionContextRegisterByAnnHelper<>(extensionContext);
 
         // if no extension point found, return empty context
-        if (Objects.isNull(this.extensionPointHolders) || this.extensionPointHolders.isEmpty()) {
+        if (this.extensionPointHolders == null || this.extensionPointHolders.isEmpty()) {
             if (properties.getEnableLog()) {
                 logger.info("No extension point found. Please check your configuration.");
             }
@@ -73,7 +74,7 @@ public class EasyExtensionAutoConfiguration<T> {
 
     @SuppressWarnings("unchecked")
     private void registerMatcherParamClass(ExtensionContextRegisterByAnnHelper<T> helper) throws RegisterParamException {
-        if (Objects.isNull(this.classHolders) || this.classHolders.isEmpty()) {
+        if (this.classHolders == null || this.classHolders.isEmpty()) {
             throw new RegisterParamException("instance annotated with @MatcherParam not found");
         }
 
@@ -83,6 +84,9 @@ public class EasyExtensionAutoConfiguration<T> {
             if (clazz.isAnnotationPresent(MatcherParam.class)) {
                 matcherParamClasses.add(clazz);
             }
+        }
+        if (matcherParamClasses.isEmpty()) {
+            throw new RegisterParamException("instance annotated with @MatcherParam not found, classes scanned but none annotated with @MatcherParam");
         }
         if (matcherParamClasses.size() > 1) {
             throw new RegisterParamException("More than one instance annotated with @MatcherParam found");
@@ -99,7 +103,7 @@ public class EasyExtensionAutoConfiguration<T> {
         List<Matcher<T>> abilities = new ArrayList<>();
         List<Matcher<T>> businesses = new ArrayList<>();
 
-        if (!Objects.isNull(this.instanceHolders)) {
+        if (this.instanceHolders != null) {
             // register by Annotation
             for (InstanceHolder holder : this.instanceHolders) {
                 Object instance = holder.getInstance();
@@ -122,13 +126,13 @@ public class EasyExtensionAutoConfiguration<T> {
         }
 
         // register by bean
-        if (!Objects.isNull(this.extensionPointGroupImplementation)) {
+        if (this.extensionPointGroupImplementation != null) {
             defaultImpls.add(this.extensionPointGroupImplementation);
         }
-        if (!Objects.isNull(this.abilities) && !this.abilities.isEmpty()) {
+        if (this.abilities != null && !this.abilities.isEmpty()) {
             abilities.addAll(this.abilities);
         }
-        if (!Objects.isNull(this.businesses) && !this.businesses.isEmpty()) {
+        if (this.businesses != null && !this.businesses.isEmpty()) {
             businesses.addAll(this.businesses);
         }
 
@@ -175,7 +179,7 @@ public class EasyExtensionAutoConfiguration<T> {
     }
 
     @Autowired(required = false)
-    private void setInstanceHolders(List<InstanceHolder> instanceHolders) {
+    public void setInstanceHolders(List<InstanceHolder> instanceHolders) {
         this.instanceHolders = instanceHolders;
     }
 

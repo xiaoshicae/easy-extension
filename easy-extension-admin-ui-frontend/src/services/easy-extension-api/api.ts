@@ -31,32 +31,45 @@ export async function getDefaultImplInfo(options?: { [key: string]: any }) {
   });
 }
 
-/** 扩展点列表 */
-export async function getAllExtensionPoints(options?: { [key: string]: any }) {
+/** 刷新缓存 */
+export async function refreshCache(options?: { [key: string]: any }) {
+  return request<{
+    data: null;
+  }>(resolveBasePath() + '/easy-extension-api/cache/refresh', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** 扩展点列表 (支持分页) */
+export async function getAllExtensionPoints(params?: { offset?: number; limit?: number }, options?: { [key: string]: any }) {
   return request<{
     data: Array<API.ExtensionPointInfo>;
-  }>(resolveBasePath() + '/easy-extension-api/all/extension-points', {
+  }>(resolveBasePath() + '/easy-extension-api/extension-points', {
     method: 'GET',
+    params: { offset: 0, limit: 50, ...params },
     ...(options || {}),
   });
 }
 
-/** 能力列表 */
-export async function getAllAbilities(options?: { [key: string]: any }) {
+/** 能力列表 (支持分页) */
+export async function getAllAbilities(params?: { offset?: number; limit?: number }, options?: { [key: string]: any }) {
   return request<{
     data: Array<API.AbilityInfo>;
-  }>(resolveBasePath() + '/easy-extension-api/all/abilities', {
+  }>(resolveBasePath() + '/easy-extension-api/abilities', {
     method: 'GET',
+    params: { offset: 0, limit: 50, ...params },
     ...(options || {}),
   });
 }
 
-/** 业务列表 */
-export async function getAllBusiness(options?: { [key: string]: any }) {
+/** 业务列表 (支持分页) */
+export async function getAllBusiness(params?: { offset?: number; limit?: number }, options?: { [key: string]: any }) {
   return request<{
     data: Array<API.BusinessInfo>;
-  }>(resolveBasePath() + '/easy-extension-api/all/businesses', {
+  }>(resolveBasePath() + '/easy-extension-api/businesses', {
     method: 'GET',
+    params: { offset: 0, limit: 50, ...params },
     ...(options || {}),
   });
 }

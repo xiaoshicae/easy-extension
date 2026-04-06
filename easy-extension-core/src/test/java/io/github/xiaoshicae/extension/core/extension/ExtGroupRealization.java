@@ -10,7 +10,7 @@ class ExtensionPointGroupImplementation1 extends AbstractExtensionPointGroupImpl
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("ExtGroupRealization1");
     }
 
@@ -28,7 +28,7 @@ class ExtensionPointGroupImplementation2 extends AbstractExtensionPointGroupImpl
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("ExtGroupRealization2");
     }
 
@@ -46,7 +46,7 @@ class ExtensionPointGroupImplementation3 extends AbstractExtensionPointGroupImpl
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("ExtGroupRealization1");
     }
 

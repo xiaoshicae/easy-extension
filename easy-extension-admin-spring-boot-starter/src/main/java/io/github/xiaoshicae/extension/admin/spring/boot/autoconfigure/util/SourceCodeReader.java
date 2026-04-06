@@ -5,9 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 
-import java.nio.charset.Charset;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SourceCodeReader {
@@ -15,7 +15,7 @@ public class SourceCodeReader {
 
     private static final String searchPathPrefix = "classpath:";
     private static final String sourceCodeSuffix = ".java";
-    private static final Map<String, String> sourceCodeCache = new ConcurrentHashMap<>();
+    private final Map<String, String> sourceCodeCache = new ConcurrentHashMap<>();
 
     private final ResourceLoader resourceLoader;
 
@@ -23,23 +23,30 @@ public class SourceCodeReader {
         this.resourceLoader = resourceLoader;
     }
 
+    /**
+     * Clear the source code cache. Called when caches need to be invalidated.
+     */
+    public void clearCache() {
+        sourceCodeCache.clear();
+    }
+
     public String readSourceCode(Class<?> clazz) {
         String sourceCodePath = clazz.getName().replace(".", "/") + sourceCodeSuffix;
         String searchPath = searchPathPrefix + sourceCodePath;
 
         String sourceCode = sourceCodeCache.get(searchPath);
-        if (!Objects.isNull(sourceCode)) {
+        if (sourceCode != null) {
             return sourceCode;
         }
 
         Resource resource = resourceLoader.getResource(searchPath);
         try {
-            sourceCode = resource.getContentAsString(Charset.defaultCharset());
-        } catch (Exception ignore) {
+            sourceCode = resource.getContentAsString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
             logger.debug("Easy Extension Admin readSourceCode failed, resource not found, searchPath: {}, maybe your pom.xml should include ${{your-dependency}}-sources.jar", searchPath);
+            sourceCode = "";
         }
 
-        sourceCode = Objects.isNull(sourceCode) ? "" : sourceCode;
         sourceCodeCache.put(searchPath, sourceCode);
         return sourceCode;
     }

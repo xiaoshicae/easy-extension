@@ -22,11 +22,25 @@
       "defaultValue": "/easy-extension-admin"
     },
     {
-      "name": "easy-extension.admin.docUrl",
+      "name": "easy-extension.admin.doc-url",
       "type": "java.lang.String",
       "description": "document of project. 项目接入文档",
       "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
       "defaultValue": ""
+    },
+    {
+      "name": "easy-extension.admin.allowed-origins",
+      "type": "java.util.List<java.lang.String>",
+      "description": "允许跨域的源 (CORS allowed origins). 默认为 [\"*\"]，生产环境建议配置具体域名",
+      "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
+      "defaultValue": ["*"]
+    },
+    {
+      "name": "easy-extension.admin.extension-point-order",
+      "type": "java.util.List<java.lang.String>",
+      "description": "扩展点在管理后台的展示顺序，使用类的简单名称（SimpleName）或全限定名。未列出的扩展点按注册顺序排在末尾。",
+      "sourceType": "io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties",
+      "defaultValue": []
     }
   ],
   "hints": []

@@ -15,7 +15,7 @@ public abstract class AbstractExtensionPointDefaultImplementation<T> extends Abs
     }
 
     @Override
-    public final Boolean match(T param) {
+    public final boolean match(T param) {
         return true;
     }
 

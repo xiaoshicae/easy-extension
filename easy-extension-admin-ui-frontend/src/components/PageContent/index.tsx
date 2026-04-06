@@ -3,7 +3,7 @@ import { getPageData } from '@/utils/page_util';
 import { PageContainer } from '@ant-design/pro-components';
 import { useRequest } from '@umijs/max';
 import { Input, List, Pagination, PaginationProps } from 'antd';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useSearchParams } from 'react-router-dom';
 import useStyles from './style';
@@ -14,7 +14,7 @@ function PageContent<T>(props: PageContentProps<T>) {
     searchPlaceholderI18nId,
     pageHeadContent,
     initPageNo = 1,
-    initPageSize = 8,
+    initPageSize = 9,
     dataFetcher,
     searchItemFilter,
     renderItem,
@@ -35,10 +35,10 @@ function PageContent<T>(props: PageContentProps<T>) {
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
 
   // datasource that filtered by search keyword
-  const [dataSource, setDataSource] = useState<Array<any>>([]);
+  const [dataSource, setDataSource] = useState<T[]>([]);
 
   // datasource that show in one page
-  const [showDataSource, setShowDataSource] = useState<Array<any>>([]);
+  const [showDataSource, setShowDataSource] = useState<T[]>([]);
 
   // page control
   const [page, setPage] = useState(1);
@@ -49,26 +49,19 @@ function PageContent<T>(props: PageContentProps<T>) {
   };
 
   // handle keyword change event
-  const handleInputChange = (event: any) => {
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setKeyword(event.target.value);
   };
 
-  // set show datasource when page change
-  useEffect(() => {
-    setShowDataSource(getPageData(dataSource, page, pageSize));
-  }, [page]);
-
-  // datasource change (i.e. filter by search keyword)
-  // set page and last page can not hold => then page change will set show datasource
-  // set show datasource and last page can hold
+  // Update displayed data when page or dataSource changes
   useEffect(() => {
     if ((page - 1) * pageSize > dataSource.length) {
-      const lastPage = Math.ceil(dataSource.length / pageSize);
+      const lastPage = Math.max(1, Math.ceil(dataSource.length / pageSize));
       setPage(lastPage);
     } else {
       setShowDataSource(getPageData(dataSource, page, pageSize));
     }
-  }, [dataSource]);
+  }, [dataSource, page, pageSize]);
 
 
   // filter data by keyword, use custom filter
@@ -142,8 +135,8 @@ function PageContent<T>(props: PageContentProps<T>) {
             sm: 2,
             md: 3,
             lg: 3,
-            xl: 4,
-            xxl: 4,
+            xl: 3,
+            xxl: 3,
           }}
           dataSource={[...showDataSource]}
           renderItem={(item, index) => {

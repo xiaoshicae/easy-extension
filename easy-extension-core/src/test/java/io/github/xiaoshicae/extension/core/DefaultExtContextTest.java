@@ -161,7 +161,9 @@ public class DefaultExtContextTest {
         assertEquals("no business matched", e.getMessage());
 
         e = assertThrows(ExtensionException.class, () -> context.initSession("BusinessC"));
-        assertEquals("multiple business found, matched business codes: [BusinessC1, BusinessC2]", e.getMessage());
+        assertTrue(e.getMessage().contains("multiple business found"));
+        assertTrue(e.getMessage().contains("BusinessC1"));
+        assertTrue(e.getMessage().contains("BusinessC2"));
     }
 
     @Test

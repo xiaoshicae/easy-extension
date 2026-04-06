@@ -1,31 +1,12 @@
 package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.model;
 
-public class ClassInfo {
-    private final String name;
-    private final String fullName;
-    private final String sourceCode;
-    private final String comment;
-
-    public ClassInfo(String name, String fullName, String sourceCode, String comment) {
-        this.name = name;
-        this.fullName = fullName;
-        this.sourceCode = sourceCode;
-        this.comment = comment;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public String getSourceCode() {
-        return sourceCode;
-    }
-
-    public String getComment() {
-        return comment;
-    }
+/**
+ * Immutable record holding class information extracted from source code.
+ *
+ * @param name       simple class name
+ * @param fullName   fully qualified class name
+ * @param sourceCode the source code of the class (may be generated fallback if source unavailable)
+ * @param comment    Javadoc comment extracted from source code
+ */
+public record ClassInfo(String name, String fullName, String sourceCode, String comment) {
 }

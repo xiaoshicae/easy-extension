@@ -6,6 +6,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Marks a class as a business identity.
+ * <p>
+ * A business represents a specific tenant, merchant, or business line.
+ * It can declare which scenarios it handles, which abilities it uses,
+ * and implement extension point interfaces for customization.
+ * </p>
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented

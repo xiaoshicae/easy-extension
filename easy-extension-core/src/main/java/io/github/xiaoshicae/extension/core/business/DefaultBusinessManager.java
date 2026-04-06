@@ -7,17 +7,21 @@ import io.github.xiaoshicae.extension.core.exception.RegisterDuplicateException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Map;
+
 
 public class DefaultBusinessManager<T> implements IBusinessManager<T> {
-    private final List<IBusiness<T>> businesses = new CopyOnWriteArrayList<>();
+    // Synchronized LinkedHashMap for O(1) lookup and ordered iteration
+    private final Map<String, IBusiness<T>> businesses = Collections.synchronizedMap(new LinkedHashMap<>());
 
     @Override
     public void registerBusiness(IBusiness<T> business) throws RegisterException {
-        if (Objects.isNull(business)) {
-            throw new RegisterException("business should not be null");
+        if (business == null) {
+            throw new RegisterParamException("business should not be null");
         }
 
         for (Class<?> clazz : business.implementExtensionPoints()) {
@@ -29,27 +33,30 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
             }
         }
 
-        boolean codeExist = businesses.stream().anyMatch(b -> b.code().equals(business.code()));
-        if (codeExist) {
-            throw new RegisterDuplicateException(String.format("business with code [%s] already register", business.code()));
+        synchronized (businesses) {
+            if (businesses.containsKey(business.code())) {
+                throw new RegisterDuplicateException(String.format("business with code [%s] already register", business.code()));
+            }
+            businesses.put(business.code(), business);
         }
-
-        businesses.add(business);
     }
 
     @Override
     public IBusiness<T> getBusiness(String businessCode) throws QueryException {
-        if (Objects.isNull(businessCode)) {
+        if (businessCode == null) {
             throw new QueryParamException("businessCode should not be null");
         }
-        return businesses.stream().
-                filter(b -> b.code().equals(businessCode)).
-                findFirst().
-                orElseThrow(() -> new QueryNotFoundException(String.format("business not found by code [%s]", businessCode)));
+        IBusiness<T> business = businesses.get(businessCode);
+        if (business == null) {
+            throw new QueryNotFoundException(String.format("business not found by code [%s]", businessCode));
+        }
+        return business;
     }
 
     @Override
     public List<IBusiness<T>> listAllBusinesses() {
-        return businesses;
+        synchronized (businesses) {
+            return Collections.unmodifiableList(new ArrayList<>(businesses.values()));
+        }
     }
 }

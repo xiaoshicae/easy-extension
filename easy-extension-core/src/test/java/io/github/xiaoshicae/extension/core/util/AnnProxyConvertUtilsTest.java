@@ -118,8 +118,8 @@ public class AnnProxyConvertUtilsTest {
 
 class Ab2 implements Matcher<MP> {
     @Override
-    public Boolean match(MP param) {
-        return null;
+    public boolean match(MP param) {
+        return false;
     }
 }
 
@@ -127,8 +127,8 @@ class Ab2 implements Matcher<MP> {
 @Ability(code = "")
 class Ab3 implements Matcher<MP> {
     @Override
-    public Boolean match(MP param) {
-        return null;
+    public boolean match(MP param) {
+        return false;
     }
 }
 
@@ -136,7 +136,7 @@ class Ab3 implements Matcher<MP> {
 @Ability(code = "ab4")
 class Ab4 implements Matcher<Object>, E1, E2, E3 {
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return Objects.equals(param, "123");
     }
 

@@ -10,7 +10,7 @@ import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -19,8 +19,8 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
     private final List<String> abilityCodes = new CopyOnWriteArrayList<>();
 
     @Override
-    public void registerAbility(IAbility<T> ability) throws RegisterException {
-        if (Objects.isNull(ability)) {
+    public synchronized void registerAbility(IAbility<T> ability) throws RegisterException {
+        if (ability == null) {
             throw new RegisterParamException("ability should not be null");
         }
 
@@ -47,12 +47,12 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
 
     @Override
     public IAbility<T> getAbility(String abilityCode) throws QueryException {
-        if (Objects.isNull(abilityCode)) {
+        if (abilityCode == null) {
             throw new QueryParamException("abilityCode should not be null");
         }
 
         IAbility<T> ability = abilities.get(abilityCode);
-        if (Objects.isNull(ability)) {
+        if (ability == null) {
             throw new QueryNotFoundException(String.format("ability not found by code [%s]", abilityCode));
         }
 

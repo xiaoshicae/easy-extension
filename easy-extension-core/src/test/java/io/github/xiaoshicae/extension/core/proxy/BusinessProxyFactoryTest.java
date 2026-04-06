@@ -90,7 +90,7 @@ class BusinessAInstance implements Matcher<MP>, Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return Objects.equals(param.name, "X");
     }
 }
@@ -109,7 +109,7 @@ class BusinessZZInstance implements Matcher<MP>, Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return Objects.equals(param.name, "X");
     }
 }

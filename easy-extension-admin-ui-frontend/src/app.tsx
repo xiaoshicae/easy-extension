@@ -29,11 +29,28 @@ export async function getInitialState(): Promise<{
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
 export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   const docUrl = initialState?.configInfo?.docUrl;
+  const version = initialState?.configInfo?.version;
   return {
     actionsRender: () => [
       docUrl && <Document key="doc" docUrl={docUrl || ''} />,
       <SelectLang key="SelectLang" />,
     ],
+    headerTitleRender: (logo: any, title: any) => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {logo}{title}
+        {version && (
+          <span style={{
+            fontSize: 12,
+            color: '#999',
+            fontWeight: 'normal',
+            padding: '1px 6px',
+            border: '1px solid #d9d9d9',
+            borderRadius: 4,
+            lineHeight: '18px',
+          }}>v{version}</span>
+        )}
+      </span>
+    ),
     avatarProps: {},
     waterMarkProps: {
       // content: 'Easy Extension',

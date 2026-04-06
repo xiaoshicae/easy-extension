@@ -1,11 +1,13 @@
 package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util;
 
-import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 
 import java.lang.annotation.Annotation;
@@ -15,15 +17,16 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ClassUtils {
 
     public static Class<?> resolveClassWithAnn(Class<?> clazz, Class<? extends Annotation> annClass) {
-        if (Objects.isNull(clazz)) {
+        if (clazz == null) {
             return null;
         }
         if (clazz.isAnnotationPresent(annClass)) {
@@ -172,37 +175,69 @@ public class ClassUtils {
         return "class";
     }
 
-    public static String getClass(String sourceCode) {
-        ClassOrInterfaceDeclaration clazz = getClassNode(sourceCode);
-        if (Objects.isNull(clazz)) {
-            return "";
+    /**
+     * Result holder for parsed class information.
+     */
+    public static class ClassInfoResult {
+        private final String sourceCode;
+        private final String comment;
+
+        public ClassInfoResult(String sourceCode, String comment) {
+            this.sourceCode = sourceCode;
+            this.comment = comment;
         }
 
-        return clazz.toString();
+        public String getSourceCode() {
+            return sourceCode;
+        }
+
+        public String getComment() {
+            return comment;
+        }
     }
 
-    public static String getClassComment(String sourceCode) {
+    /**
+     * Parse source code once and extract both class declaration and comment.
+     *
+     * @param sourceCode the Java source code to parse
+     * @return a ClassInfoResult containing the source code and comment
+     */
+    public static ClassInfoResult parseClassInfo(String sourceCode) {
         ClassOrInterfaceDeclaration clazz = getClassNode(sourceCode);
-        if (Objects.isNull(clazz)) {
-            return "";
+        if (clazz == null) {
+            return new ClassInfoResult("", "");
         }
+        String comment = clazz.getComment().map(c -> c.asString()).orElse("");
+        return new ClassInfoResult(clazz.toString(), comment);
+    }
 
-        if (clazz.getComment().isPresent()) {
-            return clazz.getComment().get().asString();
-        }
-        return "";
+    /**
+     * @deprecated Use {@link #parseClassInfo(String)} instead to avoid double parsing.
+     */
+    @Deprecated
+    public static String getClass(String sourceCode) {
+        return parseClassInfo(sourceCode).getSourceCode();
+    }
+
+    /**
+     * @deprecated Use {@link #parseClassInfo(String)} instead to avoid double parsing.
+     */
+    @Deprecated
+    public static String getClassComment(String sourceCode) {
+        return parseClassInfo(sourceCode).getComment();
     }
 
     public static String transformSourceCodeWithInterface(String sourceCode, Class<?> iface) {
-        List<MethodInfo> ifaceMethodInfos = new ArrayList<>();
+        Set<String> ifaceMethodSignatures = new HashSet<>();
         Method[] ifaceMethods = iface.getMethods();
         for (Method method : ifaceMethods) {
             Class<?>[] paramTypes = method.getParameterTypes();
-            ifaceMethodInfos.add(new MethodInfo(method.getName(), Arrays.stream(paramTypes).map(Class::getSimpleName).toList()));
+            String signature = method.getName() + "(" + Arrays.stream(paramTypes).map(Class::getSimpleName).collect(Collectors.joining(",")) + ")";
+            ifaceMethodSignatures.add(signature);
         }
 
         ClassOrInterfaceDeclaration clazz = getClassNode(sourceCode);
-        if (Objects.isNull(clazz)) {
+        if (clazz == null) {
             return "";
         }
 
@@ -210,25 +245,30 @@ public class ClassUtils {
         implementedTypes.removeIf(e -> !e.getName().asString().equals(iface.getSimpleName()));
 
 
-        List<FieldDeclaration> fields = clazz.getFields();
+        List<FieldDeclaration> fields = new ArrayList<>(clazz.getFields());
         for (FieldDeclaration field : fields) {
             clazz.remove(field);
         }
 
-        List<ClassOrInterfaceDeclaration> innerClasses = Collections.unmodifiableList(clazz.getMembers().stream().filter((m) -> m instanceof ClassOrInterfaceDeclaration).map((m) -> (ClassOrInterfaceDeclaration) m).collect(Collectors.toList()));
+        List<ClassOrInterfaceDeclaration> innerClasses = clazz.getMembers().stream()
+                .filter(m -> m instanceof ClassOrInterfaceDeclaration)
+                .map(m -> (ClassOrInterfaceDeclaration) m)
+                .collect(Collectors.toList());
         for (ClassOrInterfaceDeclaration innerClass : innerClasses) {
             clazz.remove(innerClass);
         }
 
-        List<MethodDeclaration> methods = clazz.getMethods();
+        List<MethodDeclaration> methods = new ArrayList<>(clazz.getMethods());
         for (MethodDeclaration method : methods) {
             if (!method.isPublic()) {
                 clazz.remove(method);
                 continue;
             }
-            List<String> paramTypes = method.getParameters().stream().map(p -> p.getType().asString()).toList();
-            boolean b = ifaceMethodInfos.stream().anyMatch(m -> m.methodName.equals(method.getName().asString()) && m.paramTypes.equals(paramTypes));
-            if (!b) {
+            String paramTypesStr = method.getParameters().stream()
+                    .map(p -> p.getType().asString())
+                    .collect(Collectors.joining(","));
+            String signature = method.getName().asString() + "(" + paramTypesStr + ")";
+            if (!ifaceMethodSignatures.contains(signature)) {
                 clazz.remove(method);
             }
         }
@@ -237,10 +277,16 @@ public class ClassUtils {
     }
 
     private static ClassOrInterfaceDeclaration getClassNode(String sourceCode) {
-        CompilationUnit cu = StaticJavaParser.parse(sourceCode);
-        List<ClassOrInterfaceDeclaration> classes = cu.findAll(ClassOrInterfaceDeclaration.class);
-        for (ClassOrInterfaceDeclaration clazz : classes) {
-            if (clazz.isPublic()) {
+        // Create a new parser per invocation. Admin module has low concurrency,
+        // and this avoids ThreadLocal leak in thread-pool environments.
+        JavaParser parser = new JavaParser();
+        ParseResult<CompilationUnit> result = parser.parse(sourceCode);
+        if (!result.isSuccessful() || !result.getResult().isPresent()) {
+            return null;
+        }
+        CompilationUnit cu = result.getResult().get();
+        for (TypeDeclaration<?> type : cu.getTypes()) {
+            if (type.isPublic() && type instanceof ClassOrInterfaceDeclaration clazz) {
                 return clazz;
             }
         }
@@ -248,13 +294,4 @@ public class ClassUtils {
     }
 
 
-    private static class MethodInfo {
-        String methodName;
-        List<String> paramTypes;
-
-        public MethodInfo(String methodName, List<String> paramTypes) {
-            this.methodName = methodName;
-            this.paramTypes = paramTypes;
-        }
-    }
 }

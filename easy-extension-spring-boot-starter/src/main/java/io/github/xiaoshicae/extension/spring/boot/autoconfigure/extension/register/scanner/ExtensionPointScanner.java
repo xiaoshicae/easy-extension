@@ -41,6 +41,8 @@ public class ExtensionPointScanner extends ClassPathBeanDefinitionScanner {
         } catch (ClassNotFoundException ignore) {
             // ignore
         }
+        // Mark as primary so Spring's standard constructor injection resolves this bean by type
+        beanDefinition.setPrimary(true);
 
         String beanName = ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(extensionPointClassName);
         Objects.requireNonNull(registry).registerBeanDefinition(beanName, beanDefinition);

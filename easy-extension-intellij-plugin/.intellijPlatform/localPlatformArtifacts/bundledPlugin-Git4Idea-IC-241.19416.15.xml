@@ -1,0 +1,13 @@
+<ivy-module version="2.0">
+  <info organisation="bundledPlugin" module="Git4Idea" revision="IC-241.19416.15"/>
+  <configurations>
+    <conf name="default" visibility="public"/>
+  </configurations>
+  <publications>
+    <artifact name="vcs-git" ext="jar" conf="default" url="plugins/vcs-git/lib"/>
+    <artifact name="git4idea-rt" ext="jar" conf="default" url="plugins/vcs-git/lib"/>
+  </publications>
+  <dependencies>
+    <dependency org="bundledPlugin" name="com.jetbrains.performancePlugin" rev="IC-241.19416.15"/>
+  </dependencies>
+</ivy-module>

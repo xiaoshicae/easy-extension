@@ -12,6 +12,7 @@ const useStyles = createStyles(({}) => {
     },
     cardList: {
       '.ant-list .ant-list-item-content-single': { maxWidth: '100%' },
+      overflow: 'hidden',
     },
     pagination: {
       marginTop: '30px',

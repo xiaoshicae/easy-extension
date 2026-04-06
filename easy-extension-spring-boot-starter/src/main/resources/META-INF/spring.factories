@@ -14,6 +14,8 @@
 #    limitations under the License.
 #
 
+# Deprecated: Spring Boot 3.x uses AutoConfiguration.imports instead.
+# Kept for backward compatibility with Spring Boot 2.x users.
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration,\
 io.github.xiaoshicae.extension.spring.boot.autoconfigure.web.EasyExtensionWebAutoConfiguration

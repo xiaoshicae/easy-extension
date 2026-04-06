@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 550" font-family="system-ui,-apple-system,sans-serif">
+  <defs>
+    <filter id="s" x="-2%" y="-3%" width="104%" height="110%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2.5" flood-opacity="0.07"/>
+    </filter>
+    <marker id="a" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect width="800" height="550" fill="#fff" rx="10"/>
+  <text x="400" y="30" text-anchor="middle" font-size="15" font-weight="700" fill="#1e293b">运行时：一个请求是如何被处理的？</text>
+
+  <!-- ============ Step 1 ============ -->
+  <rect x="40" y="52" width="720" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0" filter="url(#s)"/>
+  <circle cx="72" cy="79" r="14" fill="#6366f1"/>
+  <text x="72" y="84" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+  <text x="100" y="74" font-size="13" font-weight="600" fill="#334155">请求进来</text>
+  <text x="100" y="92" font-size="11" fill="#64748b">携带参数: bizCode=retail, abilityCodes=[free-shipping, vip]</text>
+
+  <line x1="400" y1="106" x2="400" y2="126" stroke="#cbd5e1" stroke-width="1.2" marker-end="url(#a)"/>
+
+  <!-- ============ Step 2: Match Business ============ -->
+  <rect x="40" y="130" width="720" height="76" rx="10" fill="#fefce8" stroke="#fde047" filter="url(#s)"/>
+  <circle cx="72" cy="168" r="14" fill="#6366f1"/>
+  <text x="72" y="173" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+  <text x="100" y="159" font-size="13" font-weight="600" fill="#334155">匹配业务</text>
+  <text x="100" y="177" font-size="11" fill="#64748b">遍历所有业务的 match() 方法，找到 bizCode=retail 对应的</text>
+
+  <!-- All business boxes: uniform light yellow -->
+  <rect x="480" y="148" width="80" height="28" rx="6" fill="#fef3c7" stroke="#fbbf24" filter="url(#s)"/>
+  <text x="520" y="167" text-anchor="middle" font-size="11" font-weight="600" fill="#92400e">标准零售</text>
+  <rect x="552" y="144" width="20" height="11" rx="5.5" fill="#d97706" opacity="0.85"/>
+  <text x="562" y="152" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">业务</text>
+
+  <rect x="576" y="148" width="80" height="28" rx="6" fill="#fefce8" stroke="#fde68a"/>
+  <text x="616" y="167" text-anchor="middle" font-size="11" fill="#a3a3a3">生鲜电商</text>
+  <rect x="648" y="144" width="20" height="11" rx="5.5" fill="#d1d5db" opacity="0.7"/>
+  <text x="658" y="152" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">业务</text>
+
+  <rect x="672" y="148" width="72" height="28" rx="6" fill="#fefce8" stroke="#fde68a"/>
+  <text x="708" y="167" text-anchor="middle" font-size="11" fill="#a3a3a3">数码3C</text>
+  <rect x="736" y="144" width="20" height="11" rx="5.5" fill="#d1d5db" opacity="0.7"/>
+  <text x="746" y="152" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">业务</text>
+
+  <text x="520" y="194" text-anchor="middle" font-size="9" fill="#a16207">命中!</text>
+
+  <line x1="400" y1="206" x2="400" y2="226" stroke="#cbd5e1" stroke-width="1.2" marker-end="url(#a)"/>
+
+  <!-- ============ Step 3: Activate Abilities ============ -->
+  <rect x="40" y="230" width="720" height="76" rx="10" fill="#f0fdf4" stroke="#86efac" filter="url(#s)"/>
+  <circle cx="72" cy="268" r="14" fill="#6366f1"/>
+  <text x="72" y="273" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+  <text x="100" y="259" font-size="13" font-weight="600" fill="#334155">激活能力</text>
+  <text x="100" y="277" font-size="11" fill="#64748b">零售业务挂载了 3 个能力，逐一调用 match() 检查哪些生效</text>
+
+  <!-- All ability boxes: uniform light green -->
+  <rect x="468" y="248" width="66" height="28" rx="6" fill="#d1fae5" stroke="#6ee7b7" filter="url(#s)"/>
+  <text x="501" y="267" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">包邮</text>
+  <rect x="527" y="244" width="20" height="11" rx="5.5" fill="#16a34a" opacity="0.85"/>
+  <text x="537" y="252" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">能力</text>
+
+  <rect x="556" y="248" width="66" height="28" rx="6" fill="#d1fae5" stroke="#6ee7b7" filter="url(#s)"/>
+  <text x="589" y="267" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">VIP券</text>
+  <rect x="615" y="244" width="20" height="11" rx="5.5" fill="#16a34a" opacity="0.85"/>
+  <text x="625" y="252" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">能力</text>
+
+  <rect x="644" y="248" width="82" height="28" rx="6" fill="#ecfdf5" stroke="#d1d5db"/>
+  <text x="685" y="267" text-anchor="middle" font-size="10" fill="#a3a3a3">七天退货</text>
+  <rect x="719" y="244" width="20" height="11" rx="5.5" fill="#d1d5db" opacity="0.7"/>
+  <text x="729" y="252" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">能力</text>
+
+  <text x="501" y="293" text-anchor="middle" font-size="9" fill="#16a34a">生效</text>
+  <text x="589" y="293" text-anchor="middle" font-size="9" fill="#16a34a">生效</text>
+  <text x="685" y="293" text-anchor="middle" font-size="9" fill="#94a3b8">未激活</text>
+
+  <line x1="400" y1="306" x2="400" y2="326" stroke="#cbd5e1" stroke-width="1.2" marker-end="url(#a)"/>
+
+  <!-- ============ Step 4: Priority Chain ============ -->
+  <rect x="40" y="330" width="720" height="68" rx="10" fill="#eff6ff" stroke="#93c5fd" filter="url(#s)"/>
+  <circle cx="72" cy="364" r="14" fill="#6366f1"/>
+  <text x="72" y="369" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
+  <text x="100" y="356" font-size="13" font-weight="600" fill="#334155">构建优先级链</text>
+  <text x="100" y="374" font-size="11" fill="#64748b">按优先级排列所有生效的实现（数字越小越优先）</text>
+
+  <!-- Uniform colors: ability=light green, business=light yellow, default=light gray -->
+  <rect x="420" y="344" width="70" height="38" rx="6" fill="#d1fae5" stroke="#6ee7b7"/>
+  <text x="455" y="360" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">包邮</text>
+  <text x="455" y="374" text-anchor="middle" font-size="9" fill="#16a34a">优先级 10</text>
+  <rect x="483" y="340" width="20" height="11" rx="5.5" fill="#16a34a" opacity="0.85"/>
+  <text x="493" y="348" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">能力</text>
+
+  <text x="508" y="367" font-size="13" fill="#94a3b8">></text>
+
+  <rect x="518" y="344" width="70" height="38" rx="6" fill="#d1fae5" stroke="#6ee7b7"/>
+  <text x="553" y="360" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">VIP券</text>
+  <text x="553" y="374" text-anchor="middle" font-size="9" fill="#16a34a">优先级 30</text>
+  <rect x="581" y="340" width="20" height="11" rx="5.5" fill="#16a34a" opacity="0.85"/>
+  <text x="591" y="348" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">能力</text>
+
+  <text x="606" y="367" font-size="13" fill="#94a3b8">></text>
+
+  <rect x="616" y="344" width="70" height="38" rx="6" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="651" y="360" text-anchor="middle" font-size="10" font-weight="600" fill="#92400e">零售</text>
+  <text x="651" y="374" text-anchor="middle" font-size="9" fill="#a16207">优先级 100</text>
+  <rect x="679" y="340" width="20" height="11" rx="5.5" fill="#d97706" opacity="0.85"/>
+  <text x="689" y="348" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">业务</text>
+
+  <text x="700" y="367" font-size="13" fill="#94a3b8">></text>
+
+  <rect x="710" y="344" width="44" height="38" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="732" y="360" text-anchor="middle" font-size="10" fill="#64748b">兜底</text>
+  <text x="732" y="374" text-anchor="middle" font-size="9" fill="#94a3b8">最低</text>
+  <rect x="747" y="340" width="20" height="11" rx="5.5" fill="#94a3b8" opacity="0.7"/>
+  <text x="757" y="348" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">默认</text>
+
+  <line x1="400" y1="398" x2="400" y2="418" stroke="#cbd5e1" stroke-width="1.2" marker-end="url(#a)"/>
+
+  <!-- ============ Step 5: Invoke (2 examples) ============ -->
+  <rect x="40" y="422" width="720" height="118" rx="10" fill="#f8fafc" stroke="#e2e8f0" filter="url(#s)"/>
+  <circle cx="72" cy="464" r="14" fill="#6366f1"/>
+  <text x="72" y="469" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">5</text>
+  <text x="100" y="448" font-size="13" font-weight="600" fill="#334155">调用扩展点</text>
+  <text x="100" y="466" font-size="11" fill="#64748b">从优先级链中，找第一个实现了该扩展点的</text>
+
+  <!-- Example 1: FreightCalc → hit ability "包邮" -->
+  <rect x="400" y="436" width="350" height="36" rx="8" fill="#fff" stroke="#e2e8f0" filter="url(#s)"/>
+  <!-- Extension point badge -->
+  <rect x="408" y="432" width="36" height="11" rx="5.5" fill="#3b82f6" opacity="0.85"/>
+  <text x="426" y="440" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">扩展点</text>
+  <!-- Content -->
+  <text x="416" y="459" font-size="11" font-weight="600" fill="#334155">运费计算</text>
+  <!-- Arrow -->
+  <text x="490" y="459" font-size="11" fill="#94a3b8">→</text>
+  <!-- Hit result: ability (light green) -->
+  <rect x="506" y="443" width="90" height="22" rx="5" fill="#d1fae5" stroke="#6ee7b7"/>
+  <text x="551" y="458" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">包邮能力</text>
+  <rect x="589" y="439" width="20" height="11" rx="5.5" fill="#16a34a" opacity="0.85"/>
+  <text x="599" y="447" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">能力</text>
+  <!-- Arrow -->
+  <text x="618" y="459" font-size="11" fill="#94a3b8">→</text>
+  <!-- Result -->
+  <text x="642" y="455" font-size="12" font-weight="700" fill="#166534">运费 ¥0</text>
+  <text x="642" y="467" font-size="8" fill="#94a3b8">(优先级最高且实现了该扩展点)</text>
+
+  <!-- Example 2: OrderValidate → hit business "零售" -->
+  <rect x="400" y="480" width="350" height="36" rx="8" fill="#fff" stroke="#e2e8f0" filter="url(#s)"/>
+  <!-- Extension point badge -->
+  <rect x="408" y="476" width="36" height="11" rx="5.5" fill="#3b82f6" opacity="0.85"/>
+  <text x="426" y="484" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">扩展点</text>
+  <!-- Content -->
+  <text x="416" y="503" font-size="11" font-weight="600" fill="#334155">订单校验</text>
+  <!-- Arrow -->
+  <text x="490" y="503" font-size="11" fill="#94a3b8">→</text>
+  <!-- Hit result: business (light yellow) -->
+  <rect x="506" y="487" width="90" height="22" rx="5" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="551" y="502" text-anchor="middle" font-size="10" font-weight="600" fill="#92400e">零售业务</text>
+  <rect x="589" y="483" width="20" height="11" rx="5.5" fill="#d97706" opacity="0.85"/>
+  <text x="599" y="491" text-anchor="middle" font-size="6" font-weight="600" fill="#fff">业务</text>
+  <!-- Arrow -->
+  <text x="618" y="503" font-size="11" fill="#94a3b8">→</text>
+  <!-- Result -->
+  <text x="648" y="499" font-size="12" font-weight="700" fill="#92400e">金额>0</text>
+  <text x="648" y="511" font-size="8" fill="#94a3b8">(包邮、VIP未实现此扩展点，跳过)</text>
+</svg>

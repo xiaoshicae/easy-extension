@@ -1,0 +1,12 @@
+<ivy-module version="2.0">
+  <info organisation="bundledPlugin" module="training" revision="IC-241.19416.15"/>
+  <configurations>
+    <conf name="default" visibility="public"/>
+  </configurations>
+  <publications>
+    <artifact name="featuresTrainer" ext="jar" conf="default" url="plugins/featuresTrainer/lib"/>
+  </publications>
+  <dependencies>
+    <dependency org="bundledPlugin" name="Git4Idea" rev="IC-241.19416.15"/>
+  </dependencies>
+</ivy-module>

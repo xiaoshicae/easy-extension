@@ -54,7 +54,7 @@ class AbilityXXX implements Matcher<MP>, Ext1 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return param.name.contains("XXX");
     }
 }
@@ -68,7 +68,7 @@ class BizB implements Matcher<MP>, Ext1 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return param.name.contains("bizB");
     }
 }

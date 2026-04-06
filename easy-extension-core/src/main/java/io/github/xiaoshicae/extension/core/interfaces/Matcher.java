@@ -14,5 +14,5 @@ public interface Matcher<T> {
      * @param param for match predict
      * @return if match
      */
-    Boolean match(T param);
+    boolean match(T param);
 }

@@ -2,21 +2,36 @@ package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure;
 
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.Consts;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.servlet.mvc.AbstractUrlViewController;
 
-import static org.springframework.web.servlet.view.UrlBasedViewResolver.REDIRECT_URL_PREFIX;
+import jakarta.servlet.http.HttpServletRequest;
 
-@Controller
-public class EasyExtensionAdminHome {
+/**
+ * Controller that redirects admin home path to the admin UI index page.
+ * <p>
+ * Supports dynamic path configuration via {@code easy-extension.admin.path}.
+ * Uses {@link AbstractUrlViewController} pattern to handle URL-based routing.
+ * </p>
+ */
+public class EasyExtensionAdminHome extends AbstractUrlViewController {
     private final String rootPath;
+    private final String redirectUrl;
 
     public EasyExtensionAdminHome(EasyExtensionAdminConfigurationProperties properties) {
-        this.rootPath = properties.getPath();
+        String path = properties.getPath();
+        if (path == null || path.isBlank()) {
+            throw new IllegalStateException("Admin path must not be null or blank. Check 'easy-extension.admin.path' configuration.");
+        }
+        this.rootPath = path;
+        this.redirectUrl = "redirect:" + rootPath + Consts.ADMIN_UI_RESOURCE_HOME_PATH;
     }
 
-    @GetMapping({Consts.ADMIN_HOME_PATH})
-    public String getAdminPage() {
-        return REDIRECT_URL_PREFIX + rootPath + Consts.ADMIN_UI_RESOURCE_HOME_PATH;
+    public String getRootPath() {
+        return rootPath;
+    }
+
+    @Override
+    protected String getViewNameForRequest(HttpServletRequest request) {
+        return redirectUrl;
     }
 }

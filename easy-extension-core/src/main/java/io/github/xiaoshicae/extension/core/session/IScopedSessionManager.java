@@ -38,4 +38,12 @@ public interface IScopedSessionManager {
      * Clear all scoped session.
      */
     void removeAllSession();
+
+    /**
+     * Check if a scoped session exists and has data.
+     *
+     * @param scope namespace of session area
+     * @return true if the scoped session exists and is not empty
+     */
+    boolean hasScopedSession(String scope);
 }

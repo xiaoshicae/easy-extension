@@ -17,9 +17,23 @@
     {
       "name": "easy-extension.enable-log",
       "type": "java.lang.Boolean",
-      "description": "是否启用日志，扩展点匹配过程会打印相应的一致 whether to enable logs, the extension point matching process will print log",
+      "description": "是否启用日志，扩展点匹配过程会打印相应的日志 whether to enable logs, the extension point matching process will print log",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
       "defaultValue": false
+    },
+    {
+      "name": "easy-extension.enable-session-auto-cleanup",
+      "type": "java.lang.Boolean",
+      "description": "是否启用Session自动清理过滤器 whether to enable the session auto cleanup filter, which automatically cleans up session data in ThreadLocal after the web request ends to prevent memory leaks",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
+      "defaultValue": true
+    },
+    {
+      "name": "easy-extension.business-match-order",
+      "type": "java.util.List<java.lang.String>",
+      "description": "业务匹配优先级顺序（使用业务 code）。当多个业务同时匹配时，按此顺序选择优先级最高的。未列出的按注册顺序排在末尾。",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
+      "defaultValue": []
     }
   ],
   "hints": []

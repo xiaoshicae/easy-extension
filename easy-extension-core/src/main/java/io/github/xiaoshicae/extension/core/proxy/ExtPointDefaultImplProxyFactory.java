@@ -4,12 +4,8 @@ import io.github.xiaoshicae.extension.core.extension.AbstractExtensionPointDefau
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class ExtPointDefaultImplProxyFactory<T> {
     private final ExtensionPointGroupDefaultImplementationTemplate<T> tpl;
@@ -20,15 +16,11 @@ public class ExtPointDefaultImplProxyFactory<T> {
 
     @SuppressWarnings("unchecked")
     public IExtensionPointGroupDefaultImplementation<T> getProxy() {
-        Class<?>[] interfaces = new Class[tpl.implementExtensionPoints().size() + 1];
-        interfaces[0] = IExtensionPointGroupDefaultImplementationProxy.class;
-        for (int i = 0; i < tpl.implementExtensionPoints().size(); i++) {
-            interfaces[i + 1] = tpl.implementExtensionPoints().get(i);
-        }
+        Class<?>[] interfaces = ProxyUtils.buildInterfaces(IExtensionPointGroupDefaultImplementationProxy.class, tpl.implementExtensionPoints());
         return (IExtensionPointGroupDefaultImplementation<T>) Proxy.newProxyInstance(
                 tpl.getInstance().getClass().getClassLoader(),
                 interfaces,
-                new ExtensionDefaultImplInvocationHandler<>(tpl, tpl.getInstance())
+                new DelegatingInvocationHandler(tpl, tpl.getInstance(), IExtensionPointGroupDefaultImplementationProxy.class)
         );
     }
 
@@ -56,19 +48,4 @@ public class ExtPointDefaultImplProxyFactory<T> {
         }
     }
 
-    private static class ExtensionDefaultImplInvocationHandler<T> implements InvocationHandler {
-        private final IExtensionPointGroupDefaultImplementation<T> defaultImplProxy;
-        private final Object extDefaultImplInstance;
-        private static final Set<Method> defaultImplProxyMethodCache = new HashSet<>(List.of(IExtensionPointGroupDefaultImplementationProxy.class.getMethods()));
-
-        public ExtensionDefaultImplInvocationHandler(IExtensionPointGroupDefaultImplementation<T> defaultImplProxy, Object extDefaultImplInstance) {
-            this.defaultImplProxy = defaultImplProxy;
-            this.extDefaultImplInstance = extDefaultImplInstance;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            return defaultImplProxyMethodCache.contains(method) ? method.invoke(defaultImplProxy, args) : method.invoke(extDefaultImplInstance, args);
-        }
-    }
 }

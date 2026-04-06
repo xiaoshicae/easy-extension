@@ -55,7 +55,7 @@ class AbilityX extends AbstractAbility<MP> implements E1, E2 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return false;
     }
 
@@ -82,8 +82,8 @@ class BusinessA extends AbstractBusiness<MP> implements E1, E2 {
     }
 
     @Override
-    public Boolean match(MP param) {
-        return null;
+    public boolean match(MP param) {
+        return false;
     }
 
     @Override

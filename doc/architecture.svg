@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 380" font-family="system-ui,-apple-system,sans-serif">
+  <defs>
+    <filter id="s" x="-2%" y="-4%" width="104%" height="112%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <rect width="820" height="380" fill="#f8fafc" rx="12"/>
+
+  <!-- Left: System Side -->
+  <text x="200" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#64748b">系统（中台）</text>
+
+  <!-- Extension Point interfaces -->
+  <rect x="30" y="44" width="340" height="320" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-dasharray="6,3"/>
+  <text x="200" y="72" text-anchor="middle" font-size="12" font-weight="600" fill="#1e40af">扩展点接口</text>
+
+  <rect x="55" y="90" width="290" height="40" rx="8" fill="#fff" stroke="#93c5fd" filter="url(#s)"/>
+  <text x="200" y="115" text-anchor="middle" font-size="13" fill="#1e40af">订单校验 OrderValidateExtension</text>
+
+  <rect x="55" y="142" width="290" height="40" rx="8" fill="#fff" stroke="#93c5fd" filter="url(#s)"/>
+  <text x="200" y="167" text-anchor="middle" font-size="13" fill="#1e40af">运费计算 FreightCalcExtension</text>
+
+  <rect x="55" y="194" width="290" height="40" rx="8" fill="#fff" stroke="#93c5fd" filter="url(#s)"/>
+  <text x="200" y="219" text-anchor="middle" font-size="13" fill="#1e40af">促销计算 PromotionCalcExtension</text>
+
+  <rect x="55" y="246" width="290" height="40" rx="8" fill="#fff" stroke="#93c5fd" filter="url(#s)"/>
+  <text x="200" y="271" text-anchor="middle" font-size="13" fill="#1e40af">支付方式 PaymentMethodExtension</text>
+
+  <rect x="55" y="298" width="290" height="40" rx="8" fill="#fff" stroke="#93c5fd" filter="url(#s)"/>
+  <text x="200" y="323" text-anchor="middle" font-size="13" fill="#1e40af">... 更多扩展点</text>
+
+  <!-- Middle: Arrow + Framework -->
+  <rect x="385" y="135" width="60" height="110" rx="8" fill="#4f46e5"/>
+  <text x="415" y="178" text-anchor="middle" font-size="10" font-weight="600" fill="#fff" transform="rotate(-90,415,178)">Easy Extension</text>
+  <text x="415" y="230" text-anchor="middle" font-size="9" fill="#c7d2fe">自动路由</text>
+
+  <!-- Arrows from left to center -->
+  <path d="M345,110 L388,170" stroke="#93c5fd" stroke-width="1.5" fill="none"/>
+  <path d="M345,162 L388,180" stroke="#93c5fd" stroke-width="1.5" fill="none"/>
+  <path d="M345,214 L388,190" stroke="#93c5fd" stroke-width="1.5" fill="none"/>
+  <path d="M345,266 L388,200" stroke="#93c5fd" stroke-width="1.5" fill="none"/>
+
+  <!-- Right: Business Side -->
+  <text x="635" y="28" text-anchor="middle" font-size="13" font-weight="600" fill="#64748b">业务方（接入方）</text>
+
+  <!-- Business A: Retail -->
+  <rect x="460" y="44" width="110" height="320" rx="10" fill="#fefce8" stroke="#fde68a"/>
+  <text x="515" y="68" text-anchor="middle" font-size="11" font-weight="600" fill="#a16207">标准零售</text>
+
+  <rect x="470" y="82" width="90" height="30" rx="5" fill="#fff" stroke="#fde68a" filter="url(#s)"/>
+  <text x="515" y="101" text-anchor="middle" font-size="9" fill="#92400e">金额校验</text>
+
+  <rect x="470" y="120" width="90" height="30" rx="5" fill="#d1fae5" stroke="#86efac" filter="url(#s)"/>
+  <text x="515" y="140" text-anchor="middle" font-size="9" fill="#166534">包邮能力</text>
+
+  <rect x="470" y="158" width="90" height="30" rx="5" fill="#d1fae5" stroke="#86efac" filter="url(#s)"/>
+  <text x="515" y="178" text-anchor="middle" font-size="9" fill="#166534">VIP能力</text>
+
+  <rect x="470" y="196" width="90" height="30" rx="5" fill="#f3f4f6" stroke="#d1d5db" filter="url(#s)"/>
+  <text x="515" y="216" text-anchor="middle" font-size="9" fill="#6b7280">默认实现</text>
+
+  <!-- Business B: Fresh -->
+  <rect x="580" y="44" width="110" height="320" rx="10" fill="#ecfdf5" stroke="#a7f3d0"/>
+  <text x="635" y="68" text-anchor="middle" font-size="11" font-weight="600" fill="#166534">生鲜电商</text>
+
+  <rect x="590" y="82" width="90" height="30" rx="5" fill="#fff" stroke="#a7f3d0" filter="url(#s)"/>
+  <text x="635" y="101" text-anchor="middle" font-size="9" fill="#166534">保质期校验</text>
+
+  <rect x="590" y="120" width="90" height="30" rx="5" fill="#fff" stroke="#a7f3d0" filter="url(#s)"/>
+  <text x="635" y="140" text-anchor="middle" font-size="9" fill="#166534">冷链运费</text>
+
+  <rect x="590" y="158" width="90" height="30" rx="5" fill="#d1fae5" stroke="#86efac" filter="url(#s)"/>
+  <text x="635" y="178" text-anchor="middle" font-size="9" fill="#166534">急速达能力</text>
+
+  <rect x="590" y="196" width="90" height="30" rx="5" fill="#f3f4f6" stroke="#d1d5db" filter="url(#s)"/>
+  <text x="635" y="216" text-anchor="middle" font-size="9" fill="#6b7280">默认实现</text>
+
+  <!-- Business C: Digital -->
+  <rect x="700" y="44" width="110" height="320" rx="10" fill="#f5f3ff" stroke="#c4b5fd"/>
+  <text x="755" y="68" text-anchor="middle" font-size="11" font-weight="600" fill="#5b21b6">数码3C</text>
+
+  <rect x="710" y="82" width="90" height="30" rx="5" fill="#fff" stroke="#c4b5fd" filter="url(#s)"/>
+  <text x="755" y="101" text-anchor="middle" font-size="9" fill="#5b21b6">序列号校验</text>
+
+  <rect x="710" y="120" width="90" height="30" rx="5" fill="#f3f4f6" stroke="#d1d5db" filter="url(#s)"/>
+  <text x="755" y="140" text-anchor="middle" font-size="9" fill="#6b7280">默认运费</text>
+
+  <rect x="710" y="158" width="90" height="30" rx="5" fill="#d1fae5" stroke="#86efac" filter="url(#s)"/>
+  <text x="755" y="178" text-anchor="middle" font-size="9" fill="#166534">分期能力</text>
+
+  <rect x="710" y="196" width="90" height="30" rx="5" fill="#d1fae5" stroke="#86efac" filter="url(#s)"/>
+  <text x="755" y="216" text-anchor="middle" font-size="9" fill="#166534">VIP能力</text>
+
+  <!-- Arrows from center to right -->
+  <path d="M445,175 L460,110" stroke="#a16207" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+  <path d="M445,185 L580,110" stroke="#16a34a" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+  <path d="M445,195 L700,110" stroke="#7c3aed" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+  <defs><marker id="ar" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto"><path d="M0,0 L6,2.5 L0,5" fill="#64748b"/></marker></defs>
+
+  <!-- Legend -->
+  <rect x="470" y="280" width="10" height="10" rx="2" fill="#d1fae5" stroke="#86efac"/>
+  <text x="486" y="290" font-size="10" fill="#64748b">通用能力（可复用）</text>
+
+  <rect x="600" y="280" width="10" height="10" rx="2" fill="#fff" stroke="#d1d5db"/>
+  <text x="616" y="290" font-size="10" fill="#64748b">业务自定义</text>
+
+  <rect x="720" y="280" width="10" height="10" rx="2" fill="#f3f4f6" stroke="#d1d5db"/>
+  <text x="736" y="290" font-size="10" fill="#64748b">默认兜底</text>
+
+  <!-- Key message -->
+  <text x="635" y="330" text-anchor="middle" font-size="11" fill="#64748b">每个业务只实现自己关心的扩展点</text>
+  <text x="635" y="350" text-anchor="middle" font-size="11" fill="#64748b">其余自动降级到通用能力或默认实现</text>
+</svg>

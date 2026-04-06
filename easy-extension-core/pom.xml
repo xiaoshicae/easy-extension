@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.xiaoshicae</groupId>
         <artifactId>easy-extension</artifactId>
-        <version>3.2.0</version>
+        <version>3.3.0</version>
     </parent>
 
     <artifactId>easy-extension-core</artifactId>

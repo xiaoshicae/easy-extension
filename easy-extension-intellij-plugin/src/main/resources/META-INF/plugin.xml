@@ -1,0 +1,56 @@
+<idea-plugin>
+    <id>io.github.xiaoshicae.easy-extension-intellij</id>
+    <name>Easy Extension</name>
+    <vendor email="xiaoshicae@gmail.com" url="https://github.com/xiaoshicae/easy-extension">xiaoshicae</vendor>
+
+    <description><![CDATA[
+    <p>IntelliJ IDEA support for the Easy-Extension extension point framework.</p>
+    <ul>
+        <li>Gutter icons on @ExtensionPoint interfaces to navigate to all implementations (Ability / Business / Default)</li>
+        <li>Gutter icons on @Ability / @Business classes to navigate to corresponding extension point interfaces</li>
+        <li>Gutter icons on @ExtensionInject fields to navigate to extension point definitions</li>
+        <li>Tool Window panel showing the topology of all extension points in the project</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Gutter Icon: @ExtensionPoint interface → navigate to implementations -->
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.ExtensionPointLineMarkerProvider"/>
+
+        <!-- Gutter Icon: @Ability class → navigate to extension point interfaces -->
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.AbilityLineMarkerProvider"/>
+
+        <!-- Gutter Icon: @Business class → navigate to extension point interfaces and abilities -->
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.BusinessLineMarkerProvider"/>
+
+        <!-- Gutter Icon: @ExtensionPointDefaultImplementation → navigate to extension point interfaces -->
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.DefaultImplLineMarkerProvider"/>
+
+        <!-- Gutter Icon: @ExtensionInject field → navigate to extension point definitions -->
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.ExtensionInjectLineMarkerProvider"/>
+
+        <!-- Suppress "unused field" warnings for @ExtensionInject fields -->
+        <implicitUsageProvider
+                implementation="io.github.xiaoshicae.extension.intellij.ExtensionInjectImplicitUsageProvider"/>
+
+        <!-- Tool Window: extension point topology view -->
+        <toolWindow
+                id="Easy Extension"
+                anchor="right"
+                factoryClass="io.github.xiaoshicae.extension.intellij.toolwindow.ExtensionToolWindowFactory"
+                icon="/icons/toolWindow.svg"/>
+    </extensions>
+</idea-plugin>

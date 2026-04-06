@@ -13,14 +13,14 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+
 
 public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar {
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
         AnnotationAttributes scanAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
-        if (!Objects.isNull(scanAttrs)) {
+        if (scanAttrs != null) {
             registerBeanDefinitions(importingClassMetadata, scanAttrs, registry); // scan components with @ExtensionScan
         }
         registerExtensionInjectBeanDefinitions(registry); // filed autowired inject
@@ -34,9 +34,7 @@ public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar 
 
     void addPropertyPackages(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionBuilder builder) {
         List<String> basePackages = new ArrayList<>(Arrays.stream(annoAttrs.getStringArray("scanPackages")).filter(StringUtils::hasText).toList());
-//        if (basePackages.isEmpty()) {
-//            basePackages.add(getDefaultBasePackage(annoMeta));
-//        }
+        // Always include the package of the class annotated with @ExtensionScan
         basePackages.add(getDefaultBasePackage(annoMeta));
         builder.addPropertyValue("scanPackages", StringUtils.collectionToCommaDelimitedString(basePackages));
     }

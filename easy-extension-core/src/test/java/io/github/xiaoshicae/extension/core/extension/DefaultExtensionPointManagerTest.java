@@ -20,7 +20,7 @@ public class DefaultExtensionPointManagerTest {
 
         class NotInterfaceClass {}
         e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(NotInterfaceClass.class,null, null));
-        assertEquals("extension point class should not be interface type", e.getMessage());
+        assertEquals("extension point class should be an interface type", e.getMessage());
 
         interface ExtensionPoint1 {}
 
@@ -61,7 +61,7 @@ public class DefaultExtensionPointManagerTest {
         assertEquals("name should not be null", exception.getMessage());
 
         exception = assertThrows(QueryException.class, () -> manager.getExtensionPointImplementationInstance(ExtensionPoint.class, "n"));
-        assertEquals("instance not found by extension point class [n] + name [ExtensionPoint]", exception.getMessage());
+        assertEquals("instance not found by extension point class [ExtensionPoint] + name [n]", exception.getMessage());
 
         class ExtensionPointImpl1 implements ExtensionPoint {}
         ExtensionPointImpl1 instance = new ExtensionPointImpl1();

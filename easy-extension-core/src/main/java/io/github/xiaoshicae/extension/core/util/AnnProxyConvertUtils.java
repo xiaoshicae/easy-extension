@@ -18,12 +18,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+
 import java.util.Set;
 
 public class AnnProxyConvertUtils {
-    private static final String abilityPriorityDelimiter = "::";
-    private static final Integer maxAbilityItemsCnt = 2;
+    private static final String ABILITY_PRIORITY_DELIMITER = "::";
+    private static final int MAX_ABILITY_ITEMS_CNT = 2;
 
     public static <T> IExtensionPointGroupDefaultImplementation<T> convertAnnExtensionPointGroupDefaultImplementation(Object instance) throws ProxyException {
         List<Class<?>> implExtPoints = Arrays.stream(instance.getClass().getInterfaces()).filter(i -> i.isAnnotationPresent(ExtensionPoint.class)).toList();
@@ -33,7 +33,7 @@ public class AnnProxyConvertUtils {
 
     public static <T> IAbility<T> convertAnnAbilityToProxy(Matcher<T> instance) throws ProxyException {
         Ability ann = instance.getClass().getAnnotation(Ability.class);
-        if (Objects.isNull(ann)) {
+        if (ann == null) {
             throw new ProxyParamException(String.format("ability [%s] must annotated with @Ability", instance.getClass().getSimpleName()));
         }
         if (ann.code().isBlank()) {
@@ -45,7 +45,7 @@ public class AnnProxyConvertUtils {
 
     public static <T> IBusiness<T> convertAnnBusinessToProxy(Matcher<T> instance) throws ProxyException {
         Business ann = instance.getClass().getAnnotation(Business.class);
-        if (Objects.isNull(ann)) {
+        if (ann == null) {
             throw new ProxyParamException(String.format("business [%s] must annotated with @Business", instance.getClass().getSimpleName()));
         }
         if (ann.code().isBlank()) {
@@ -63,10 +63,10 @@ public class AnnProxyConvertUtils {
         for (String ability : ann.abilities()) {
             UsedAbility usedAbility = resolveUsedAbility(ann.code(), ability, priority);
             if (abilities.contains(usedAbility.code())) {
-                throw new IllegalArgumentException(String.format("abilities of @Business annotate on [%s] contain duplicate code [%s]", instance.getClass().getSimpleName(), usedAbility.code()));
+                throw new ProxyParamException(String.format("abilities of @Business annotate on [%s] contain duplicate code [%s]", instance.getClass().getSimpleName(), usedAbility.code()));
             }
             if (priorities.contains(usedAbility.priority())) {
-                throw new IllegalArgumentException(String.format("abilities of @Business annotate on [%s] contain duplicate priority [%s]", instance.getClass().getSimpleName(), usedAbility.priority()));
+                throw new ProxyParamException(String.format("abilities of @Business annotate on [%s] contain duplicate priority [%s]", instance.getClass().getSimpleName(), usedAbility.priority()));
             }
             abilities.add(usedAbility.code());
             priorities.add(usedAbility.priority());
@@ -81,8 +81,8 @@ public class AnnProxyConvertUtils {
             throw new ProxyParamException(String.format("business [%s] used ability invalid, code should not be empty", business));
         }
 
-        String[] items = ability.split(abilityPriorityDelimiter);
-        if (items.length > maxAbilityItemsCnt) {
+        String[] items = ability.split(ABILITY_PRIORITY_DELIMITER);
+        if (items.length > MAX_ABILITY_ITEMS_CNT) {
             throw new ProxyParamException(String.format("business [%s] used ability [%s] invalid, format error", business, ability));
         }
 
@@ -91,7 +91,7 @@ public class AnnProxyConvertUtils {
             throw new ProxyParamException(String.format("business [%s] used ability [%s] invalid, code should not be empty", business, ability));
         }
 
-        if (items.length == maxAbilityItemsCnt) {
+        if (items.length == MAX_ABILITY_ITEMS_CNT) {
             try {
                 priority = Integer.parseInt(items[1].trim());
             } catch (NumberFormatException e) {
@@ -99,6 +99,6 @@ public class AnnProxyConvertUtils {
             }
         }
 
-        return new UsedAbility(items[0].trim(), priority);
+        return new UsedAbility(abilityCode, priority);
     }
 }

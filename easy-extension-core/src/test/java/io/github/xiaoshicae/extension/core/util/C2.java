@@ -4,7 +4,7 @@ import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 
 public class C2 implements Matcher<Object> {
     @Override
-    public Boolean match(Object param) {
-        return null;
+    public boolean match(Object param) {
+        return false;
     }
 }

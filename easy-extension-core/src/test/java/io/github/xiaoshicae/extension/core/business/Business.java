@@ -9,7 +9,7 @@ class Business1 extends AbstractBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Business1");
     }
 
@@ -36,7 +36,7 @@ class Business2 extends AbstractBusiness<Object> implements Ext1 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Business1");
     }
 
@@ -64,7 +64,7 @@ class Business3 extends AbstractBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Business3");
     }
 
@@ -92,7 +92,7 @@ class Business4 extends AbstractBusiness<Object> implements Ext1 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Business1");
     }
 

@@ -85,7 +85,7 @@ class AbilityXInstance implements Matcher<MP>, Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return Objects.equals(param.name, "X");
     }
 }
@@ -93,7 +93,7 @@ class AbilityXInstance implements Matcher<MP>, Ext1, Ext2 {
 
 class AbilityYInstance implements Matcher<MP>, AbilityExtInner {
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return Objects.equals(param.name, "Y");
     }
 }
@@ -113,7 +113,7 @@ class AbilityZInstance implements Matcher<MP>, Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(MP param) {
+    public boolean match(MP param) {
         return Objects.equals(param.name, "X");
     }
 }

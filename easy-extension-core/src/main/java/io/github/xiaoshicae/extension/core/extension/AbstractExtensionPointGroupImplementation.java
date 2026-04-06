@@ -6,7 +6,7 @@ public abstract class AbstractExtensionPointGroupImplementation<T> implements IE
 
     public abstract String code();
 
-    public abstract Boolean match(T param);
+    public abstract boolean match(T param);
 
     public abstract List<Class<?>> implementExtensionPoints();
 }

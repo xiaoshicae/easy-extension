@@ -21,6 +21,7 @@ import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImpleme
 import io.github.xiaoshicae.extension.core.proxy.IProxy;
 import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
 import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
+import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,12 +50,19 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * <p>If strict, there is one and only one business should be matched.</p>
      * <p>If not strict, use extension default implementation when no business matched, use first matched business.</p>
      */
-    private final Boolean matchBusinessStrict;
+    private final boolean matchBusinessStrict;
 
     /**
      * Whether logger enabled.
      */
-    private final Boolean enableLogger;
+    private final boolean enableLogger;
+
+    /**
+     * Configured business match order. When multiple businesses match (non-strict mode),
+     * the business appearing first in this list wins. Businesses not in the list
+     * are ordered after listed ones by registration order.
+     */
+    private final List<String> businessMatchOrder;
 
     /**
      * Scoped session manager.
@@ -92,18 +101,28 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      */
     private IExtensionPointGroupDefaultImplementation<T> extensionPointDefaultImplementation;
 
+    /**
+     * ThreadLocal storage for the most recent resolve trace.
+     */
+    private final ThreadLocal<ResolveTrace> lastResolveTrace = new ThreadLocal<>();
+
     public DefaultExtensionContext() {
-        this(false, false);
+        this(false, false, List.of());
     }
 
-    public DefaultExtensionContext(Boolean enableLogger, Boolean matchBusinessStrict) {
+    public DefaultExtensionContext(boolean enableLogger, boolean matchBusinessStrict) {
+        this(enableLogger, matchBusinessStrict, List.of());
+    }
+
+    public DefaultExtensionContext(boolean enableLogger, boolean matchBusinessStrict, List<String> businessMatchOrder) {
         this.enableLogger = enableLogger;
         this.matchBusinessStrict = matchBusinessStrict;
+        this.businessMatchOrder = businessMatchOrder != null ? businessMatchOrder : List.of();
     }
 
     @Override
     public void registerExtensionPoint(Class<?> clazz) throws RegisterException {
-        if (Objects.isNull(clazz)) {
+        if (clazz == null) {
             throw new RegisterParamException("clazz should not be null");
         }
         if (!clazz.isInterface()) {
@@ -116,33 +135,33 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         allExtensionPointClasses.add(clazz);
 
         if (enableLogger) {
-            logger.info(String.format("%s register extension point class: [%s]", LOG_PREFIX, clazz.getSimpleName()));
+            logger.info("{} register extension point class: [{}]", LOG_PREFIX, clazz.getSimpleName());
         }
     }
 
     @Override
     public void registerMatcherParamClass(Class<T> matcherParamClass) throws RegisterException {
-        if (Objects.isNull(matcherParamClass)) {
+        if (matcherParamClass == null) {
             throw new RegisterParamException("matcher param class should not be null");
         }
 
-        if (!Objects.isNull(this.matcherParamClass)) {
+        if (this.matcherParamClass != null) {
             throw new RegisterDuplicateException("matcher param class already registered");
         }
 
         this.matcherParamClass = matcherParamClass;
 
         if (enableLogger) {
-            logger.info(String.format("%s register matcher param class: [%s]", LOG_PREFIX, matcherParamClass.getSimpleName()));
+            logger.info("{} register matcher param class: [{}]", LOG_PREFIX, matcherParamClass.getSimpleName());
         }
     }
 
     @Override
     public void registerExtensionPointDefaultImplementation(IExtensionPointGroupDefaultImplementation<T> instance) throws RegisterException {
-        if (Objects.isNull(instance)) {
+        if (instance == null) {
             throw new RegisterParamException("extension point default implementation should not be null");
         }
-        if (!Objects.isNull(extensionPointDefaultImplementation)) {
+        if (extensionPointDefaultImplementation != null) {
             throw new RegisterDuplicateException("extension point default implementation already registered");
         }
 
@@ -157,13 +176,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         if (enableLogger) {
             String name = instance instanceof IProxy<?> proxy ? proxy.getInstance().getClass().getSimpleName() : instance.getClass().getSimpleName();
-            logger.info(String.format("%s register extension point default implementation: [%s]", LOG_PREFIX, name));
+            logger.info("{} register extension point default implementation: [{}]", LOG_PREFIX, name);
         }
     }
 
     @Override
     public void registerAbility(IAbility<T> ability) throws RegisterException {
-        if (Objects.isNull(ability)) {
+        if (ability == null) {
             throw new RegisterParamException("ability should not be null");
         }
 
@@ -177,13 +196,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability);
 
         if (enableLogger) {
-            logger.info(String.format("%s register ability: [%s]", LOG_PREFIX, ability.code()));
+            logger.info("{} register ability: [{}]", LOG_PREFIX, ability.code());
         }
     }
 
     @Override
     public void registerBusiness(IBusiness<T> business) throws RegisterException {
-        if (Objects.isNull(business)) {
+        if (business == null) {
             throw new RegisterParamException("business should not be null");
         }
 
@@ -196,30 +215,40 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         Set<String> codeSet = new HashSet<>();
         Set<Integer> prioritySet = new HashSet<>();
 
-        for (UsedAbility usedAbility : business.usedAbilities()) {
-            try {
-                abilityManager.getAbility(usedAbility.code());
-            } catch (QueryException e) {
-                throw new RegisterException(String.format("business [%s] used ability [%s] not found", business.code(), usedAbility.code()));
-            }
-
-            if (codeSet.contains(usedAbility.code())) {
-                throw new RegisterException(String.format("business [%s] used ability [%s] duplicate", business.code(), usedAbility.code()));
-            }
-
-            if (prioritySet.contains(usedAbility.priority())) {
-                throw new RegisterException(String.format("business [%s] used ability with priority [%d] conflict", business.code(), usedAbility.priority()));
-            }
-
-            codeSet.add(usedAbility.code());
-            prioritySet.add(usedAbility.priority());
+        // Include business's own priority in the set for unified conflict detection
+        if (business.priority() != null) {
+            prioritySet.add(business.priority());
         }
+
+        if (business.usedAbilities() != null) {
+            for (UsedAbility usedAbility : business.usedAbilities()) {
+                try {
+                    abilityManager.getAbility(usedAbility.code());
+                } catch (QueryException e) {
+                    throw new RegisterException(String.format("business [%s] used ability [%s] not found", business.code(), usedAbility.code()));
+                }
+
+                if (codeSet.contains(usedAbility.code())) {
+                    throw new RegisterException(String.format("business [%s] used ability [%s] duplicate", business.code(), usedAbility.code()));
+                }
+
+                if (prioritySet.contains(usedAbility.priority())) {
+                    throw new RegisterException(String.format("business [%s] used ability with priority [%d] conflict", business.code(), usedAbility.priority()));
+                }
+
+                codeSet.add(usedAbility.code());
+                prioritySet.add(usedAbility.priority());
+            }
+        }
+
+        // Validate ability requires/excludes constraints
+        validateAbilityConstraints(business.code(), codeSet);
 
         businessManager.registerBusiness(business);
         extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business);
 
         if (enableLogger) {
-            logger.info(String.format("%s register business: [%s]", LOG_PREFIX, business.code()));
+            logger.info("{} register business: [{}]", LOG_PREFIX, business.code());
         }
     }
 
@@ -251,25 +280,33 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     @Override
     public void initSession(T param) throws SessionException {
         long startTime = System.currentTimeMillis();
+
+        // Warn if session already initialized (non-idempotent usage)
+        if (session.hasScopedSession(EASY_EXTENSION_DEFAULT_SCOPE)) {
+            if (enableLogger) {
+                logger.warn("{} session already initialized, this call will override previous session data", LOG_PREFIX);
+            }
+        }
+
         session.removeScopedSession(EASY_EXTENSION_DEFAULT_SCOPE);
 
         if (enableLogger) {
-            logger.info(String.format("%s session init start", LOG_PREFIX));
+            logger.info("{} session init start", LOG_PREFIX);
         }
 
-        Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(EASY_EXTENSION_DEFAULT_SCOPE, param);
+        Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(EASY_EXTENSION_DEFAULT_SCOPE, param, startTime);
         for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
             session.setScopedMatchedCode(EASY_EXTENSION_DEFAULT_SCOPE, entry.getKey(), entry.getValue());
         }
 
         if (enableLogger) {
-            logger.info(String.format("%s session init completed, time cost: [%d ms]", LOG_PREFIX, System.currentTimeMillis() - startTime));
+            logger.info("{} session init completed, time cost: [{} ms]", LOG_PREFIX, System.currentTimeMillis() - startTime);
         }
     }
 
     @Override
     public void initScopedSession(String scope, T param) throws SessionException {
-        if (Objects.isNull(scope)) {
+        if (scope == null) {
             throw new SessionParamException("scope should not be null");
         }
 
@@ -277,55 +314,61 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         session.removeScopedSession(scope);
 
         if (enableLogger) {
-            logger.info(String.format("%s session with scope: [%s], init start", LOG_PREFIX, scope));
+            logger.info("{} session with scope: [{}], init start", LOG_PREFIX, scope);
         }
 
         Map<String, Integer> codePriorityMap;
         try {
-            codePriorityMap = resolveMatchedCodeAndPriority(scope, param);
+            codePriorityMap = resolveMatchedCodeAndPriority(scope, param, startTime);
         } catch (SessionException e) {
-            throw new SessionException(String.format("scope [%s], ", e.getMessage()));
+            throw new SessionException(String.format("scope [%s], %s", scope, e.getMessage()), e);
         }
 
         for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
             session.setScopedMatchedCode(scope, entry.getKey(), entry.getValue());
         }
         if (enableLogger) {
-            logger.info(String.format("%s session with scope: [%s], init completed, time cost: [%d ms]", LOG_PREFIX, scope, System.currentTimeMillis() - startTime));
+            logger.info("{} session with scope: [{}], init completed, time cost: [{} ms]", LOG_PREFIX, scope, System.currentTimeMillis() - startTime);
         }
     }
 
-    private Map<String, Integer> resolveMatchedCodeAndPriority(String scope, T param) throws SessionException {
+    /**
+     * Resolve matched codes and priorities, and build a structured trace.
+     */
+    private Map<String, Integer> resolveMatchedCodeAndPriority(String scope, T param, long startTime) throws SessionException {
         String scopePrefix = Objects.equals(scope, EASY_EXTENSION_DEFAULT_SCOPE) ? "init session" : "init session with scope: [%s],".formatted(scope);
 
         Map<String, Integer> codePriorityMap = new HashMap<>();
+        ResolveTrace.Builder traceBuilder = ResolveTrace.builder(scope);
 
-        IBusiness<T> matchedBusiness = null;
-        List<String> matchedBusinessCodes = new ArrayList<>();
+        List<IBusiness<T>> matchedBusinesses = new ArrayList<>();
         for (IBusiness<T> business : businessManager.listAllBusinesses()) {
             if (business.match(param)) {
-                if (Objects.isNull(matchedBusiness)) {
-                    matchedBusiness = business;
-                }
-                matchedBusinessCodes.add(business.code());
+                matchedBusinesses.add(business);
             }
         }
 
         if (matchBusinessStrict) {
-            if (Objects.isNull(matchedBusiness)) {
+            if (matchedBusinesses.isEmpty()) {
                 throw new SessionException("no business matched");
             }
-            if (matchedBusinessCodes.size() > 1) {
-                throw new SessionException(String.format("multiple business found, matched business codes: [%s]", String.join(", ", matchedBusinessCodes)));
+            if (matchedBusinesses.size() > 1) {
+                List<String> codes = matchedBusinesses.stream().map(IBusiness::code).toList();
+                throw new SessionException(String.format("multiple business found, matched business codes: [%s]", String.join(", ", codes)));
             }
         }
 
-        if (!Objects.isNull(matchedBusiness)) {
+        // Select the best matched business: use businessMatchOrder config if available
+        IBusiness<T> matchedBusiness = selectBestMatchedBusiness(matchedBusinesses);
+
+        if (matchedBusiness != null) {
             if (enableLogger) {
-                logger.info(String.format("%s %s match business: [%s], priority: [%d]", LOG_PREFIX, scopePrefix, matchedBusiness.code(), matchedBusiness.priority()));
+                logger.info("{} {} match business: [{}], priority: [{}]", LOG_PREFIX, scopePrefix, matchedBusiness.code(), matchedBusiness.priority());
             }
 
             codePriorityMap.put(matchedBusiness.code(), matchedBusiness.priority());
+            traceBuilder.matchedBusiness(matchedBusiness.code(), matchedBusiness.priority());
+
             for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
                 IAbility<T> ability;
                 try {
@@ -336,33 +379,110 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                 if (ability.match(param)) {
                     codePriorityMap.put(ability.code(), usedAbility.priority());
                     if (enableLogger) {
-                        logger.info(String.format("%s %s match ability: [%s], priority: [%d]", LOG_PREFIX, scopePrefix, usedAbility.code(), usedAbility.priority()));
+                        logger.info("{} {} match ability: [{}], priority: [{}]", LOG_PREFIX, scopePrefix, usedAbility.code(), usedAbility.priority());
                     }
+                    traceBuilder.abilityMatched(ability.code(), usedAbility.priority());
+                } else {
+                    traceBuilder.abilitySkipped(ability.code(), usedAbility.priority(), "ability.match() returned false");
                 }
             }
         }
 
         codePriorityMap.put(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
+        traceBuilder.defaultImpl(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
         if (enableLogger) {
-            logger.info(String.format("%s %s match extension point default implementation: [%s], priority: [%d]", LOG_PREFIX, scopePrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority()));
+            logger.info("{} {} match extension point default implementation: [{}], priority: [{}]", LOG_PREFIX, scopePrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
         }
 
+        traceBuilder.costMillis(System.currentTimeMillis() - startTime);
+        lastResolveTrace.set(traceBuilder.build());
+
         return codePriorityMap;
+    }
+
+    /**
+     * Validate ability requires/excludes constraints for a business.
+     */
+    private void validateAbilityConstraints(String businessCode, Set<String> usedAbilityCodes) throws RegisterException {
+        for (String abilityCode : usedAbilityCodes) {
+            IAbility<T> ability;
+            try {
+                ability = abilityManager.getAbility(abilityCode);
+            } catch (QueryException e) {
+                continue;
+            }
+
+            // Resolve @Ability annotation from the actual implementation class
+            Class<?> abilityClass = ability instanceof io.github.xiaoshicae.extension.core.proxy.IProxy<?> proxy
+                    ? proxy.getInstance().getClass() : ability.getClass();
+            io.github.xiaoshicae.extension.core.annotation.Ability ann =
+                    abilityClass.getAnnotation(io.github.xiaoshicae.extension.core.annotation.Ability.class);
+            if (ann == null) continue;
+
+            // Check requires
+            for (String required : ann.requires()) {
+                if (!usedAbilityCodes.contains(required)) {
+                    throw new RegisterException(String.format(
+                            "business [%s] mounts ability [%s] which requires ability [%s], but [%s] is not mounted",
+                            businessCode, abilityCode, required, required));
+                }
+            }
+
+            // Check excludes
+            for (String excluded : ann.excludes()) {
+                if (usedAbilityCodes.contains(excluded)) {
+                    throw new RegisterException(String.format(
+                            "business [%s] mounts ability [%s] which excludes ability [%s], but both are mounted",
+                            businessCode, abilityCode, excluded));
+                }
+            }
+        }
+    }
+
+    /**
+     * Select the best matched business based on businessMatchOrder config.
+     * If config is empty, returns the first matched (registration order).
+     */
+    private IBusiness<T> selectBestMatchedBusiness(List<IBusiness<T>> matchedBusinesses) {
+        if (matchedBusinesses.isEmpty()) {
+            return null;
+        }
+        if (matchedBusinesses.size() == 1 || businessMatchOrder.isEmpty()) {
+            return matchedBusinesses.get(0);
+        }
+        // Find the business with the lowest position in businessMatchOrder
+        IBusiness<T> best = null;
+        int bestPos = Integer.MAX_VALUE;
+        for (IBusiness<T> business : matchedBusinesses) {
+            int pos = businessMatchOrder.indexOf(business.code());
+            if (pos >= 0 && pos < bestPos) {
+                bestPos = pos;
+                best = business;
+            }
+        }
+        // If no matched business is in the order list, fall back to first matched
+        return best != null ? best : matchedBusinesses.get(0);
     }
 
     @Override
     public void removeSession() {
         session.removeAllSession();
+        lastResolveTrace.remove();
         if (enableLogger) {
-            logger.info(String.format("%s all session (include scoped session) has been removed", LOG_PREFIX));
+            logger.info("{} all session (include scoped session) has been removed", LOG_PREFIX);
         }
+    }
+
+    @Override
+    public ResolveTrace getLastResolveTrace() {
+        return lastResolveTrace.get();
     }
 
     @Override
     public <E> E getFirstMatchedExtension(Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
         if (enableLogger) {
-            logger.info(String.format("%s get first matched Extension<%s>, all candidate codes: [%s]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
+            logger.info("{} get first matched Extension<{}>, all candidate codes: [{}]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes));
         }
         return getFirstMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
     }
@@ -371,7 +491,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> List<E> getAllMatchedExtension(Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
         if (enableLogger) {
-            logger.info(String.format("%s get all matched Extension<%s>, all candidate codes: [%s]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes)));
+            logger.info("{} get all matched Extension<{}>, all candidate codes: [{}]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes));
         }
         return getAllMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
     }
@@ -380,7 +500,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> E getScopedFirstMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(scope);
         if (enableLogger) {
-            logger.info(String.format("%s get first matched Extension<%s> with scope: [%s], all candidate codes:[%s]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
+            logger.info("{} get first matched Extension<{}> with scope: [{}], all candidate codes:[{}]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes));
         }
 
         E extension;
@@ -395,7 +515,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public <E> List<E> getScopedAllMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
         List<String> matchedCodes = getScopedAllMatchedCodes(scope);
         if (enableLogger) {
-            logger.info(String.format("%s get all matched Extension<%s> with scope: [%s], all candidate candidate codes:[%s]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes)));
+            logger.info("{} get all matched Extension<{}> with scope: [{}], all candidate codes:[{}]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes));
         }
 
         List<E> extensions;
@@ -415,19 +535,19 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         for (String code : matchedCodes) {
             try {
                 E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
-                if (!Objects.isNull(extension)) {
+                if (extension != null) {
                     extensions.add(extension);
                     allMatchedCodes.add(code);
                 }
             } catch (QueryNotFoundException ignored) {
                 if (enableLogger) {
-                    logger.debug(String.format("%s get all matched Extension<%s>%s, instance with code: [%s] not matched, will be ignored", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code));
+                    logger.debug("{} get all matched Extension<{}>{}s, instance with code: [{}] not matched, will be ignored", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code);
                 }
             }
         }
 
         if (enableLogger) {
-            logger.info(String.format("%s get all matched Extension<%s>%s, hit instance with codes: [%s]", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, String.join(" > ", allMatchedCodes)));
+            logger.info("{} get all matched Extension<{}>{}, hit instance with codes: [{}]", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, String.join(" > ", allMatchedCodes));
         }
         return extensions;
     }
@@ -438,12 +558,12 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             try {
                 E extension = extensionPointGroupImplementationManager.getExtensionPointImplementationInstance(extensionType, code);
                 if (enableLogger) {
-                    logger.info(String.format("%s get first matched Extension<%s>%s, hit instance with code: [%s]", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code));
+                    logger.info("{} get first matched Extension<{}>{}, hit instance with code: [{}]", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code);
                 }
                 return extension;
             } catch (QueryNotFoundException e) {
                 if (enableLogger) {
-                    logger.debug(String.format("%s get first matched Extension<%s>%s, instance with code: [%s] not matched, will be ignored", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code));
+                    logger.debug("{} get first matched Extension<{}>{}, instance with code: [{}] not matched, will be ignored", LOG_PREFIX, extensionType.getSimpleName(), scopePrefix, code);
                 }
             }
         }
@@ -510,5 +630,35 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             resList.add(res);
         }
         return resList;
+    }
+
+    @Override
+    public <E, R> R invokeReduce(Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
+        List<E> extensions;
+        try {
+            extensions = getAllMatchedExtension(extensionType);
+        } catch (QueryException e) {
+            throw new InvokeException("invokeReduce failed, " + e.getMessage(), e);
+        }
+        R result = identity;
+        for (E extension : extensions) {
+            result = accumulator.apply(result, invoker.apply(extension));
+        }
+        return result;
+    }
+
+    @Override
+    public <E, R> R scopedInvokeReduce(String scope, Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
+        List<E> extensions;
+        try {
+            extensions = getScopedAllMatchedExtension(scope, extensionType);
+        } catch (QueryException e) {
+            throw new InvokeException("scope %s scopedInvokeReduce failed, %s".formatted(scope, e.getMessage()), e);
+        }
+        R result = identity;
+        for (E extension : extensions) {
+            result = accumulator.apply(result, invoker.apply(extension));
+        }
+        return result;
     }
 }

@@ -7,9 +7,9 @@ import java.util.List;
 public interface IAbility<T> extends IExtensionPointGroupImplementation<T> {
 
     /**
-     * Code of business.
+     * Code of ability.
      *
-     * @return code of business
+     * @return code of ability
      */
     String code();
 
@@ -19,7 +19,7 @@ public interface IAbility<T> extends IExtensionPointGroupImplementation<T> {
      * @param param for ability match predict
      * @return if match
      */
-    Boolean match(T param);
+    boolean match(T param);
 
     /**
      * A group of extension point classes of the ability implements.

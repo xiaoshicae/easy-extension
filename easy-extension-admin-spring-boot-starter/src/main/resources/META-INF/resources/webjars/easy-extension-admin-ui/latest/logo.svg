@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="face-left" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <linearGradient id="face-right" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="face-top" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#93c5fd"/>
+      <stop offset="100%" style="stop-color:#bfdbfe"/>
+    </linearGradient>
+    <linearGradient id="plug-left" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="plug-right" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <linearGradient id="plug-top" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#60a5fa"/>
+      <stop offset="100%" style="stop-color:#93c5fd"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Main cube base -->
+  <path d="M18,72 L18,48 L60,26 L60,50 Z" fill="url(#face-left)"/>
+  <path d="M60,50 L60,26 L102,48 L102,72 Z" fill="url(#face-right)"/>
+  <path d="M60,26 L18,48 L60,70 L102,48 Z" fill="url(#face-top)"/>
+  <path d="M18,72 L60,94 L102,72 L60,50 Z" fill="#dbeafe"/>
+
+  <!-- Small plug cube floating above -->
+  <path d="M48,38 L48,22 L60,15 L60,31 Z" fill="url(#plug-left)"/>
+  <path d="M60,31 L60,15 L72,22 L72,38 Z" fill="url(#plug-right)"/>
+  <path d="M60,15 L48,22 L60,29 L72,22 Z" fill="url(#plug-top)"/>
+
+  <!-- Slot lines on main cube -->
+  <path d="M48,44 L48,50 L60,56 L72,50 L72,44" fill="none" stroke="#2563eb" stroke-width="0.8" opacity="0.4" stroke-dasharray="2,2"/>
+
+  <!-- Subtle highlights -->
+  <line x1="36" y1="37" x2="36" y2="60" stroke="#fff" stroke-width="0.5" opacity="0.25"/>
+  <line x1="84" y1="37" x2="84" y2="60" stroke="#fff" stroke-width="0.5" opacity="0.15"/>
+</svg>

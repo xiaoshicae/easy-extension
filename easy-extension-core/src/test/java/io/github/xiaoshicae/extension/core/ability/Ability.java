@@ -10,7 +10,7 @@ class Ability1 extends AbstractAbility<Object> implements Ext1 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Ability1");
     }
 
@@ -27,7 +27,7 @@ class Ability2 extends AbstractAbility<Object> implements Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Ability2");
     }
 
@@ -45,7 +45,7 @@ class Ability3 extends AbstractAbility<Object> implements Ext1 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Ability3");
     }
 
@@ -63,7 +63,7 @@ class Ability4 extends AbstractAbility<Object> implements Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Ability3");
     }
 
@@ -81,7 +81,7 @@ class Ability5 extends AbstractAbility<Object> implements Ext1, Ext2 {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("Ability3");
     }
 

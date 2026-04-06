@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension</artifactId>
-    <version>3.2.0</version>
+    <version>3.3.0</version>
     <packaging>pom</packaging>
 
     <name>easy-extension</name>
@@ -24,12 +24,12 @@
     </modules>
 
     <properties>
-        <easy-extension.version>3.2.0</easy-extension.version>
+        <easy-extension.version>3.3.0</easy-extension.version>
 
-        <spring-boot-starter.version>3.3.6</spring-boot-starter.version>
-        <spring-boot-starter-web.version>3.3.6</spring-boot-starter-web.version>
-        <spring-boot-configuration-processor.version>3.3.6</spring-boot-configuration-processor.version>
-        <spring.version>6.2.1</spring.version>
+        <spring-boot-starter.version>4.0.5</spring-boot-starter.version>
+        <spring-boot-starter-web.version>4.0.5</spring-boot-starter-web.version>
+        <spring-boot-configuration-processor.version>4.0.5</spring-boot-configuration-processor.version>
+        <spring.version>7.0.6</spring.version>
 
         <javaparser.version>3.26.3</javaparser.version>
         <webjars-locator-lite.version>1.0.1</webjars-locator-lite.version>
@@ -39,10 +39,10 @@
         <junit-jupiter-api.version>5.10.3</junit-jupiter-api.version>
         <mockito-core.version>5.14.2</mockito-core.version>
 
-        <jdk.version>17</jdk.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <maven.compiler.compilerVersion>17</maven.compiler.compilerVersion>
+        <jdk.version>21</jdk.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.compilerVersion>21</maven.compiler.compilerVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -76,6 +76,12 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-web</artifactId>
                 <version>${spring-boot-starter-web.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-validation</artifactId>
+                <version>${spring-boot-starter.version}</version>
             </dependency>
 
             <dependency>
@@ -141,7 +147,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.2.1</version>
+                <version>3.3.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -164,7 +170,7 @@
                     <detectOfflineLinks>true</detectOfflineLinks>
                     <linksource>true</linksource>
                     <detectJavaApiLink>true</detectJavaApiLink>
-                    <source>17</source>
+                    <source>21</source>
                 </configuration>
                 <executions>
                     <execution>

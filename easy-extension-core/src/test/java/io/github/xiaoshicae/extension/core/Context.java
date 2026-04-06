@@ -18,7 +18,7 @@ class BusinessX extends AbstractBusiness<Object> implements ExtA {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("BusinessX");
     }
 
@@ -51,7 +51,7 @@ class BusinessY extends AbstractBusiness<Object> implements ExtB {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("BusinessY");
     }
 
@@ -84,7 +84,7 @@ class BusinessZ extends AbstractBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("BusinessZ");
     }
 
@@ -111,7 +111,7 @@ class BusinessZZ extends AbstractBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("BusinessZZ");
     }
 
@@ -139,7 +139,7 @@ class BusinessZZZ extends AbstractBusiness<Object> implements ExtA, ExtB {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("XXX");
     }
 
@@ -177,7 +177,7 @@ class BusinessC1 extends AbstractBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("BusinessC");
     }
 
@@ -205,7 +205,7 @@ class BusinessC2 extends AbstractBusiness<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("BusinessC");
     }
 
@@ -232,7 +232,7 @@ class AbilityL extends AbstractAbility<Object> implements ExtD {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("AbilityL");
     }
 
@@ -254,7 +254,7 @@ class AbilityM extends AbstractAbility<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("AbilityM") || param.toString().contains("BusinessPriorityConflict");
     }
 
@@ -271,7 +271,7 @@ class AbilityN extends AbstractAbility<Object> implements ExtB, ExtC {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("XXX");
     }
 
@@ -299,7 +299,7 @@ class AbilityNN extends AbstractAbility<Object> implements ExtB, ExtC {
     }
 
     @Override
-    public Boolean match(Object param) {
+    public boolean match(Object param) {
         return param.toString().contains("XXX");
     }
 

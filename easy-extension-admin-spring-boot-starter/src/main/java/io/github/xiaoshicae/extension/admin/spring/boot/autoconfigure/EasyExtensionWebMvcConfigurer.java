@@ -7,17 +7,34 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.LiteWebJarsResourceResolver;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Objects;
+import java.util.List;
 
 import static org.springframework.util.AntPathMatcher.DEFAULT_PATH_SEPARATOR;
 
+/**
+ * Configures web resources and CORS for the admin UI.
+ * <p>
+ * The admin UI frontend is always served from the "latest" directory,
+ * regardless of the backend POM version. This ensures the admin UI
+ * is always accessible after backend upgrades without needing to
+ * rebuild the frontend.
+ * </p>
+ */
 public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
     private final EasyExtensionAdminConfigurationProperties properties;
     private final EasyExtensionResourceResolver resourceResolver;
+    /**
+     * URL pattern for admin UI resources.
+     * Matches paths like /easy-extension-admin-ui/latest/...
+     */
     private final String easyExtensionUIUrlPattern = "/easy-extension-admin-ui" + "*/**";
+    /**
+     * URL pattern for admin API requests.
+     */
     private final String easyExtensionUIAPIPattern = "/easy-extension-api" + "*/**";
+    /**
+     * Location of WebJar resources in the classpath.
+     */
     private final String webjarLocation = "classpath:/META-INF/resources/webjars" + DEFAULT_PATH_SEPARATOR;
     private static final long MAX_AGE = 24 * 60 * 60;
 
@@ -29,19 +46,30 @@ public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         String uiRootPath = properties.getPath();
+        String[] origins = properties.getAllowedOrigins().toArray(new String[0]);
         registry.addMapping(uiRootPath + easyExtensionUIAPIPattern)
-                .allowedOrigins("*")
-                .allowedMethods("*")
-                .allowedHeaders("*");
+                .allowedOriginPatterns(origins)
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .maxAge(MAX_AGE);
     }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String uiRootPath = properties.getPath();
-        registry.addResourceHandler(uiRootPath + easyExtensionUIUrlPattern).addResourceLocations(webjarLocation).resourceChain(false).addResolver(resourceResolver);
-        registry.addResourceHandler("/favicon.ico").addResourceLocations(webjarLocation).resourceChain(false).addResolver(resourceResolver);
+        registry.addResourceHandler(uiRootPath + easyExtensionUIUrlPattern)
+                .addResourceLocations(webjarLocation)
+                .resourceChain(false)
+                .addResolver(resourceResolver);
+        registry.addResourceHandler("/favicon.ico")
+                .addResourceLocations(webjarLocation)
+                .resourceChain(false)
+                .addResolver(resourceResolver);
     }
 
+    /**
+     * Custom resource resolver that handles the "latest" version mapping.
+     */
     private static class EasyExtensionResourceResolver extends LiteWebJarsResourceResolver {
         private final EasyExtensionAdminConfigurationProperties properties;
 
@@ -52,16 +80,22 @@ public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
         @Override
         protected String findWebJarResourcePath(String pathStr) {
             String resourcePath = super.findWebJarResourcePath(pathStr);
-            if (Objects.isNull(resourcePath)) {
-                Path path = Paths.get(pathStr);
-                if (path.getNameCount() < 2) {
-                    return null;
-                }
-                Path first = path.getName(0);
-                Path rest = path.subpath(1, path.getNameCount());
-                return first.resolve(Consts.VERSION).resolve(rest).toString();
+            if (resourcePath != null) {
+                return resourcePath;
             }
-            return resourcePath;
+            // Fallback: try to resolve using the "latest" version directory.
+            // Use string operations instead of java.nio.file.Path for cross-platform URL handling.
+            String[] segments = pathStr.split("/");
+            if (segments.length < 2) {
+                return null;
+            }
+            // Insert the version segment after the first path segment (artifact name)
+            StringBuilder sb = new StringBuilder(segments[0]);
+            sb.append("/").append(Consts.ADMIN_UI_VERSION);
+            for (int i = 1; i < segments.length; i++) {
+                sb.append("/").append(segments[i]);
+            }
+            return sb.toString();
         }
     }
 }

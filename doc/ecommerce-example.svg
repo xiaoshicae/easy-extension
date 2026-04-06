@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340" font-family="system-ui,-apple-system,sans-serif">
+  <defs>
+    <filter id="s" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="340" fill="#f8fafc" rx="12"/>
+
+  <text x="400" y="30" text-anchor="middle" font-size="14" font-weight="600" fill="#374151">电商交易系统 — 不同业务线的扩展点实现对比</text>
+
+  <!-- Header row -->
+  <rect x="30" y="50" width="150" height="36" rx="6" fill="#6366f1" opacity="0.9"/>
+  <text x="105" y="73" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">扩展点</text>
+
+  <rect x="200" y="50" width="180" height="36" rx="6" fill="#f59e0b" opacity="0.9"/>
+  <text x="290" y="73" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">标准零售</text>
+
+  <rect x="400" y="50" width="180" height="36" rx="6" fill="#10b981" opacity="0.9"/>
+  <text x="490" y="73" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">生鲜电商</text>
+
+  <rect x="600" y="50" width="180" height="36" rx="6" fill="#6366f1" opacity="0.9"/>
+  <text x="690" y="73" text-anchor="middle" font-size="12" font-weight="600" fill="#fff">数码3C</text>
+
+  <!-- Row 1: 订单校验 -->
+  <rect x="30" y="96" width="150" height="38" rx="4" fill="#eef2ff" stroke="#c7d2fe"/>
+  <text x="105" y="120" text-anchor="middle" font-size="11" fill="#4338ca">订单校验</text>
+
+  <rect x="200" y="96" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="290" y="120" text-anchor="middle" font-size="10" fill="#6b7280">金额 &gt; 0</text>
+
+  <rect x="400" y="96" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="490" y="120" text-anchor="middle" font-size="10" fill="#6b7280">金额 + 保质期检查</text>
+
+  <rect x="600" y="96" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="690" y="120" text-anchor="middle" font-size="10" fill="#6b7280">金额 + 序列号校验</text>
+
+  <!-- Row 2: 运费计算 -->
+  <rect x="30" y="144" width="150" height="38" rx="4" fill="#eef2ff" stroke="#c7d2fe"/>
+  <text x="105" y="168" text-anchor="middle" font-size="11" fill="#4338ca">运费计算</text>
+
+  <rect x="200" y="144" width="180" height="38" rx="4" fill="#fef3c7" stroke="#fde68a" filter="url(#s)"/>
+  <text x="290" y="168" text-anchor="middle" font-size="10" fill="#92400e">包邮能力: ¥0</text>
+
+  <rect x="400" y="144" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="490" y="168" text-anchor="middle" font-size="10" fill="#6b7280">冷链运费: ¥15+</text>
+
+  <rect x="600" y="144" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="690" y="168" text-anchor="middle" font-size="10" fill="#6b7280">默认: ¥8</text>
+
+  <!-- Row 3: 促销优惠 -->
+  <rect x="30" y="192" width="150" height="38" rx="4" fill="#eef2ff" stroke="#c7d2fe"/>
+  <text x="105" y="216" text-anchor="middle" font-size="11" fill="#4338ca">促销计算</text>
+
+  <rect x="200" y="192" width="180" height="38" rx="4" fill="#fef3c7" stroke="#fde68a" filter="url(#s)"/>
+  <text x="290" y="216" text-anchor="middle" font-size="10" fill="#92400e">VIP能力: -¥20</text>
+
+  <rect x="400" y="192" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="490" y="216" text-anchor="middle" font-size="10" fill="#6b7280">默认: ¥0</text>
+
+  <rect x="600" y="192" width="180" height="38" rx="4" fill="#fef3c7" stroke="#fde68a" filter="url(#s)"/>
+  <text x="690" y="216" text-anchor="middle" font-size="10" fill="#92400e">VIP能力: -¥20</text>
+
+  <!-- Row 4: 支付方式 -->
+  <rect x="30" y="240" width="150" height="38" rx="4" fill="#eef2ff" stroke="#c7d2fe"/>
+  <text x="105" y="264" text-anchor="middle" font-size="11" fill="#4338ca">支付方式</text>
+
+  <rect x="200" y="240" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="290" y="264" text-anchor="middle" font-size="10" fill="#6b7280">支付宝 / 微信</text>
+
+  <rect x="400" y="240" width="180" height="38" rx="4" fill="#fff" stroke="#e5e7eb" filter="url(#s)"/>
+  <text x="490" y="264" text-anchor="middle" font-size="10" fill="#6b7280">支付宝 / 微信</text>
+
+  <rect x="600" y="240" width="180" height="38" rx="4" fill="#fef3c7" stroke="#fde68a" filter="url(#s)"/>
+  <text x="690" y="264" text-anchor="middle" font-size="10" fill="#92400e">分期能力: 3/6/12期</text>
+
+  <!-- Legend -->
+  <rect x="250" y="296" width="12" height="12" rx="2" fill="#fef3c7" stroke="#fde68a"/>
+  <text x="268" y="307" font-size="10" fill="#6b7280">= 能力提供的实现</text>
+
+  <rect x="410" y="296" width="12" height="12" rx="2" fill="#fff" stroke="#e5e7eb"/>
+  <text x="428" y="307" font-size="10" fill="#6b7280">= 业务自定义实现 / 默认实现</text>
+</svg>

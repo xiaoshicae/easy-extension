@@ -20,7 +20,7 @@ public interface IBusiness<T> extends IExtensionPointGroupImplementation<T>, Pri
      * @param param for business match predict
      * @return if match
      */
-    Boolean match(T param);
+    boolean match(T param);
 
     /**
      * Priority of business,

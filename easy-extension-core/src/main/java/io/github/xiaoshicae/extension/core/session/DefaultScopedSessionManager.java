@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -66,7 +66,7 @@ public class DefaultScopedSessionManager implements IScopedSessionManager {
         assertNotNull(scope, "scope");
 
         ScopedSessionData sessionData = scopedSessionDataLocal.get().get(scope);
-        if (Objects.isNull(sessionData) || sessionData.isEmpty()) {
+        if (sessionData == null || sessionData.isEmpty()) {
             throw new SessionNotFoundException(String.format("scope [%s], matched codes is empty, may be session not init", scope));
         }
         return sessionData.getCodes();
@@ -82,8 +82,15 @@ public class DefaultScopedSessionManager implements IScopedSessionManager {
         scopedSessionDataLocal.get().remove(scope);
     }
 
+    @Override
+    public boolean hasScopedSession(String scope) {
+        Map<String, ScopedSessionData> sessions = scopedSessionDataLocal.get();
+        ScopedSessionData sessionData = sessions.get(scope);
+        return sessionData != null && !sessionData.isEmpty();
+    }
+
     private void assertNotNull(Object obj, String paramName) throws SessionParamException {
-        if (Objects.isNull(obj)) {
+        if (obj == null) {
             throw new SessionParamException(paramName + " should not be null");
         }
     }

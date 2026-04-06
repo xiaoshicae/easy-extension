@@ -4,17 +4,17 @@ import io.github.xiaoshicae.extension.core.exception.QueryException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
-import java.util.Objects;
+
 
 public class DefaultExtensionPointGroupImplementationManager<T> implements IExtensionPointGroupImplementationManager<T> {
     private final IExtensionPointManager extensionPointManager = new DefaultExtensionPointManager();
 
     @Override
     public void registerExtensionPointImplementationInstance(IExtensionPointGroupImplementation<T> instance) throws RegisterException {
-        if (Objects.isNull(instance)) {
+        if (instance == null) {
             throw new RegisterParamException("instance should not be null");
         }
-        if (Objects.isNull(instance.code())) {
+        if (instance.code() == null) {
             throw new RegisterParamException("instance code should not be null");
         }
         for (Class<?> clazz : instance.implementExtensionPoints()) {

@@ -24,7 +24,7 @@ public class ExtensionPointBeanNameGenerator {
 
     private static String getClassShortName(String beanClassName) {
         Assert.state(beanClassName != null, "No bean class name set");
-        String shortClassName = ClassUtils.getShortName(beanClassName);
-        return Introspector.decapitalize(shortClassName);
+        // Use full class name to avoid collision when different packages have same-named interfaces
+        return beanClassName;
     }
 }

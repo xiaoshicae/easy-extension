@@ -41,7 +41,7 @@ public class DefaultExtensionPointGroupImplementationManagerTest {
         DefaultExtensionPointGroupImplementationManager<Object> manager = new DefaultExtensionPointGroupImplementationManager<>();
 
         e = assertThrows(QueryException.class, () -> manager.getExtensionPointImplementationInstance(IFace.class, "InstanceX"));
-        assertEquals("instance not found by extension point class [InstanceX] + name [IFace]", e.getMessage());
+        assertEquals("instance not found by extension point class [IFace] + name [InstanceX]", e.getMessage());
 
         InstanceX instanceX = new InstanceX();
         manager.registerExtensionPointImplementationInstance(instanceX);
@@ -62,8 +62,8 @@ class BaseInstance implements IExtensionPointGroupImplementation<Object> {
     }
 
     @Override
-    public Boolean match(Object param) {
-        return null;
+    public boolean match(Object param) {
+        return false;
     }
 }
 

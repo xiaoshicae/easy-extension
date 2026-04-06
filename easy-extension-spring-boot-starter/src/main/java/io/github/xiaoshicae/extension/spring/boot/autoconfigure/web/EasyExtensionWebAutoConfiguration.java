@@ -1,7 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.web;
 
 import io.github.xiaoshicae.extension.core.IExtensionContext;
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -30,21 +29,19 @@ public class EasyExtensionWebAutoConfiguration {
      * Registers the session cleanup filter with the highest precedence.
      *
      * @param extensionContext the extension context to clean up
-     * @param properties the configuration properties
      * @return the filter registration bean
      */
     @Bean
     public FilterRegistrationBean<SessionCleanupFilter> sessionCleanupFilterRegistration(
-            IExtensionContext<?> extensionContext,
-            EasyExtensionConfigurationProperties properties) {
+            IExtensionContext<?> extensionContext) {
 
         FilterRegistrationBean<SessionCleanupFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new SessionCleanupFilter(extensionContext));
         registration.addUrlPatterns("/*");
         registration.setName("easyExtensionSessionCleanupFilter");
-        // Set to lowest precedence so it wraps around all other filters
-        // This ensures cleanup happens after all request processing is complete
-        registration.setOrder(Ordered.LOWEST_PRECEDENCE);
+        // Set to highest precedence so it wraps around all other filters
+        // This ensures cleanup happens after all request processing is complete (in the finally block)
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;
     }
 }

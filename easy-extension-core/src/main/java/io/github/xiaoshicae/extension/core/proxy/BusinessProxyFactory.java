@@ -5,12 +5,8 @@ import io.github.xiaoshicae.extension.core.business.UsedAbility;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class BusinessProxyFactory<T>  {
     private final BusinessTemplate<T> tpl;
@@ -21,15 +17,11 @@ public class BusinessProxyFactory<T>  {
 
     @SuppressWarnings("unchecked")
     public IBusiness<T> getProxy() {
-        Class<?>[] interfaces = new Class[tpl.implementExtensionPoints().size() + 1];
-        interfaces[0] = IBusinessProxy.class;
-        for (int i = 0; i < tpl.implementExtensionPoints().size(); i++) {
-            interfaces[i + 1] = tpl.implementExtensionPoints().get(i);
-        }
+        Class<?>[] interfaces = ProxyUtils.buildInterfaces(IBusinessProxy.class, tpl.implementExtensionPoints());
         return (IBusiness<T>) Proxy.newProxyInstance(
                 tpl.getInstance().getClass().getClassLoader(),
                 interfaces,
-                new BusinessInvocationHandler<>(tpl, tpl.getInstance())
+                new DelegatingInvocationHandler(tpl, tpl.getInstance(), IBusinessProxy.class)
         );
     }
 
@@ -58,7 +50,7 @@ public class BusinessProxyFactory<T>  {
         }
 
         @Override
-        public Boolean match(T param) {
+        public boolean match(T param) {
             return extImplInstance.match(param);
         }
 
@@ -83,19 +75,4 @@ public class BusinessProxyFactory<T>  {
         }
     }
 
-    private static class BusinessInvocationHandler<T> implements InvocationHandler {
-        private final IBusiness<T> businessProxy;
-        private final Object businessExtImplInstance;
-        private static final Set<Method> businessProxyMethodCache = new HashSet<>(List.of(IBusinessProxy.class.getMethods()));
-
-        public BusinessInvocationHandler(IBusiness<T> businessProxy, Object businessExtImplInstance) {
-            this.businessProxy = businessProxy;
-            this.businessExtImplInstance = businessExtImplInstance;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            return businessProxyMethodCache.contains(method) ? method.invoke(businessProxy, args) : method.invoke(businessExtImplInstance, args);
-        }
-    }
 }

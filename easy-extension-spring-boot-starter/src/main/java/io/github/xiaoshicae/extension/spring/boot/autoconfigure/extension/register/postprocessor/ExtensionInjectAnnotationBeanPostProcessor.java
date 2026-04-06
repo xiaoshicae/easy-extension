@@ -2,7 +2,6 @@ package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.regis
 
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionInject;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.beannamegenerator.ExtensionPointBeanNameGenerator;
-import jakarta.annotation.Nonnull;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.PropertyValues;
 import org.springframework.beans.factory.BeanCreationException;
@@ -14,6 +13,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
@@ -41,12 +41,12 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
     }
 
     @Override
-    public void setBeanFactory(@Nonnull BeanFactory beanFactory) throws BeansException {
+    public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
         this.beanFactory = beanFactory;
     }
 
     @Override
-    public PropertyValues postProcessProperties(@Nonnull PropertyValues pvs, Object bean, @Nonnull String beanName) {
+    public PropertyValues postProcessProperties(@NonNull PropertyValues pvs, Object bean, @NonNull String beanName) {
         InjectionMetadata metadata = findResourceMetadata(beanName, bean.getClass(), pvs);
         try {
             metadata.inject(bean, beanName, pvs);
@@ -107,7 +107,7 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
         }
 
         @Override
-        protected void inject(@Nonnull Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
+        protected void inject(@NonNull Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
             Field field = (Field) this.member;
             String injectBeanName = buildInjectBeanName(field);
             try {
@@ -122,7 +122,12 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
         private String buildInjectBeanName(Field field) {
             Class<?> fieldType = field.getType();
             if (fieldType == List.class) {
-                Class<?> generic = Objects.requireNonNull(getGenericFromField(field));
+                Class<?> generic = getGenericFromField(field);
+                if (generic == null) {
+                    throw new BeanCreationException(String.format(
+                        "@ExtensionInject on field [%s] of class [%s] requires a generic type parameter, e.g., List<MyExtension>",
+                        field.getName(), field.getDeclaringClass().getName()));
+                }
                 return ExtensionPointBeanNameGenerator.genAllMatchedExtensionBeanName(generic.getName());
             }
             return ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(fieldType.getName());
