@@ -3,9 +3,11 @@ package io.github.xiaoshicae.extension.core;
 import io.github.xiaoshicae.extension.core.ability.DefaultAbilityManager;
 import io.github.xiaoshicae.extension.core.ability.IAbility;
 import io.github.xiaoshicae.extension.core.ability.IAbilityManager;
+import io.github.xiaoshicae.extension.core.business.BusinessMatchSelector;
 import io.github.xiaoshicae.extension.core.business.DefaultBusinessManager;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.business.IBusinessManager;
+import io.github.xiaoshicae.extension.core.business.OrderedCodeBusinessMatchSelector;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
 import io.github.xiaoshicae.extension.core.exception.InvokeException;
 import io.github.xiaoshicae.extension.core.exception.QueryException;
@@ -21,6 +23,7 @@ import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImpleme
 import io.github.xiaoshicae.extension.core.proxy.IProxy;
 import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
 import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
+import io.github.xiaoshicae.extension.core.trace.ExtensionExplanation;
 import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 
 import org.slf4j.Logger;
@@ -61,8 +64,19 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * Configured business match order. When multiple businesses match (non-strict mode),
      * the business appearing first in this list wins. Businesses not in the list
      * are ordered after listed ones by registration order.
+     * <p>
+     * Retained for backward compatibility; at runtime it is wrapped in an
+     * {@link OrderedCodeBusinessMatchSelector} unless a custom {@link BusinessMatchSelector}
+     * is supplied via {@link #setBusinessMatchSelector(BusinessMatchSelector)}.
+     * </p>
      */
     private final List<String> businessMatchOrder;
+
+    /**
+     * Strategy used to pick one business when multiple match. Defaults to the
+     * code-ordered selector built from {@link #businessMatchOrder}.
+     */
+    private volatile BusinessMatchSelector<T> businessMatchSelector;
 
     /**
      * Scoped session manager.
@@ -118,6 +132,18 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         this.enableLogger = enableLogger;
         this.matchBusinessStrict = matchBusinessStrict;
         this.businessMatchOrder = businessMatchOrder != null ? businessMatchOrder : List.of();
+        this.businessMatchSelector = new OrderedCodeBusinessMatchSelector<>(this.businessMatchOrder);
+    }
+
+    /**
+     * Replace the default code-ordered selector with a custom strategy
+     * (e.g. grayscale-aware or tenant-hierarchy-aware).
+     */
+    public void setBusinessMatchSelector(BusinessMatchSelector<T> selector) {
+        if (selector == null) {
+            throw new IllegalArgumentException("BusinessMatchSelector should not be null");
+        }
+        this.businessMatchSelector = selector;
     }
 
     @Override
@@ -354,7 +380,9 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         List<IBusiness<T>> matchedBusinesses = findMatchedBusinesses(param);
         enforceStrictBusinessMatching(matchedBusinesses);
-        IBusiness<T> matchedBusiness = selectBestMatchedBusiness(matchedBusinesses);
+        IBusiness<T> matchedBusiness = matchedBusinesses.isEmpty()
+                ? null
+                : businessMatchSelector.select(matchedBusinesses, param);
 
         if (matchedBusiness != null) {
             recordMatchedBusiness(matchedBusiness, codePriorityMap, traceBuilder, scopePrefix);
@@ -481,31 +509,6 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
     }
 
-    /**
-     * Select the best matched business based on businessMatchOrder config.
-     * If config is empty, returns the first matched (registration order).
-     */
-    private IBusiness<T> selectBestMatchedBusiness(List<IBusiness<T>> matchedBusinesses) {
-        if (matchedBusinesses.isEmpty()) {
-            return null;
-        }
-        if (matchedBusinesses.size() == 1 || businessMatchOrder.isEmpty()) {
-            return matchedBusinesses.get(0);
-        }
-        // Find the business with the lowest position in businessMatchOrder
-        IBusiness<T> best = null;
-        int bestPos = Integer.MAX_VALUE;
-        for (IBusiness<T> business : matchedBusinesses) {
-            int pos = businessMatchOrder.indexOf(business.code());
-            if (pos >= 0 && pos < bestPos) {
-                bestPos = pos;
-                best = business;
-            }
-        }
-        // If no matched business is in the order list, fall back to first matched
-        return best != null ? best : matchedBusinesses.get(0);
-    }
-
     @Override
     public void removeSession() {
         session.removeAllSession();
@@ -518,6 +521,52 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     @Override
     public ResolveTrace getLastResolveTrace() {
         return lastResolveTrace.get();
+    }
+
+    @Override
+    public <E> ExtensionExplanation<E> explain(Class<E> extensionPointType) {
+        return explainScoped(EASY_EXTENSION_DEFAULT_SCOPE, extensionPointType);
+    }
+
+    @Override
+    public <E> ExtensionExplanation<E> explainScoped(String scope, Class<E> extensionPointType) {
+        if (extensionPointType == null) {
+            throw new IllegalArgumentException("extensionPointType should not be null");
+        }
+        if (scope == null) {
+            throw new IllegalArgumentException("scope should not be null");
+        }
+
+        ResolveTrace trace = lastResolveTrace.get();
+        List<ResolveTrace.ResolutionEntry> chain = trace != null && Objects.equals(trace.getScope(), scope)
+                ? trace.getResolutionChain()
+                : List.of();
+
+        List<ExtensionExplanation.Candidate> candidates = new ArrayList<>(chain.size());
+        ExtensionExplanation.Candidate selected = null;
+        for (ResolveTrace.ResolutionEntry entry : chain) {
+            Class<?> implClass = null;
+            boolean implemented = false;
+            try {
+                E instance = extensionPointGroupImplementationManager
+                        .getExtensionPointImplementationInstance(extensionPointType, entry.code());
+                if (instance != null) {
+                    implemented = true;
+                    implClass = instance instanceof IProxy<?> p
+                            ? p.getInstance().getClass()
+                            : instance.getClass();
+                }
+            } catch (QueryException ignored) {
+                // not implemented for this type; keep implemented=false
+            }
+            ExtensionExplanation.Candidate c = new ExtensionExplanation.Candidate(
+                    entry.code(), entry.priority(), entry.type(), implClass, implemented);
+            candidates.add(c);
+            if (selected == null && implemented) {
+                selected = c;
+            }
+        }
+        return new ExtensionExplanation<>(extensionPointType, scope, candidates, selected);
     }
 
     @Override

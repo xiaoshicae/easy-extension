@@ -1,6 +1,7 @@
 package io.github.xiaoshicae.extension.core;
 
 import io.github.xiaoshicae.extension.core.exception.SessionException;
+import io.github.xiaoshicae.extension.core.trace.ExtensionExplanation;
 import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 
 public interface IExtensionSession<T> {
@@ -37,4 +38,31 @@ public interface IExtensionSession<T> {
      * @return the resolve trace, or null if not available
      */
     ResolveTrace getLastResolveTrace();
+
+    /**
+     * Explain, without invoking any business method, which implementation would
+     * be selected by {@code getFirstMatchedExtension(extensionPointType)} right now
+     * and why. Useful for diagnostics and Admin UI "resolve" views.
+     * <p>
+     * Requires that a session has been initialized; otherwise throws
+     * {@link io.github.xiaoshicae.extension.core.exception.SessionException}.
+     * </p>
+     *
+     * @param extensionPointType the extension point interface to inspect
+     * @return structured explanation with candidates and the selected one (if any)
+     * @throws UnsupportedOperationException if this session implementation does not
+     *                                       support diagnostics
+     */
+    default <E> ExtensionExplanation<E> explain(Class<E> extensionPointType) {
+        throw new UnsupportedOperationException(
+                "explain() is not supported by this session implementation");
+    }
+
+    /**
+     * Scoped variant of {@link #explain(Class)}.
+     */
+    default <E> ExtensionExplanation<E> explainScoped(String scope, Class<E> extensionPointType) {
+        throw new UnsupportedOperationException(
+                "explainScoped() is not supported by this session implementation");
+    }
 }
