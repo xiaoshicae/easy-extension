@@ -2,6 +2,7 @@ package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure;
 
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.auth.AdminAuthenticationFilter;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.auth.AdminAuthenticationProvider;
+import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.auth.BasicAuthAdminAuthenticationProvider;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties.EasyExtensionAdminConfigurationProperties;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.service.ExtensionInfoService;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.MetadataJsonReader;
@@ -98,6 +99,21 @@ public class EasyExtensionAdminAutoConfiguration {
     @ConditionalOnMissingBean
     public GlobalExceptionHandler easyExtensionGlobalExceptionHandler() {
         return new GlobalExceptionHandler();
+    }
+
+    /**
+     * Opt-in HTTP Basic authentication provider. Activated only when
+     * {@code easy-extension.admin.auth.basic.username} is non-empty.
+     * Users can still register additional {@link AdminAuthenticationProvider}
+     * beans (e.g. a Spring Security bridge) — the filter requires ALL to pass.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "easy-extension.admin.auth.basic", name = "username")
+    public BasicAuthAdminAuthenticationProvider basicAuthAdminAuthenticationProvider(
+            EasyExtensionAdminConfigurationProperties properties) {
+        var basic = properties.getAuth().getBasic();
+        return new BasicAuthAdminAuthenticationProvider(
+                basic.getUsername(), basic.getPassword(), basic.getRealm());
     }
 
     /**
