@@ -7,7 +7,7 @@ import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 public interface IExtensionSession<T> {
 
     /**
-     * Init session before process.
+     * Init session before process on the default scope.
      *
      * @param param for business or ability match test
      * @throws SessionException if business miss match or multi match when strict enabled
@@ -15,12 +15,23 @@ public interface IExtensionSession<T> {
     void initSession(T param) throws SessionException;
 
     /**
-     * Init scoped session before process.
+     * Scope-aware overload of {@link #initSession(Object)}.
      *
+     * @param scope namespace of session
      * @param param for business or ability match test
      * @throws SessionException if business miss match or multi match when strict enabled
      */
-    void initScopedSession(String scope, T param) throws SessionException;
+    void initSession(String scope, T param) throws SessionException;
+
+    /**
+     * @deprecated Use {@link #initSession(String, Object)} — the scoped/non-scoped
+     *             pair has been collapsed into a single overload. Will be removed
+     *             in a future release.
+     */
+    @Deprecated(since = "3.4", forRemoval = true)
+    default void initScopedSession(String scope, T param) throws SessionException {
+        initSession(scope, param);
+    }
 
     /**
      * Remove all session (include scoped session) after process.
