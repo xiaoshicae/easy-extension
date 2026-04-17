@@ -49,16 +49,25 @@ public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
     private final List<ClassMetadata> collectedMetadata = new ArrayList<>();
     private boolean written = false;
     private Trees trees;
+    private boolean treesUnavailableWarned = false;
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (trees == null) {
+        if (trees == null && !treesUnavailableWarned) {
             try {
                 trees = Trees.instance(processingEnv);
             } catch (Exception e) {
-                // Trees API not available, source code extraction will fall back to empty
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                        "[easy-extension] Trees API not available, source code will not be extracted");
+                // Trees API is only available under javac (com.sun.source.*). Ecj, some incremental
+                // Gradle builds, or non-javac compilers will miss it. Promote to WARNING so users
+                // know that Admin UI will show empty source code for their @ExtensionPoint classes.
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                        "[easy-extension] Trees API not available (compiler: "
+                                + System.getProperty("java.vendor") + "). "
+                                + "Source code extraction will be skipped; the Admin UI will display "
+                                + "empty source for extension points. This is harmless at runtime. "
+                                + "If source display matters, build with javac (Maven default) or "
+                                + "publish sources.jar as a fallback. Cause: " + e.getMessage());
+                treesUnavailableWarned = true;
             }
         }
 

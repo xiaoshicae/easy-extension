@@ -8,18 +8,18 @@ import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 public class DefaultAbilityManager<T> implements IAbilityManager<T> {
-    private final Map<String, IAbility<T>> abilities = new ConcurrentHashMap<>();
-    private final List<String> abilityCodes = new CopyOnWriteArrayList<>();
+    // Synchronized LinkedHashMap for O(1) lookup and ordered iteration.
+    // Mirrors DefaultBusinessManager so the two managers share one concurrency model.
+    private final Map<String, IAbility<T>> abilities = Collections.synchronizedMap(new LinkedHashMap<>());
 
     @Override
-    public synchronized void registerAbility(IAbility<T> ability) throws RegisterException {
+    public void registerAbility(IAbility<T> ability) throws RegisterException {
         if (ability == null) {
             throw new RegisterParamException("ability should not be null");
         }
@@ -37,12 +37,12 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
             }
         }
 
-        if (abilities.containsKey(ability.code())) {
-            throw new RegisterDuplicateException(String.format("ability [%s] already registered", ability.code()));
+        synchronized (abilities) {
+            if (abilities.containsKey(ability.code())) {
+                throw new RegisterDuplicateException(String.format("ability [%s] already registered", ability.code()));
+            }
+            abilities.put(ability.code(), ability);
         }
-
-        abilities.put(ability.code(), ability);
-        abilityCodes.add(ability.code());
     }
 
     @Override
@@ -61,8 +61,8 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
 
     @Override
     public List<IAbility<T>> listAllAbilities() {
-        List<IAbility<T>> allAbilities = new ArrayList<>(abilityCodes.size());
-        abilityCodes.forEach(code -> allAbilities.add(abilities.get(code)));
-        return allAbilities;
+        synchronized (abilities) {
+            return Collections.unmodifiableList(new ArrayList<>(abilities.values()));
+        }
     }
 }
