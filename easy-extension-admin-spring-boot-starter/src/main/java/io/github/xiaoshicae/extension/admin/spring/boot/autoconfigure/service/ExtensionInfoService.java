@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * Service that extracts extension point, ability, and business information from the extension context.
@@ -51,11 +52,12 @@ public class ExtensionInfoService {
 
     // Cache for ClassInfo objects to avoid repeated JavaParser invocations
     private final Map<Class<?>, ClassInfo> classInfoCache = new ConcurrentHashMap<>();
-    // Cache for computed list results
-    private volatile List<ExtensionPointInfo> cachedExtensionPoints;
-    private volatile List<AbilityInfo> cachedAbilities;
-    private volatile List<BusinessInfo> cachedBusinesses;
-    private volatile DefaultImplInfo cachedDefaultImplInfo;
+    // Single-entry lazy caches; computeIfAbsent guarantees one-shot computation per key.
+    private static final String KEY_EXT_POINTS = "extensionPoints";
+    private static final String KEY_ABILITIES = "abilities";
+    private static final String KEY_BUSINESSES = "businesses";
+    private static final String KEY_DEFAULT_IMPL = "defaultImpl";
+    private final Map<String, Object> resultCache = new ConcurrentHashMap<>();
 
     public ExtensionInfoService(IExtensionReader<?> reader, SourceCodeReader sourceCodeReader,
                                MetadataJsonReader metadataReader, EasyExtensionAdminConfigurationProperties properties) {
@@ -99,68 +101,44 @@ public class ExtensionInfoService {
     }
 
     public DefaultImplInfo getDefaultImplInfo() {
-        if (cachedDefaultImplInfo == null) {
-            synchronized (this) {
-                if (cachedDefaultImplInfo == null) {
-                    IExtensionPointGroupDefaultImplementation<?> defaultImpl = reader.getExtensionPointDefaultImplementation();
-                    Class<?> clazz;
-                    if (defaultImpl instanceof IProxy<?> proxy) {
-                        clazz = proxy.getInstance().getClass();
-                    } else {
-                        clazz = resolveClassWithAnn(defaultImpl.getClass(), ExtensionPointDefaultImplementation.class);
-                    }
-                    cachedDefaultImplInfo = new DefaultImplInfo(resolveClassInfo(clazz));
-                }
+        return cached(KEY_DEFAULT_IMPL, () -> {
+            IExtensionPointGroupDefaultImplementation<?> defaultImpl = reader.getExtensionPointDefaultImplementation();
+            Class<?> clazz;
+            if (defaultImpl instanceof IProxy<?> proxy) {
+                clazz = proxy.getInstance().getClass();
+            } else {
+                clazz = resolveClassWithAnn(defaultImpl.getClass(), ExtensionPointDefaultImplementation.class);
             }
-        }
-        return cachedDefaultImplInfo;
+            return new DefaultImplInfo(resolveClassInfo(clazz));
+        });
     }
 
     public List<ExtensionPointInfo> getAllExtensionPoints() {
-        if (cachedExtensionPoints == null) {
-            synchronized (this) {
-                if (cachedExtensionPoints == null) {
-                    cachedExtensionPoints = computeAllExtensionPoints();
-                }
-            }
-        }
-        return cachedExtensionPoints;
+        return cached(KEY_EXT_POINTS, this::computeAllExtensionPoints);
     }
 
     public List<AbilityInfo> getAllAbilities() {
-        if (cachedAbilities == null) {
-            synchronized (this) {
-                if (cachedAbilities == null) {
-                    cachedAbilities = computeAllAbilities();
-                }
-            }
-        }
-        return cachedAbilities;
+        return cached(KEY_ABILITIES, this::computeAllAbilities);
     }
 
     public List<BusinessInfo> getAllBusiness() {
-        if (cachedBusinesses == null) {
-            synchronized (this) {
-                if (cachedBusinesses == null) {
-                    cachedBusinesses = computeAllBusiness();
-                }
-            }
-        }
-        return cachedBusinesses;
+        return cached(KEY_BUSINESSES, this::computeAllBusiness);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T cached(String key, Supplier<T> supplier) {
+        return (T) resultCache.computeIfAbsent(key, k -> supplier.get());
     }
 
     /**
      * Invalidate all cached data. Called automatically on context refresh,
      * or can be called manually when extension points are modified at runtime.
      */
-    public synchronized void invalidateCache() {
+    public void invalidateCache() {
         classInfoCache.clear();
         sourceCodeReader.clearCache();
         metadataReader.load(new org.springframework.core.io.support.PathMatchingResourcePatternResolver());
-        cachedExtensionPoints = null;
-        cachedAbilities = null;
-        cachedBusinesses = null;
-        cachedDefaultImplInfo = null;
+        resultCache.clear();
     }
 
     private List<ExtensionPointInfo> computeAllExtensionPoints() {

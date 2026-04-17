@@ -44,6 +44,15 @@ public class EasyExtensionAdminConfigurationProperties {
      */
     private List<String> extensionPointOrder = List.of();
 
+    /**
+     * 认证配置。留空则不启用任何内置认证；应用仍可自行提供
+     * {@code AdminAuthenticationProvider} bean 以接入 Spring Security 等。
+     * Authentication config; leave empty to ship no built-in auth. Applications
+     * may still register their own {@code AdminAuthenticationProvider} beans
+     * (e.g. delegating to Spring Security).
+     */
+    private Auth auth = new Auth();
+
     public Boolean getEnable() {
         return enable;
     }
@@ -94,5 +103,62 @@ public class EasyExtensionAdminConfigurationProperties {
 
     public void setExtensionPointOrder(List<String> extensionPointOrder) {
         this.extensionPointOrder = extensionPointOrder;
+    }
+
+    public Auth getAuth() {
+        return auth;
+    }
+
+    public void setAuth(Auth auth) {
+        this.auth = auth == null ? new Auth() : auth;
+    }
+
+    public static class Auth {
+        /**
+         * HTTP Basic 认证配置。只有当 {@code basic.username} 非空时才会注册
+         * 内置的 Basic 认证 provider。
+         */
+        private Basic basic = new Basic();
+
+        public Basic getBasic() {
+            return basic;
+        }
+
+        public void setBasic(Basic basic) {
+            this.basic = basic == null ? new Basic() : basic;
+        }
+    }
+
+    public static class Basic {
+        /** 用户名；留空禁用内置 Basic 认证。 */
+        private String username = "";
+        /** 密码；支持占位符 {@code ${...}}，建议从环境变量注入。 */
+        private String password = "";
+        /** WWW-Authenticate 中的 realm。 */
+        private String realm = "Easy Extension Admin";
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username == null ? "" : username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password == null ? "" : password;
+        }
+
+        public String getRealm() {
+            return realm;
+        }
+
+        public void setRealm(String realm) {
+            this.realm = realm;
+        }
     }
 }

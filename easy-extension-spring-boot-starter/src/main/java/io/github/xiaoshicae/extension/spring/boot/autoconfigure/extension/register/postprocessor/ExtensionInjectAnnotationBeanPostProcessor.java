@@ -110,12 +110,30 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
         protected void inject(@NonNull Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
             Field field = (Field) this.member;
             String injectBeanName = buildInjectBeanName(field);
+            Object dependency;
             try {
-                Object dependency = Objects.requireNonNull(beanFactory).getBean(injectBeanName);
+                dependency = Objects.requireNonNull(beanFactory).getBean(injectBeanName);
+            } catch (BeansException e) {
+                throw new BeanCreationException(String.format(
+                        "%s of class [%s] failed to resolve @ExtensionInject dependency for field [%s]: no bean [%s] found. " +
+                        "Ensure the extension point type is registered via @ExtensionScan or registerExtensionPoint().",
+                        beanName, bean.getClass(), field.getName(), injectBeanName), e);
+            }
+            try {
                 ReflectionUtils.makeAccessible(field);
+            } catch (RuntimeException e) {
+                // e.g. InaccessibleObjectException (JPMS) or SecurityException under a SecurityManager
+                throw new BeanCreationException(String.format(
+                        "%s of class [%s] cannot make field [%s] accessible for @ExtensionInject. " +
+                        "If running under a SecurityManager or JPMS, grant reflective access to the declaring class.",
+                        beanName, bean.getClass(), field.getName()), e);
+            }
+            try {
                 field.set(bean, dependency);
-            } catch (IllegalAccessException | BeansException e) {
-                throw new BeanCreationException(String.format("%s of class [%s] inject dependency of filed [%s] failed", beanName, bean.getClass(), field.getName()), e);
+            } catch (IllegalAccessException e) {
+                throw new BeanCreationException(String.format(
+                        "%s of class [%s] inject dependency of field [%s] failed",
+                        beanName, bean.getClass(), field.getName()), e);
             }
         }
 

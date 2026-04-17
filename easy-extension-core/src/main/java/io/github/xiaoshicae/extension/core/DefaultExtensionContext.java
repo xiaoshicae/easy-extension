@@ -3,9 +3,11 @@ package io.github.xiaoshicae.extension.core;
 import io.github.xiaoshicae.extension.core.ability.DefaultAbilityManager;
 import io.github.xiaoshicae.extension.core.ability.IAbility;
 import io.github.xiaoshicae.extension.core.ability.IAbilityManager;
+import io.github.xiaoshicae.extension.core.business.BusinessMatchSelector;
 import io.github.xiaoshicae.extension.core.business.DefaultBusinessManager;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.business.IBusinessManager;
+import io.github.xiaoshicae.extension.core.business.OrderedCodeBusinessMatchSelector;
 import io.github.xiaoshicae.extension.core.business.UsedAbility;
 import io.github.xiaoshicae.extension.core.exception.InvokeException;
 import io.github.xiaoshicae.extension.core.exception.QueryException;
@@ -21,6 +23,7 @@ import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImpleme
 import io.github.xiaoshicae.extension.core.proxy.IProxy;
 import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
 import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
+import io.github.xiaoshicae.extension.core.trace.ExtensionExplanation;
 import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 
 import org.slf4j.Logger;
@@ -61,8 +64,19 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * Configured business match order. When multiple businesses match (non-strict mode),
      * the business appearing first in this list wins. Businesses not in the list
      * are ordered after listed ones by registration order.
+     * <p>
+     * Retained for backward compatibility; at runtime it is wrapped in an
+     * {@link OrderedCodeBusinessMatchSelector} unless a custom {@link BusinessMatchSelector}
+     * is supplied via {@link #setBusinessMatchSelector(BusinessMatchSelector)}.
+     * </p>
      */
     private final List<String> businessMatchOrder;
+
+    /**
+     * Strategy used to pick one business when multiple match. Defaults to the
+     * code-ordered selector built from {@link #businessMatchOrder}.
+     */
+    private volatile BusinessMatchSelector<T> businessMatchSelector;
 
     /**
      * Scoped session manager.
@@ -118,6 +132,18 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         this.enableLogger = enableLogger;
         this.matchBusinessStrict = matchBusinessStrict;
         this.businessMatchOrder = businessMatchOrder != null ? businessMatchOrder : List.of();
+        this.businessMatchSelector = new OrderedCodeBusinessMatchSelector<>(this.businessMatchOrder);
+    }
+
+    /**
+     * Replace the default code-ordered selector with a custom strategy
+     * (e.g. grayscale-aware or tenant-hierarchy-aware).
+     */
+    public void setBusinessMatchSelector(BusinessMatchSelector<T> selector) {
+        if (selector == null) {
+            throw new IllegalArgumentException("BusinessMatchSelector should not be null");
+        }
+        this.businessMatchSelector = selector;
     }
 
     @Override
@@ -128,11 +154,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         if (!clazz.isInterface()) {
             throw new RegisterParamException("clazz should be an interface type");
         }
-        if (allExtensionPointClasses.contains(clazz)) {
-            throw new RegisterDuplicateException(String.format("class [%s] already registered", clazz.getName()));
-        }
 
-        allExtensionPointClasses.add(clazz);
+        synchronized (allExtensionPointClasses) {
+            if (allExtensionPointClasses.contains(clazz)) {
+                throw new RegisterDuplicateException(String.format("class [%s] already registered", clazz.getName()));
+            }
+            allExtensionPointClasses.add(clazz);
+        }
 
         if (enableLogger) {
             logger.info("{} register extension point class: [{}]", LOG_PREFIX, clazz.getSimpleName());
@@ -166,7 +194,12 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
 
         List<Class<?>> mustImplementExtensionPoints = instance.implementExtensionPoints();
-        List<Class<?>> notImplementClasses = allExtensionPointClasses.stream().filter(clazz -> !mustImplementExtensionPoints.contains(clazz)).toList();
+        List<Class<?>> notImplementClasses;
+        synchronized (allExtensionPointClasses) {
+            notImplementClasses = allExtensionPointClasses.stream()
+                    .filter(clazz -> !mustImplementExtensionPoints.contains(clazz))
+                    .toList();
+        }
         if (!notImplementClasses.isEmpty()) {
             throw new RegisterParamException(String.format("extension point default implementation should implement all extension point, but in fact, it has not implement [%s]", notImplementClasses.stream().map(Class::getName).collect(Collectors.joining(", "))));
         }
@@ -254,7 +287,9 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public List<Class<?>> listAllExtensionPoint() {
-        return allExtensionPointClasses.stream().toList();
+        synchronized (allExtensionPointClasses) {
+            return List.copyOf(allExtensionPointClasses);
+        }
     }
 
     @Override
@@ -279,56 +314,48 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public void initSession(T param) throws SessionException {
-        long startTime = System.currentTimeMillis();
-
-        // Warn if session already initialized (non-idempotent usage)
-        if (session.hasScopedSession(EASY_EXTENSION_DEFAULT_SCOPE)) {
-            if (enableLogger) {
-                logger.warn("{} session already initialized, this call will override previous session data", LOG_PREFIX);
-            }
-        }
-
-        session.removeScopedSession(EASY_EXTENSION_DEFAULT_SCOPE);
-
-        if (enableLogger) {
-            logger.info("{} session init start", LOG_PREFIX);
-        }
-
-        Map<String, Integer> codePriorityMap = resolveMatchedCodeAndPriority(EASY_EXTENSION_DEFAULT_SCOPE, param, startTime);
-        for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
-            session.setScopedMatchedCode(EASY_EXTENSION_DEFAULT_SCOPE, entry.getKey(), entry.getValue());
-        }
-
-        if (enableLogger) {
-            logger.info("{} session init completed, time cost: [{} ms]", LOG_PREFIX, System.currentTimeMillis() - startTime);
-        }
+        initSession(EASY_EXTENSION_DEFAULT_SCOPE, param);
     }
 
     @Override
-    public void initScopedSession(String scope, T param) throws SessionException {
+    public void initSession(String scope, T param) throws SessionException {
         if (scope == null) {
             throw new SessionParamException("scope should not be null");
         }
-
         long startTime = System.currentTimeMillis();
+        boolean defaultScope = EASY_EXTENSION_DEFAULT_SCOPE.equals(scope);
+
+        if (defaultScope && session.hasScopedSession(EASY_EXTENSION_DEFAULT_SCOPE) && enableLogger) {
+            logger.warn("{} session already initialized, this call will override previous session data", LOG_PREFIX);
+        }
         session.removeScopedSession(scope);
 
         if (enableLogger) {
-            logger.info("{} session with scope: [{}], init start", LOG_PREFIX, scope);
+            if (defaultScope) {
+                logger.info("{} session init start", LOG_PREFIX);
+            } else {
+                logger.info("{} session with scope: [{}], init start", LOG_PREFIX, scope);
+            }
         }
 
         Map<String, Integer> codePriorityMap;
         try {
             codePriorityMap = resolveMatchedCodeAndPriority(scope, param, startTime);
         } catch (SessionException e) {
+            if (defaultScope) throw e;
             throw new SessionException(String.format("scope [%s], %s", scope, e.getMessage()), e);
         }
-
         for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
             session.setScopedMatchedCode(scope, entry.getKey(), entry.getValue());
         }
+
         if (enableLogger) {
-            logger.info("{} session with scope: [{}], init completed, time cost: [{} ms]", LOG_PREFIX, scope, System.currentTimeMillis() - startTime);
+            long cost = System.currentTimeMillis() - startTime;
+            if (defaultScope) {
+                logger.info("{} session init completed, time cost: [{} ms]", LOG_PREFIX, cost);
+            } else {
+                logger.info("{} session with scope: [{}], init completed, time cost: [{} ms]", LOG_PREFIX, scope, cost);
+            }
         }
     }
 
@@ -336,68 +363,103 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * Resolve matched codes and priorities, and build a structured trace.
      */
     private Map<String, Integer> resolveMatchedCodeAndPriority(String scope, T param, long startTime) throws SessionException {
-        String scopePrefix = Objects.equals(scope, EASY_EXTENSION_DEFAULT_SCOPE) ? "init session" : "init session with scope: [%s],".formatted(scope);
+        String scopePrefix = Objects.equals(scope, EASY_EXTENSION_DEFAULT_SCOPE)
+                ? "init session"
+                : "init session with scope: [%s],".formatted(scope);
 
         Map<String, Integer> codePriorityMap = new HashMap<>();
         ResolveTrace.Builder traceBuilder = ResolveTrace.builder(scope);
 
-        List<IBusiness<T>> matchedBusinesses = new ArrayList<>();
-        for (IBusiness<T> business : businessManager.listAllBusinesses()) {
-            if (business.match(param)) {
-                matchedBusinesses.add(business);
-            }
-        }
-
-        if (matchBusinessStrict) {
-            if (matchedBusinesses.isEmpty()) {
-                throw new SessionException("no business matched");
-            }
-            if (matchedBusinesses.size() > 1) {
-                List<String> codes = matchedBusinesses.stream().map(IBusiness::code).toList();
-                throw new SessionException(String.format("multiple business found, matched business codes: [%s]", String.join(", ", codes)));
-            }
-        }
-
-        // Select the best matched business: use businessMatchOrder config if available
-        IBusiness<T> matchedBusiness = selectBestMatchedBusiness(matchedBusinesses);
+        List<IBusiness<T>> matchedBusinesses = findMatchedBusinesses(param);
+        enforceStrictBusinessMatching(matchedBusinesses);
+        IBusiness<T> matchedBusiness = matchedBusinesses.isEmpty()
+                ? null
+                : businessMatchSelector.select(matchedBusinesses, param);
 
         if (matchedBusiness != null) {
-            if (enableLogger) {
-                logger.info("{} {} match business: [{}], priority: [{}]", LOG_PREFIX, scopePrefix, matchedBusiness.code(), matchedBusiness.priority());
-            }
-
-            codePriorityMap.put(matchedBusiness.code(), matchedBusiness.priority());
-            traceBuilder.matchedBusiness(matchedBusiness.code(), matchedBusiness.priority());
-
-            for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
-                IAbility<T> ability;
-                try {
-                    ability = abilityManager.getAbility(usedAbility.code());
-                } catch (QueryException e) {
-                    throw new SessionException(String.format("business [%s] used ability [%s] not found", matchedBusiness.code(), usedAbility.code()));
-                }
-                if (ability.match(param)) {
-                    codePriorityMap.put(ability.code(), usedAbility.priority());
-                    if (enableLogger) {
-                        logger.info("{} {} match ability: [{}], priority: [{}]", LOG_PREFIX, scopePrefix, usedAbility.code(), usedAbility.priority());
-                    }
-                    traceBuilder.abilityMatched(ability.code(), usedAbility.priority());
-                } else {
-                    traceBuilder.abilitySkipped(ability.code(), usedAbility.priority(), "ability.match() returned false");
-                }
-            }
+            recordMatchedBusiness(matchedBusiness, codePriorityMap, traceBuilder, scopePrefix);
+            resolveMatchedAbilities(matchedBusiness, param, codePriorityMap, traceBuilder, scopePrefix);
         }
 
-        codePriorityMap.put(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
-        traceBuilder.defaultImpl(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
-        if (enableLogger) {
-            logger.info("{} {} match extension point default implementation: [{}], priority: [{}]", LOG_PREFIX, scopePrefix, extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
-        }
+        recordDefaultImplementation(codePriorityMap, traceBuilder, scopePrefix);
 
         traceBuilder.costMillis(System.currentTimeMillis() - startTime);
         lastResolveTrace.set(traceBuilder.build());
-
         return codePriorityMap;
+    }
+
+    private List<IBusiness<T>> findMatchedBusinesses(T param) {
+        List<IBusiness<T>> matched = new ArrayList<>();
+        for (IBusiness<T> business : businessManager.listAllBusinesses()) {
+            if (business.match(param)) {
+                matched.add(business);
+            }
+        }
+        return matched;
+    }
+
+    private void enforceStrictBusinessMatching(List<IBusiness<T>> matchedBusinesses) throws SessionException {
+        if (!matchBusinessStrict) {
+            return;
+        }
+        if (matchedBusinesses.isEmpty()) {
+            throw new SessionException("no business matched");
+        }
+        if (matchedBusinesses.size() > 1) {
+            List<String> codes = matchedBusinesses.stream().map(IBusiness::code).toList();
+            throw new SessionException(String.format(
+                    "multiple business found, matched business codes: [%s]", String.join(", ", codes)));
+        }
+    }
+
+    private void recordMatchedBusiness(IBusiness<T> business, Map<String, Integer> codePriorityMap,
+                                       ResolveTrace.Builder traceBuilder, String scopePrefix) {
+        if (enableLogger) {
+            logger.info("{} {} match business: [{}], priority: [{}]",
+                    LOG_PREFIX, scopePrefix, business.code(), business.priority());
+        }
+        codePriorityMap.put(business.code(), business.priority());
+        traceBuilder.matchedBusiness(business.code(), business.priority());
+    }
+
+    private void resolveMatchedAbilities(IBusiness<T> matchedBusiness, T param,
+                                         Map<String, Integer> codePriorityMap,
+                                         ResolveTrace.Builder traceBuilder,
+                                         String scopePrefix) throws SessionException {
+        for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
+            IAbility<T> ability;
+            try {
+                ability = abilityManager.getAbility(usedAbility.code());
+            } catch (QueryException e) {
+                throw new SessionException(String.format(
+                        "business [%s] used ability [%s] not found",
+                        matchedBusiness.code(), usedAbility.code()));
+            }
+            if (ability.match(param)) {
+                codePriorityMap.put(ability.code(), usedAbility.priority());
+                if (enableLogger) {
+                    logger.info("{} {} match ability: [{}], priority: [{}]",
+                            LOG_PREFIX, scopePrefix, usedAbility.code(), usedAbility.priority());
+                }
+                traceBuilder.abilityMatched(ability.code(), usedAbility.priority());
+            } else {
+                traceBuilder.abilitySkipped(ability.code(), usedAbility.priority(),
+                        "ability.match() returned false");
+            }
+        }
+    }
+
+    private void recordDefaultImplementation(Map<String, Integer> codePriorityMap,
+                                             ResolveTrace.Builder traceBuilder,
+                                             String scopePrefix) {
+        codePriorityMap.put(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
+        traceBuilder.defaultImpl(extensionPointDefaultImplementation.code(), extensionPointDefaultImplementation.priority());
+        if (enableLogger) {
+            logger.info("{} {} match extension point default implementation: [{}], priority: [{}]",
+                    LOG_PREFIX, scopePrefix,
+                    extensionPointDefaultImplementation.code(),
+                    extensionPointDefaultImplementation.priority());
+        }
     }
 
     /**
@@ -439,31 +501,6 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         }
     }
 
-    /**
-     * Select the best matched business based on businessMatchOrder config.
-     * If config is empty, returns the first matched (registration order).
-     */
-    private IBusiness<T> selectBestMatchedBusiness(List<IBusiness<T>> matchedBusinesses) {
-        if (matchedBusinesses.isEmpty()) {
-            return null;
-        }
-        if (matchedBusinesses.size() == 1 || businessMatchOrder.isEmpty()) {
-            return matchedBusinesses.get(0);
-        }
-        // Find the business with the lowest position in businessMatchOrder
-        IBusiness<T> best = null;
-        int bestPos = Integer.MAX_VALUE;
-        for (IBusiness<T> business : matchedBusinesses) {
-            int pos = businessMatchOrder.indexOf(business.code());
-            if (pos >= 0 && pos < bestPos) {
-                bestPos = pos;
-                best = business;
-            }
-        }
-        // If no matched business is in the order list, fall back to first matched
-        return best != null ? best : matchedBusinesses.get(0);
-    }
-
     @Override
     public void removeSession() {
         session.removeAllSession();
@@ -479,52 +516,111 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     }
 
     @Override
-    public <E> E getFirstMatchedExtension(Class<E> extensionType) throws QueryException {
-        List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
-        if (enableLogger) {
-            logger.info("{} get first matched Extension<{}>, all candidate codes: [{}]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes));
+    public <E> ExtensionExplanation<E> explain(Class<E> extensionPointType) {
+        return explainScoped(EASY_EXTENSION_DEFAULT_SCOPE, extensionPointType);
+    }
+
+    @Override
+    public <E> ExtensionExplanation<E> explainScoped(String scope, Class<E> extensionPointType) {
+        if (extensionPointType == null) {
+            throw new IllegalArgumentException("extensionPointType should not be null");
         }
-        return getFirstMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
+        if (scope == null) {
+            throw new IllegalArgumentException("scope should not be null");
+        }
+
+        ResolveTrace trace = lastResolveTrace.get();
+        List<ResolveTrace.ResolutionEntry> chain = trace != null && Objects.equals(trace.getScope(), scope)
+                ? trace.getResolutionChain()
+                : List.of();
+
+        List<ExtensionExplanation.Candidate> candidates = new ArrayList<>(chain.size());
+        ExtensionExplanation.Candidate selected = null;
+        for (ResolveTrace.ResolutionEntry entry : chain) {
+            Class<?> implClass = null;
+            boolean implemented = false;
+            try {
+                E instance = extensionPointGroupImplementationManager
+                        .getExtensionPointImplementationInstance(extensionPointType, entry.code());
+                if (instance != null) {
+                    implemented = true;
+                    implClass = instance instanceof IProxy<?> p
+                            ? p.getInstance().getClass()
+                            : instance.getClass();
+                }
+            } catch (QueryException ignored) {
+                // not implemented for this type; keep implemented=false
+            }
+            ExtensionExplanation.Candidate c = new ExtensionExplanation.Candidate(
+                    entry.code(), entry.priority(), entry.type(), implClass, implemented);
+            candidates.add(c);
+            if (selected == null && implemented) {
+                selected = c;
+            }
+        }
+        return new ExtensionExplanation<>(extensionPointType, scope, candidates, selected);
+    }
+
+    @Override
+    public <E> E getFirstMatchedExtension(Class<E> extensionType) throws QueryException {
+        return getFirstMatchedExtension(EASY_EXTENSION_DEFAULT_SCOPE, extensionType);
     }
 
     @Override
     public <E> List<E> getAllMatchedExtension(Class<E> extensionType) throws QueryException {
-        List<String> matchedCodes = getScopedAllMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE);
-        if (enableLogger) {
-            logger.info("{} get all matched Extension<{}>, all candidate codes: [{}]", LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes));
-        }
-        return getAllMatchedExtensionByMatchedCodes(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, matchedCodes);
+        return getAllMatchedExtension(EASY_EXTENSION_DEFAULT_SCOPE, extensionType);
     }
 
     @Override
-    public <E> E getScopedFirstMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
+    public <E> E getFirstMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
+        if (scope == null) {
+            throw new QueryNotFoundException("scope should not be null");
+        }
+        boolean defaultScope = EASY_EXTENSION_DEFAULT_SCOPE.equals(scope);
         List<String> matchedCodes = getScopedAllMatchedCodes(scope);
         if (enableLogger) {
-            logger.info("{} get first matched Extension<{}> with scope: [{}], all candidate codes:[{}]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes));
+            if (defaultScope) {
+                logger.info("{} get first matched Extension<{}>, all candidate codes: [{}]",
+                        LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes));
+            } else {
+                logger.info("{} get first matched Extension<{}> with scope: [{}], all candidate codes: [{}]",
+                        LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes));
+            }
         }
-
-        E extension;
         try {
-            extension = getFirstMatchedExtensionByMatchedCodes(scope, extensionType, matchedCodes);
+            return getFirstMatchedExtensionByMatchedCodes(scope, extensionType, matchedCodes);
         } catch (QueryException e) {
-            throw new QueryException(String.format("get first matched Extension<%s> with scope: [%s] failed", extensionType.getSimpleName(), scope), e);
+            if (defaultScope) throw e;
+            throw new QueryException(String.format(
+                    "get first matched Extension<%s> with scope: [%s] failed",
+                    extensionType.getSimpleName(), scope), e);
         }
-        return extension;
     }
 
-    public <E> List<E> getScopedAllMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
+    @Override
+    public <E> List<E> getAllMatchedExtension(String scope, Class<E> extensionType) throws QueryException {
+        if (scope == null) {
+            throw new QueryNotFoundException("scope should not be null");
+        }
+        boolean defaultScope = EASY_EXTENSION_DEFAULT_SCOPE.equals(scope);
         List<String> matchedCodes = getScopedAllMatchedCodes(scope);
         if (enableLogger) {
-            logger.info("{} get all matched Extension<{}> with scope: [{}], all candidate codes:[{}]", LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes));
+            if (defaultScope) {
+                logger.info("{} get all matched Extension<{}>, all candidate codes: [{}]",
+                        LOG_PREFIX, extensionType.getSimpleName(), String.join(" > ", matchedCodes));
+            } else {
+                logger.info("{} get all matched Extension<{}> with scope: [{}], all candidate codes: [{}]",
+                        LOG_PREFIX, extensionType.getSimpleName(), scope, String.join(" > ", matchedCodes));
+            }
         }
-
-        List<E> extensions;
         try {
-            extensions = getAllMatchedExtensionByMatchedCodes(scope, extensionType, matchedCodes);
+            return getAllMatchedExtensionByMatchedCodes(scope, extensionType, matchedCodes);
         } catch (QueryException e) {
-            throw new QueryException(String.format("get all matched Extension<%s> with scope: [%s] failed", extensionType.getSimpleName(), scope), e);
+            if (defaultScope) throw e;
+            throw new QueryException(String.format(
+                    "get all matched Extension<%s> with scope: [%s] failed",
+                    extensionType.getSimpleName(), scope), e);
         }
-        return extensions;
     }
 
     private <E> List<E> getAllMatchedExtensionByMatchedCodes(String scope, Class<E> extensionType, List<String> matchedCodes) throws QueryException {
@@ -580,65 +676,52 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
     @Override
     public <E, R> R invoke(Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
-        E extension;
-        try {
-            extension = getFirstMatchedExtension(extensionType);
-        } catch (QueryException e) {
-            throw new InvokeException("invoke failed, " + e.getMessage(), e);
-        }
-        return invoker.apply(extension);
+        return invoke(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, invoker);
     }
 
     @Override
     public <E, R> List<R> invokeAll(Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
-        List<E> extensions;
-        try {
-            extensions = getAllMatchedExtension(extensionType);
-        } catch (QueryException e) {
-            throw new InvokeException("invokeAll failed, " + e.getMessage(), e);
-        }
-        List<R> resList = new ArrayList<>();
-        for (E extension : extensions) {
-            R res = invoker.apply(extension);
-            resList.add(res);
-        }
-        return resList;
+        return invokeAll(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, invoker);
     }
 
     @Override
-    public <E, R> R scopedInvoke(String scope, Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
+    public <E, R> R invokeReduce(Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
+        return invokeReduce(EASY_EXTENSION_DEFAULT_SCOPE, extensionType, invoker, identity, accumulator);
+    }
+
+    @Override
+    public <E, R> R invoke(String scope, Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
         E extension;
         try {
-            extension = getScopedFirstMatchedExtension(scope, extensionType);
+            extension = getFirstMatchedExtension(scope, extensionType);
         } catch (QueryException e) {
-            throw new InvokeException("scope %s scopedInvoke failed, %s".formatted(scope, e.getMessage()), e);
+            throw new InvokeException(invokeErrorPrefix("invoke", scope) + e.getMessage(), e);
         }
         return invoker.apply(extension);
     }
 
     @Override
-    public <E, R> List<R> scopedInvokeAll(String scope, Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
+    public <E, R> List<R> invokeAll(String scope, Class<E> extensionType, Function<E, R> invoker) throws InvokeException {
         List<E> extensions;
         try {
-            extensions = getScopedAllMatchedExtension(scope, extensionType);
+            extensions = getAllMatchedExtension(scope, extensionType);
         } catch (QueryException e) {
-            throw new InvokeException("scope %s scopedInvokeAll failed, %s".formatted(scope, e.getMessage()), e);
+            throw new InvokeException(invokeErrorPrefix("invokeAll", scope) + e.getMessage(), e);
         }
         List<R> resList = new ArrayList<>();
         for (E extension : extensions) {
-            R res = invoker.apply(extension);
-            resList.add(res);
+            resList.add(invoker.apply(extension));
         }
         return resList;
     }
 
     @Override
-    public <E, R> R invokeReduce(Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
+    public <E, R> R invokeReduce(String scope, Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
         List<E> extensions;
         try {
-            extensions = getAllMatchedExtension(extensionType);
+            extensions = getAllMatchedExtension(scope, extensionType);
         } catch (QueryException e) {
-            throw new InvokeException("invokeReduce failed, " + e.getMessage(), e);
+            throw new InvokeException(invokeErrorPrefix("invokeReduce", scope) + e.getMessage(), e);
         }
         R result = identity;
         for (E extension : extensions) {
@@ -647,18 +730,9 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         return result;
     }
 
-    @Override
-    public <E, R> R scopedInvokeReduce(String scope, Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
-        List<E> extensions;
-        try {
-            extensions = getScopedAllMatchedExtension(scope, extensionType);
-        } catch (QueryException e) {
-            throw new InvokeException("scope %s scopedInvokeReduce failed, %s".formatted(scope, e.getMessage()), e);
-        }
-        R result = identity;
-        for (E extension : extensions) {
-            result = accumulator.apply(result, invoker.apply(extension));
-        }
-        return result;
+    private static String invokeErrorPrefix(String op, String scope) {
+        return EASY_EXTENSION_DEFAULT_SCOPE.equals(scope)
+                ? op + " failed, "
+                : "scope " + scope + " " + op + " failed, ";
     }
 }
