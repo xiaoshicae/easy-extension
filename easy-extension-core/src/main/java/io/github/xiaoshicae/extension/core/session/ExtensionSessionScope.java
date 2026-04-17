@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  * worker threads indefinitely. Prefer this helper for all non-Servlet code.
  * </p>
  *
- * <h3>Usage</h3>
+ * <h2>Usage</h2>
  * <pre>{@code
  * // Lambda style — recommended
  * var result = ExtensionSessionScope.run(ctx, param, () -> service.handle());
