@@ -27,6 +27,7 @@ public class MetadataJsonReader {
     private static final String METADATA_PATTERN = "classpath*:" + METADATA_RESOURCE;
 
     private Map<String, MetadataEntry> entries = Map.of();
+    private ClassLoader loader;
 
     /**
      * 从 classpath 加载所有 metadata.json 文件。
@@ -54,12 +55,26 @@ public class MetadataJsonReader {
             loadViaClassLoaders(result);
         }
 
+        // 记住首次加载时的 ClassLoader，供后续 reload() 使用，避免 ClassLoader 不一致导致条目丢失
+        if (this.loader == null) {
+            this.loader = Thread.currentThread().getContextClassLoader();
+        }
+
         this.entries = result;
         if (!result.isEmpty()) {
             logger.info("Loaded {} class metadata entries from easy-extension metadata.json", result.size());
         } else {
             logger.info("No easy-extension metadata.json found on classpath");
         }
+    }
+
+    /**
+     * 使用初始加载时相同的 ClassLoader 重新加载 metadata.json。
+     * 在缓存刷新时调用，避免因 ClassLoader 不一致导致已加载的条目丢失。
+     */
+    public void reload() {
+        ClassLoader cl = this.loader != null ? this.loader : MetadataJsonReader.class.getClassLoader();
+        load(new PathMatchingResourcePatternResolver(cl));
     }
 
     private void loadViaClassLoaders(Map<String, MetadataEntry> result) {
