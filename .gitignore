@@ -83,6 +83,6 @@ build
 
 dist/
 
-# Claude Code
-.claude/
+# Claude Code (项目级配置进 git,个人本地授权不进)
+.claude/settings.local.json
 .playwright-mcp/

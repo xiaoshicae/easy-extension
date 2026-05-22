@@ -1,0 +1,38 @@
+#!/bin/bash
+# pre-push: 强制 push 经由 /push skill (设置 CLAUDE_PUSH=1)
+#
+# /push skill 会做: 编译 + 全量测试 + 安全扫描 + 公共 API 兼容性 + 规范审查
+# 这是 SDK / Maven Central 项目的关键防线
+
+set -uo pipefail
+
+if [ "${CLAUDE_PUSH:-}" = "1" ]; then
+  exit 0
+fi
+
+# 读取 push 内容(git pre-push 通过 stdin 传入 ref / sha 信息)
+PUSH_REFS=$(cat - 2>/dev/null || true)
+
+REMOTE="${1:-}"
+URL="${2:-}"
+
+cat >&2 <<EOF
+[pre-push] 拒绝: 请经由 /push skill 推送
+
+将推送到: $REMOTE ($URL)
+$(echo "$PUSH_REFS" | head -3)
+
+合法路径:
+  - AI / 标准推送: 让 Claude 跑 /push
+  - 用户本人手动: CLAUDE_PUSH=1 git push
+  - 线上紧急修复: /hotfix (保留物理强制,跳过质量门禁)
+
+/push 会做:
+  - mvn compile + test (跨模块)
+  - 安全扫描 (硬编码密钥/凭证)
+  - 公共 API 兼容性检查 (对比 git tag)
+  - 多模块版本一致性
+
+如不想要这个保护,删除本文件或 git config --unset core.hooksPath
+EOF
+exit 1

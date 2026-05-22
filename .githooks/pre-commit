@@ -1,0 +1,25 @@
+#!/bin/bash
+# pre-commit: 强制 commit 经由 /commit skill (设置 CLAUDE_COMMIT=1)
+#
+# 启用方式: git config core.hooksPath .githooks
+# 紧急绕过:
+#   - 用户本人: CLAUDE_COMMIT=1 git commit -m "..."  或  git commit --no-verify
+#   - AI: 走 /hotfix skill (--no-verify 在 AI 那边被 PreToolUse hook 拦截)
+
+set -uo pipefail
+
+if [ "${CLAUDE_COMMIT:-}" = "1" ]; then
+  exit 0
+fi
+
+cat >&2 <<'EOF'
+[pre-commit] 拒绝: 请经由 /commit skill 提交 (它会做编译 + 扫密钥 + 静态检查)
+
+合法路径:
+  - AI / 标准提交: 让 Claude 跑 /commit
+  - 用户本人手动: CLAUDE_COMMIT=1 git commit -m "..."
+  - 紧急绕过(用户): git commit --no-verify
+
+如不想要这个保护,删除本文件或 git config --unset core.hooksPath
+EOF
+exit 1
