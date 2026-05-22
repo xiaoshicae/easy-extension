@@ -19,8 +19,11 @@ import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +48,11 @@ public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
 
     static final String OUTPUT_PATH = "META-INF/easy-extension/metadata.json";
     static final String METADATA_VERSION = "1.0";
+
+    private static final int MAX_WALK_DEPTH = 12;
+    private static final String[] SRC_ROOTS = {"src/main/java", "src/main/kotlin", "src"};
+    private static final Set<String> PROJECT_ROOT_MARKERS = Set.of(
+            "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts");
 
     private final List<ClassMetadata> collectedMetadata = new ArrayList<>();
     private boolean written = false;
@@ -72,7 +80,7 @@ public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
         }
 
         if (roundEnv.processingOver()) {
-            if (!collectedMetadata.isEmpty() && !written) {
+            if (!written) {
                 writeMetadataFile();
                 written = true;
             }
@@ -114,21 +122,107 @@ public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
     }
 
     private String extractSourceCode(TypeElement typeElement) {
-        if (trees == null) {
-            return "";
+        // Step 1: Trees API (javac only — full original source with comments & formatting)
+        if (trees != null) {
+            try {
+                TreePath path = trees.getPath(typeElement);
+                if (path != null) {
+                    CompilationUnitTree cu = path.getCompilationUnit();
+                    return cu.getSourceFile().getCharContent(true).toString();
+                }
+            } catch (Exception e) {
+                // fall through
+            }
         }
-        try {
-            TreePath path = trees.getPath(typeElement);
-            if (path == null) return "";
 
-            CompilationUnitTree cu = path.getCompilationUnit();
-            CharSequence source = cu.getSourceFile().getCharContent(true);
-            return source.toString();
+        String qualifiedName = typeElement.getQualifiedName().toString();
+        String relativePath = qualifiedName.replace('.', '/') + ".java";
+
+        // Step 2: Walk up from CWD (bounded; stops at project root marker)
+        String content = walkUpForSource(Path.of("").toAbsolutePath(), relativePath);
+        if (content != null) return content;
+
+        // Step 3: Scan CWD's first-level subdirectories — typical multi-module case
+        content = scanSubdirsForSource(Path.of("").toAbsolutePath(), relativePath);
+        if (content != null) return content;
+
+        // Step 4: Walk up from CLASS_OUTPUT (e.g., target/classes, build/classes/java/main)
+        Path classOutput = resolveClassOutputDir();
+        if (classOutput != null) {
+            content = walkUpForSource(classOutput, relativePath);
+            if (content != null) return content;
+        }
+
+        // Step 5: Source not found — runtime will attempt file system fallback
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                "[easy-extension] Source file not found for " + qualifiedName
+                        + " — runtime will attempt file system lookup");
+        return "";
+    }
+
+    private String walkUpForSource(Path start, String relativePath) {
+        Path dir = start;
+        for (int depth = 0; dir != null && depth < MAX_WALK_DEPTH; depth++) {
+            String content = tryReadSource(dir, relativePath);
+            if (content != null) return content;
+            // Stop walking past a project root to avoid leaking into unrelated parent directories.
+            if (hasProjectRootMarker(dir)) break;
+            dir = dir.getParent();
+        }
+        return null;
+    }
+
+    private String scanSubdirsForSource(Path baseDir, String relativePath) {
+        try (var entries = Files.newDirectoryStream(baseDir)) {
+            for (Path entry : entries) {
+                if (Files.isDirectory(entry)) {
+                    String content = tryReadSource(entry, relativePath);
+                    if (content != null) return content;
+                }
+            }
         } catch (Exception e) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                    "[easy-extension] Could not read source for " + typeElement.getQualifiedName()
-                            + ": " + e.getMessage());
-            return "";
+            // ignore
+        }
+        return null;
+    }
+
+    private boolean hasProjectRootMarker(Path dir) {
+        for (String marker : PROJECT_ROOT_MARKERS) {
+            if (Files.exists(dir.resolve(marker))) return true;
+        }
+        return false;
+    }
+
+    private String tryReadSource(Path baseDir, String relativePath) {
+        for (String srcRoot : SRC_ROOTS) {
+            Path srcFile = baseDir.resolve(srcRoot).resolve(relativePath);
+            if (Files.exists(srcFile)) {
+                try {
+                    return Files.readString(srcFile);
+                } catch (Exception e) {
+                    // skip
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Derive the CLASS_OUTPUT directory by asking Filer for the URI of where our
+     * own output resource would live, then trimming the {@link #OUTPUT_PATH} suffix.
+     * Avoids creating/deleting a probe resource.
+     */
+    private Path resolveClassOutputDir() {
+        try {
+            FileObject probe = processingEnv.getFiler().getResource(
+                    StandardLocation.CLASS_OUTPUT, "", OUTPUT_PATH);
+            Path metadataPath = Path.of(probe.toUri());
+            // OUTPUT_PATH = "META-INF/easy-extension/metadata.json" — strip 3 segments
+            Path p = metadataPath.getParent();
+            for (int i = 0; i < 2 && p != null; i++) p = p.getParent();
+            return p;
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -163,7 +257,54 @@ public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
     }
 
     private void writeMetadataFile() {
-        String json = JsonWriter.toJson(METADATA_VERSION, Instant.now().toString(), collectedMetadata);
+        Map<String, OldEntry> oldEntries = readOldEntries();
+        int mergedSources = 0;
+        int emptyAfterMerge = 0;
+
+        // Step 1: For current entries with empty sourceCode, reuse sourceCode from old file
+        // (handles IDEA incremental builds where Trees API misses sources).
+        for (int i = 0; i < collectedMetadata.size(); i++) {
+            ClassMetadata m = collectedMetadata.get(i);
+            if (m.sourceCode().isEmpty()) {
+                OldEntry old = oldEntries.get(m.qualifiedName());
+                if (old != null && !old.sourceCode().isEmpty()) {
+                    collectedMetadata.set(i, new ClassMetadata(
+                            m.className(), m.qualifiedName(), m.annotationType(),
+                            old.sourceCode(), m.javadoc(), m.annotationAttributes()));
+                    mergedSources++;
+                } else {
+                    emptyAfterMerge++;
+                }
+            }
+        }
+
+        // Step 2: Preserve entries from the old file that aren't being re-processed in this build
+        // (incremental builds may only recompile a subset of @ExtensionPoint classes; without this,
+        // those untouched entries would be silently dropped).
+        Set<String> currentNames = new HashSet<>();
+        for (ClassMetadata m : collectedMetadata) currentNames.add(m.qualifiedName());
+        List<String> preservedRaw = new ArrayList<>();
+        for (OldEntry old : oldEntries.values()) {
+            if (!currentNames.contains(old.qualifiedName())) {
+                preservedRaw.add(old.rawJson());
+            }
+        }
+
+        int totalEntries = collectedMetadata.size() + preservedRaw.size();
+        if (totalEntries == 0) {
+            // Nothing to write and nothing to preserve — leave any existing file alone.
+            return;
+        }
+
+        if (mergedSources > 0 || !preservedRaw.isEmpty() || emptyAfterMerge > 0) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                    "[easy-extension] metadata.json merge: current=" + collectedMetadata.size()
+                            + ", mergedFromOld=" + mergedSources
+                            + ", preservedFromOld=" + preservedRaw.size()
+                            + ", emptySources=" + emptyAfterMerge);
+        }
+
+        String json = buildJson(collectedMetadata, preservedRaw);
 
         try {
             FileObject resource = processingEnv.getFiler().createResource(
@@ -172,10 +313,115 @@ public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
                 writer.write(json);
             }
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                    "[easy-extension] Generated " + OUTPUT_PATH + " with " + collectedMetadata.size() + " entries");
+                    "[easy-extension] Generated " + OUTPUT_PATH + " (" + totalEntries + " entries)");
         } catch (IOException e) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                     "[easy-extension] Failed to write " + OUTPUT_PATH + ": " + e.getMessage());
         }
+    }
+
+    private String buildJson(List<ClassMetadata> current, List<String> preservedRaw) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("  \"version\": ").append(JsonWriter.quote(METADATA_VERSION)).append(",\n");
+        sb.append("  \"generatedAt\": ").append(JsonWriter.quote(Instant.now().toString())).append(",\n");
+        sb.append("  \"classes\": [\n");
+        int total = current.size() + preservedRaw.size();
+        int idx = 0;
+        for (ClassMetadata m : current) {
+            JsonWriter.writeClassMetadata(sb, m, "    ");
+            idx++;
+            if (idx < total) sb.append(",");
+            sb.append("\n");
+        }
+        for (String raw : preservedRaw) {
+            sb.append("    ").append(raw);
+            idx++;
+            if (idx < total) sb.append(",");
+            sb.append("\n");
+        }
+        sb.append("  ]\n");
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private Map<String, OldEntry> readOldEntries() {
+        Map<String, OldEntry> result = new LinkedHashMap<>();
+        try {
+            FileObject existing = processingEnv.getFiler().getResource(
+                    StandardLocation.CLASS_OUTPUT, "", OUTPUT_PATH);
+            String content = existing.getCharContent(true).toString();
+            int classesStart = content.indexOf("\"classes\"");
+            if (classesStart < 0) return result;
+            int arrayStart = content.indexOf('[', classesStart);
+            if (arrayStart < 0) return result;
+            int pos = arrayStart + 1;
+            while (pos < content.length()) {
+                int objStart = content.indexOf('{', pos);
+                if (objStart < 0) break;
+                int objEnd = findMatchingBrace(content, objStart);
+                if (objEnd < 0) break;
+                String obj = content.substring(objStart, objEnd + 1);
+                String qn = extractJsonString(obj, "qualifiedName");
+                if (qn != null && !qn.isEmpty()) {
+                    String sc = extractJsonString(obj, "sourceCode");
+                    result.put(qn, new OldEntry(qn, sc != null ? sc : "", obj));
+                }
+                pos = objEnd + 1;
+            }
+        } catch (Exception e) {
+            // No existing metadata.json or can't read it — that's fine
+        }
+        return result;
+    }
+
+    private static int findMatchingBrace(String json, int startPos) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escape = false;
+        for (int i = startPos; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (escape) { escape = false; continue; }
+            if (c == '\\' && inString) { escape = true; continue; }
+            if (c == '"') { inString = !inString; continue; }
+            if (inString) continue;
+            if (c == '{') depth++;
+            else if (c == '}') { depth--; if (depth == 0) return i; }
+        }
+        return -1;
+    }
+
+    private static String extractJsonString(String obj, String key) {
+        String search = "\"" + key + "\"";
+        int keyPos = obj.indexOf(search);
+        if (keyPos < 0) return null;
+        int colonPos = obj.indexOf(':', keyPos + search.length());
+        if (colonPos < 0) return null;
+        int valueStart = obj.indexOf('"', colonPos + 1);
+        if (valueStart < 0) return null;
+        StringBuilder sb = new StringBuilder();
+        boolean escape = false;
+        for (int i = valueStart + 1; i < obj.length(); i++) {
+            char c = obj.charAt(i);
+            if (escape) {
+                switch (c) {
+                    case '"' -> sb.append('"');
+                    case '\\' -> sb.append('\\');
+                    case 'n' -> sb.append('\n');
+                    case 'r' -> sb.append('\r');
+                    case 't' -> sb.append('\t');
+                    default -> sb.append(c);
+                }
+                escape = false;
+                continue;
+            }
+            if (c == '\\') { escape = true; continue; }
+            if (c == '"') break;
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    private record OldEntry(String qualifiedName, String sourceCode, String rawJson) {
     }
 }

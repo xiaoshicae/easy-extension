@@ -27,7 +27,7 @@ public final class JsonWriter {
         return sb.toString();
     }
 
-    private static void writeClassMetadata(StringBuilder sb, ClassMetadata m, String indent) {
+    static void writeClassMetadata(StringBuilder sb, ClassMetadata m, String indent) {
         sb.append(indent).append("{\n");
         sb.append(indent).append("  \"className\": ").append(quote(m.className())).append(",\n");
         sb.append(indent).append("  \"qualifiedName\": ").append(quote(m.qualifiedName())).append(",\n");

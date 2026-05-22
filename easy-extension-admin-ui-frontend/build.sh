@@ -4,6 +4,10 @@ set -e
 EASY_EXTENSION_ADMIN_UI_DIR='../easy-extension-admin-spring-boot-starter/src/main/resources/META-INF/resources/webjars/easy-extension-admin-ui'
 TARGET_DIR=${EASY_EXTENSION_ADMIN_UI_DIR}/latest
 
+echo "Installing dependencies..."
+
+npm install --legacy-peer-deps
+
 echo "Building ui to dist/* (will be copied to 'latest' directory)"
 
 npm run build
