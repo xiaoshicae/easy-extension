@@ -57,4 +57,18 @@ public @interface ExtensionPoint {
      * @return version number, starting from 1
      */
     int version() default 1;
+
+    /**
+     * Whether this extension point must be implemented by a business or an ability, with no default implementation.
+     * <p>
+     * An extension point that is not mandatory needs a default implementation (the fallback when nothing in the
+     * resolved chain implements it); {@code validateRegistration()} rejects the registry otherwise. A mandatory
+     * one is exempt: when nothing implements it, calling it fails with an error that says so, instead of being
+     * quietly served by a placeholder.
+     * </p>
+     *
+     * @return {@code true} if there is no sensible default and the implementation must come from a business or ability
+     * @since 3.4
+     */
+    boolean mandatory() default false;
 }

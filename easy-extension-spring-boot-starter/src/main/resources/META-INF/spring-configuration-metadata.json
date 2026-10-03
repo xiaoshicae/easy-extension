@@ -10,9 +10,21 @@
     {
       "name": "easy-extension.allow-unknown-business",
       "type": "java.lang.Boolean",
-      "description": "是否允许未知业务，当没有业务身份可以匹配时，如果不允许未知业务则请求报错，如果允许，则扩展点会走默认能力兜底 whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability.",
+      "description": "是否允许未知业务，当没有业务身份可以匹配时，如果不允许未知业务则请求报错，如果允许，则扩展点会走默认能力兜底。只在没有配置 unknown-business-policy / multi-match-policy 时生效：false 等于两者都是 reject，true 等于 default + select。 whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability. Only used for the policies that are not set explicitly: false means both are reject, true means default and select.",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
       "defaultValue": false
+    },
+    {
+      "name": "easy-extension.unknown-business-policy",
+      "type": "io.github.xiaoshicae.extension.core.business.UnknownBusinessPolicy",
+      "description": "没有任何业务匹配时怎么办：reject 请求报错（no business matched），default 走默认实现兜底。不配置时跟随 allow-unknown-business。 what to do when no business matches: reject fails the request (no business matched), default serves it with the default implementations. When not set, follows allow-unknown-business.",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties"
+    },
+    {
+      "name": "easy-extension.multi-match-policy",
+      "type": "io.github.xiaoshicae.extension.core.business.MultiMatchPolicy",
+      "description": "多个业务同时匹配时怎么办：reject 请求报错（multiple business found），select 由 business-match-order / BusinessMatchSelector 选一个（并打印一次 WARN）。不配置时跟随 allow-unknown-business。 what to do when several businesses match: reject fails the request (multiple business found), select lets business-match-order / BusinessMatchSelector pick one (and logs a WARN once per combination). When not set, follows allow-unknown-business.",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties"
     },
     {
       "name": "easy-extension.enable-log",

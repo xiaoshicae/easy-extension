@@ -23,6 +23,7 @@ public class ResolveTrace {
     private final List<AbilityTraceItem> abilities;
     private final String defaultImplCode;
     private final Integer defaultImplPriority;
+    private final List<ResolutionEntry> defaultImplementations;
     private final long costMillis;
 
     private ResolveTrace(Builder builder) {
@@ -32,6 +33,7 @@ public class ResolveTrace {
         this.abilities = Collections.unmodifiableList(builder.abilities);
         this.defaultImplCode = builder.defaultImplCode;
         this.defaultImplPriority = builder.defaultImplPriority;
+        this.defaultImplementations = Collections.unmodifiableList(new ArrayList<>(builder.defaultImplementations));
         this.costMillis = builder.costMillis;
     }
 
@@ -68,14 +70,16 @@ public class ResolveTrace {
     }
 
     /**
-     * Code of the default implementation (always present as fallback).
+     * Code of the default implementation, or null if none is registered
+     * (every extension point is then mandatory). When several are registered, the one registered first;
+     * {@link #getResolutionChain()} lists them all.
      */
     public String getDefaultImplCode() {
         return defaultImplCode;
     }
 
     /**
-     * Priority of the default implementation.
+     * Priority of the default implementation (see {@link #getDefaultImplCode()}).
      */
     public Integer getDefaultImplPriority() {
         return defaultImplPriority;
@@ -102,7 +106,7 @@ public class ResolveTrace {
                 chain.add(new ResolutionEntry(ability.code, ability.priority, EntryType.ABILITY));
             }
         }
-        chain.add(new ResolutionEntry(defaultImplCode, defaultImplPriority, EntryType.DEFAULT));
+        chain.addAll(defaultImplementations);
         // Sort by priority ascending (lowest number = highest priority)
         chain.sort((a, b) -> Integer.compare(a.priority(), b.priority()));
         return Collections.unmodifiableList(chain);
@@ -123,8 +127,14 @@ public class ResolveTrace {
             if (i > 0) sb.append(", ");
             sb.append(abilities.get(i));
         }
-        sb.append("], default=").append(defaultImplCode)
-          .append("(priority=").append(defaultImplPriority).append("), ");
+        sb.append("], default=");
+        if (defaultImplementations.isEmpty()) {
+            sb.append("none, ");
+        } else {
+            for (ResolutionEntry entry : defaultImplementations) {
+                sb.append(entry.code()).append("(priority=").append(entry.priority()).append("), ");
+            }
+        }
         sb.append("cost=").append(costMillis).append("ms}");
         return sb.toString();
     }
@@ -184,6 +194,7 @@ public class ResolveTrace {
         private final List<AbilityTraceItem> abilities = new ArrayList<>();
         private String defaultImplCode;
         private Integer defaultImplPriority;
+        private final List<ResolutionEntry> defaultImplementations = new ArrayList<>();
         private long costMillis;
 
         private Builder(String scope) {
@@ -206,9 +217,20 @@ public class ResolveTrace {
             return this;
         }
 
+        /**
+         * Record a default implementation that stands behind the matched ones. May be called once per default
+         * implementation; the first one is what {@link ResolveTrace#getDefaultImplCode()} reports.
+         *
+         * @param code     code of the default implementation
+         * @param priority its priority
+         * @return this builder
+         */
         public Builder defaultImpl(String code, Integer priority) {
-            this.defaultImplCode = code;
-            this.defaultImplPriority = priority;
+            if (this.defaultImplCode == null) {
+                this.defaultImplCode = code;
+                this.defaultImplPriority = priority;
+            }
+            this.defaultImplementations.add(new ResolutionEntry(code, priority, EntryType.DEFAULT));
             return this;
         }
 

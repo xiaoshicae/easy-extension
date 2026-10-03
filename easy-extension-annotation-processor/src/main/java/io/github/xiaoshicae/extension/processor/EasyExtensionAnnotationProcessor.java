@@ -7,7 +7,6 @@ import com.sun.source.tree.CompilationUnitTree;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
-import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -43,8 +42,17 @@ import java.util.Set;
         "io.github.xiaoshicae.extension.core.annotation.Business",
         "io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_21)
 public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
+
+    /**
+     * Follow whatever source level the invoking compiler supports. A hard-coded constant such as
+     * {@code RELEASE_21} makes the processor unloadable on older JDKs (the constant does not exist there)
+     * and emits warnings on newer ones.
+     */
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
+    }
 
     static final String OUTPUT_PATH = "META-INF/easy-extension/metadata.json";
     static final String METADATA_VERSION = "1.0";

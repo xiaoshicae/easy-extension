@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://central.sonatype.com/artifact/io.github.xiaoshicae/easy-extension-core"><img src="https://img.shields.io/maven-central/v/io.github.xiaoshicae/easy-extension-core?color=blue" alt="Maven Central"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License"></a>
-  <img src="https://img.shields.io/badge/JDK-21+-orange" alt="JDK 21+">
-  <img src="https://img.shields.io/badge/Spring%20Boot-3.x%20%7C%204.x-brightgreen" alt="Spring Boot">
+  <img src="https://img.shields.io/badge/JDK-17+-orange" alt="JDK 17+">
+  <img src="https://img.shields.io/badge/Spring%20Boot-3.5%20%7C%204.0-brightgreen" alt="Spring Boot">
 </p>
 
 <p align="center">
@@ -67,7 +67,7 @@ public class OrderController {
 - **扩展点 (Extension Point)** — 底层接口契约，规定"做什么"（如运费计算、订单校验）
 - **能力 (Ability)** — 通用的扩展点实现（如包邮、VIP券），可被多个业务复用
 - **业务 (Business)** — 接入方（如零售、生鲜），挂载需要的能力，也可直接实现扩展点
-- **默认实现 (Default Impl)** — 系统兜底实现，业务和能力均未覆盖时调用，保证扩展点永远可调用
+- **默认实现 (Default Impl)** — 系统兜底实现，业务和能力均未覆盖时调用，保证扩展点永远可调用。可以按领域拆成多个，各自负责自己实现的扩展点；没有合理默认值的扩展点标 `@ExtensionPoint(mandatory = true)`，由业务或能力必须提供
 
 > 运行时解析按优先级：**业务自身实现 → 业务挂载的能力 → 默认实现**
 
@@ -90,6 +90,9 @@ public class OrderController {
     <version>3.3.6</version>
 </dependency>
 ```
+
+> **兼容性**: JDK 17+，Spring Boot 3.5 与 4.0。CI 在 JDK 17 / 21 × Spring Boot 3.5 / 4.0 的组合上跑全量测试。
+> 扩展点实现类可以放心使用 `@Cacheable` / `@Transactional` / `@Async` 等 Spring AOP 增强，框架调用的就是被增强后的 Bean。
 
 ### 2. 定义扩展点
 
@@ -164,6 +167,9 @@ BigDecimal totalDiscount = context.invokeReduce(
 );
 ```
 
+实现类抛出的异常会**原样**抛给调用方：运行时异常、`Error`、扩展点方法声明的受检异常都不会被代理层包裹；
+找不到可用实现（例如没有初始化会话）时抛 `InvokeException`。
+
 ## 高级特性
 
 <table>
@@ -202,7 +208,7 @@ public interface PaymentExtension {
 ```java
 // 同一请求中多个独立匹配上下文
 context.initSession(orderParam);
-context.initScopedSession("after-sale",
+context.initSession("after-sale",
     afterSaleParam);
 ```
 
@@ -218,13 +224,62 @@ ResolveTrace trace = context.getLastResolveTrace();
 </td></tr>
 </table>
 
+### 默认实现可以拆分，扩展点可以"必选"
+
+```java
+@ExtensionPointDefaultImplementation          // 只负责运费相关的扩展点
+public class FreightDefaults implements FreightCalcExtension { ... }
+
+@ExtensionPointDefaultImplementation          // 另一个领域，另一个类
+public class PromotionDefaults implements PromotionCalcExtension { ... }
+
+@ExtensionPoint(mandatory = true)             // 没有合理默认值：业务/能力必须自己实现
+public interface InvoiceExtension { ... }
+```
+
+同一个扩展点只能有一个默认实现；不同 code 的默认实现不能使用同一个优先级（注册时就会报错，而不是每个请求都失败）。
+启动时校验：每个非 `mandatory` 的扩展点都必须有默认实现。
+如果有多个默认实现 Bean 且其中一个标了 `@Primary`，就只用它（与 3.3 一致）；没有 `@Primary` 时全部登记。
+
+### 异步 / 线程池里沿用请求的业务身份
+
+```java
+ResolvedChain chain = context.currentChain();            // 请求线程上捕获已解析的身份（不可变）
+executor.submit(() -> ExtensionSessionScope.runWith(     // 工作线程上绑定，不会再次执行 match
+    context, chain, () -> service.handleAsync()));       // 结束后自动清理
+```
+
+任务不一定在新线程里跑（直接执行器、线程池饱和时的 `CallerRunsPolicy`、并行流都会在提交任务的线程上执行）。这时 `runWith` / `restore` 结束后会把该线程原来的会话重新绑回去，而不是清掉它。
+
+### 拦截器：链路追踪、指标、熔断的挂载点
+
+```java
+@Bean
+ExtensionInterceptor metrics(MeterRegistry registry) {
+    return invocation -> {
+        Timer.Sample sample = Timer.start(registry);
+        try {
+            return invocation.proceed();
+        } finally {
+            sample.stop(registry.timer("extension", "point", invocation.extensionPoint().getSimpleName(),
+                    "impl", invocation.implementationCode()));
+        }
+    };
+}
+```
+
+每次对扩展点实现的调用（`@ExtensionInject`、`invoke*`、`getFirstMatchedExtension` 等）都会经过拦截器，按 `@Order` 排序。
+容器里的 `IScopedSessionManager`（会话存放位置，默认 ThreadLocal）和 `BusinessMatchSelector`（多业务匹配时怎么选）Bean 同样会被自动采用——前提是只有一个（或其中一个标了 `@Primary`）；有多个又没有 `@Primary` 时都不采用，并打印一条 WARN。
+
 ## 配置参考
 
 ```yaml
 easy-extension:
   enable-log: true                    # 打印匹配过程日志
-  allow-unknown-business: false       # 无业务匹配时是否报错
-  business-match-order:               # 多业务匹配时的优先级
+  unknown-business-policy: reject     # 无业务匹配: reject 报错 / default 走默认实现兜底
+  multi-match-policy: reject          # 多业务匹配: reject 报错 / select 按下面的顺序（或 BusinessMatchSelector）选一个；两者都没配、只能按注册顺序取第一个时，同一组合打印一次 WARN
+  allow-unknown-business: false       # 旧开关，两项策略都没配时生效: false = 都 reject，true = default + select
+  business-match-order:               # multi-match-policy=select 时的优先级
     - biz.retail
     - biz.fresh
   admin:
@@ -234,6 +289,34 @@ easy-extension:
       - OrderValidateExtension
       - FreightCalcExtension
 ```
+
+## 从 3.3 升级
+
+3.4 对公共 API 只做增量（由 CI 里的 japicmp 门禁保证），但有几处**行为**变化，升级前请对照检查：
+
+- **异常原样抛出。** 实现类抛出的异常不再被 `UndeclaredThrowableException` 层层包裹。需要旧行为可加
+  JVM 参数 `-Deasy-extension.legacy-exception-wrapping=true`（仅此一个版本，4.0 移除）。它**只认 JVM 系统属性**，
+  写进 `application.yml` 不生效；启用后日志里会有一条 WARN。
+- **被 Spring AOP 代理的实现类开始参与匹配。** `@Cacheable` / `@Transactional` / `@Async` 或被切面命中的
+  `@Business` / `@Ability` / `@ExtensionPointDefaultImplementation`，此前被静默跳过（运行时才报 `no business matched`），
+  现在会被正常注册和匹配。请先检查这类业务：`allow-unknown-business=true` 时，原来走默认实现的请求可能改走它们；
+  与别的业务匹配条件重叠时，严格模式会报 `multiple business found`。扫描到却无法注册的 Bean 现在启动即报错。
+- **框架使用的就是容器里的那个实例**（此前会另外创建一份）。测试里用 `@MockitoBean` / `@MockBean` 替换这类 Bean 时，
+  被替换的对象就是框架调用的对象，记得 stub `match()`，否则会 `no business matched`。
+- **继承来的扩展点也算。** 实现类的父类或父接口实现的扩展点接口现在会被识别（此前只看类自己声明的接口）。
+  后果：父类实现了某个扩展点的业务，现在会真的响应它，此前由默认实现响应，**路由会变**；升级后可用
+  `context.explain(扩展点.class)` 看每个扩展点由谁响应。继承来的扩展点若没有被注册（所在模块不在扫描范围内，或不是 public），
+  与 3.3 一样被忽略；类自己声明的扩展点仍必须已注册。
+- **关闭作用域会话只清自己的作用域。** `ExtensionSessionScope.openScoped(...)` 关闭时只移除那个作用域，
+  此前会清掉本线程的所有会话。如果在块内另外 `initSession(...)` 了默认作用域，请自己 `removeSession()`。
+- **几处错误信息变了**：没有任何默认实现时，`doRegister()` 报
+  `extension point default implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist`
+  （原为 `...should not be null`）；默认实现未覆盖某扩展点的报错末尾多了关于 `mandatory = true` 的提示，并且在能力和业务都登记完之后才抛出；
+  没有任何默认实现又没有业务匹配时，`initSession` 抛 `SessionException`（原为 `NullPointerException`）。
+- **扩展点接口里不要声明 `getInstance()` / `getTargetClass()`**：这两个名字由框架的代理（`IProxy`）占用，
+  返回类型不同会在创建代理时报错，返回类型相同则调用到不了你的实现。
+
+完整列表见 [CHANGELOG](CHANGELOG.md)。
 
 ## 管理后台
 

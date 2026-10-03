@@ -53,6 +53,38 @@ public class DefaultBusinessManagerTest {
     }
 
     @Test
+    public void testFindBusiness() throws Exception {
+        DefaultBusinessManager<Object> manager = new DefaultBusinessManager<>();
+
+        QueryException e = assertThrows(QueryException.class, () -> manager.findBusiness(null));
+        assertEquals("businessCode should not be null", e.getMessage());
+
+        assertNull(manager.findBusiness("c"), "a miss is null, not an exception");
+
+        Business1 business1 = new Business1();
+        manager.registerBusiness(business1);
+        assertSame(business1, manager.findBusiness("Business1"));
+    }
+
+    @Test
+    public void testListAllBusinessesHandsOutSnapshots() throws Exception {
+        DefaultBusinessManager<Object> manager = new DefaultBusinessManager<>();
+
+        List<IBusiness<Object>> empty = manager.listAllBusinesses();
+        assertSame(empty, manager.listAllBusinesses(), "reads do not copy");
+
+        manager.registerBusiness(new Business1());
+        List<IBusiness<Object>> one = manager.listAllBusinesses();
+        assertTrue(empty.isEmpty(), "a list handed out earlier does not change when businesses are registered later");
+        assertEquals(1, one.size());
+        assertThrows(UnsupportedOperationException.class, () -> one.add(null));
+
+        manager.registerBusiness(new Business4());
+        assertEquals(1, one.size());
+        assertEquals(2, manager.listAllBusinesses().size());
+    }
+
+    @Test
     public void testListAllAbilities() throws QueryException {
         QueryException e;
         DefaultBusinessManager<Object> manager = new DefaultBusinessManager<>();

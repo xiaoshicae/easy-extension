@@ -1,6 +1,6 @@
 # 测试规范
 
-> 项目使用 **JUnit 5 (Jupiter) + Mockito**。已有 38 个测试,保持现有风格。
+> 项目使用 **JUnit 5 (Jupiter) + Mockito**。保持现有风格。Spring 集成相关的测试要起真实的 `AnnotationConfigApplicationContext`(见 starter 的 `integration/`),不要只手工调用自动配置的方法。
 
 ## 框架
 

@@ -6,6 +6,20 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 
 public class Utils {
+    /**
+     * The class of {@code instance}, or {@code null} for a null instance, so that the constructors that take no
+     * target class keep reporting a null instance the way they always did (by {@link #validateInstance}).
+     */
+    static Class<?> classOf(Object instance) {
+        return instance == null ? null : instance.getClass();
+    }
+
+    static void validateTargetClass(Class<?> targetClass) throws ProxyParamException {
+        if (targetClass == null) {
+            throw new ProxyParamException("target class should not be null");
+        }
+    }
+
     public static void validateInstance(Object instance, List<Class<?>> implExtPoints) throws ProxyParamException {
         for (Class<?> implExtPoint : implExtPoints) {
             if (!implExtPoint.isInterface()) {

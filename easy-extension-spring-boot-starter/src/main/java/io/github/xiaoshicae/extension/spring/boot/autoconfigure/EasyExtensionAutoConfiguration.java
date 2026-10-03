@@ -7,18 +7,24 @@ import io.github.xiaoshicae.extension.core.annotation.Ability;
 import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation;
 import io.github.xiaoshicae.extension.core.annotation.MatcherParam;
+import io.github.xiaoshicae.extension.core.business.BusinessMatchSelector;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
+import io.github.xiaoshicae.extension.core.interceptor.ExtensionInterceptor;
+import io.github.xiaoshicae.extension.core.session.DefaultScopedSessionManager;
+import io.github.xiaoshicae.extension.core.session.IScopedSessionManager;
+import io.github.xiaoshicae.extension.core.util.AnnProxyConvertUtils;
 import io.github.xiaoshicae.extension.core.util.ExtensionContextRegisterByAnnHelper;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ClassHolder;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionPointHolder;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.InstanceHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,7 +41,10 @@ public class EasyExtensionAutoConfiguration<T> {
     private static final Logger logger = LoggerFactory.getLogger(EasyExtensionAutoConfiguration.class);
 
     private List<ExtensionPointHolder> extensionPointHolders;
-    private IExtensionPointGroupDefaultImplementation<T> extensionPointGroupImplementation;
+    private List<IExtensionPointGroupDefaultImplementation<T>> extensionPointGroupImplementations;
+    private IScopedSessionManager sessionManager;
+    private BusinessMatchSelector<T> businessMatchSelector;
+    private List<ExtensionInterceptor> interceptors;
     private List<IBusiness<T>> businesses;
     private List<IAbility<T>> abilities;
     private List<InstanceHolder> instanceHolders;
@@ -44,7 +53,23 @@ public class EasyExtensionAutoConfiguration<T> {
     @Bean
     @ConditionalOnMissingBean
     public IExtensionContext<T> registerExtensionContext(EasyExtensionConfigurationProperties properties) throws RegisterException, ProxyException {
-        IExtensionContext<T> extensionContext = new DefaultExtensionContext<>(properties.getEnableLog(), !properties.getAllowUnknownBusiness(), properties.getBusinessMatchOrder());
+        DefaultExtensionContext<T> extensionContext = new DefaultExtensionContext<>(
+                properties.getEnableLog(),
+                properties.effectiveUnknownBusinessPolicy(),
+                properties.effectiveMultiMatchPolicy(),
+                properties.getBusinessMatchOrder(),
+                this.sessionManager != null ? this.sessionManager : new DefaultScopedSessionManager());
+        if (this.businessMatchSelector != null) {
+            logger.info("Using BusinessMatchSelector bean [{}] to pick one of several matching businesses",
+                    this.businessMatchSelector.getClass().getName());
+            extensionContext.setBusinessMatchSelector(this.businessMatchSelector);
+        }
+        if (this.interceptors != null) {
+            // Spring hands the beans over in @Order order
+            for (ExtensionInterceptor interceptor : this.interceptors) {
+                extensionContext.registerInterceptor(interceptor);
+            }
+        }
         ExtensionContextRegisterByAnnHelper<T> helper = new ExtensionContextRegisterByAnnHelper<>(extensionContext);
 
         // if no extension point found, return empty context
@@ -97,7 +122,6 @@ public class EasyExtensionAutoConfiguration<T> {
     /**
      * register extension implementation, abilities, businesses
      */
-    @SuppressWarnings("unchecked")
     private void registerExtensionPointGroupImpl(ExtensionContextRegisterByAnnHelper<T> helper) throws RegisterParamException, ProxyException {
         List<Object> defaultImpls = new ArrayList<>();
         List<Matcher<T>> abilities = new ArrayList<>();
@@ -106,28 +130,13 @@ public class EasyExtensionAutoConfiguration<T> {
         if (this.instanceHolders != null) {
             // register by Annotation
             for (InstanceHolder holder : this.instanceHolders) {
-                Object instance = holder.getInstance();
-                if (instance.getClass().isAnnotationPresent(ExtensionPointDefaultImplementation.class)) {
-                    defaultImpls.add(instance);
-                } else if (instance.getClass().isAnnotationPresent(Ability.class)) {
-                    if (instance instanceof Matcher<?> matcher) {
-                        abilities.add((Matcher<T>) matcher);
-                    } else {
-                        throw new RegisterParamException("instance annotated with @Ability should implement Matcher interface");
-                    }
-                } else if (instance.getClass().isAnnotationPresent(Business.class)) {
-                    if (instance instanceof Matcher<?> matcher) {
-                        businesses.add((Matcher<T>) matcher);
-                    } else {
-                        throw new RegisterParamException("instance annotated with @Business should implement Matcher interface");
-                    }
-                }
+                collectByAnnotation(holder, defaultImpls, abilities, businesses);
             }
         }
 
         // register by bean
-        if (this.extensionPointGroupImplementation != null) {
-            defaultImpls.add(this.extensionPointGroupImplementation);
+        if (this.extensionPointGroupImplementations != null) {
+            defaultImpls.addAll(this.extensionPointGroupImplementations);
         }
         if (this.abilities != null && !this.abilities.isEmpty()) {
             abilities.addAll(this.abilities);
@@ -136,16 +145,10 @@ public class EasyExtensionAutoConfiguration<T> {
             businesses.addAll(this.businesses);
         }
 
-        // check
-        if (defaultImpls.isEmpty()) {
-            throw new RegisterParamException("extension point default implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist");
-        }
-        if (defaultImpls.size() > 1) {
-            throw new RegisterParamException("More than one instance annotated with @ExtensionPointDefaultImplementation found");
-        }
-
-        //  register extension point default implementation
-        helper.setExtensionPointDefaultImplementation(defaultImpls.get(0));
+        // register extension point default implementations: any number, each answering for the extension points it
+        // implements. Whether every extension point ended up with one (or is mandatory) is checked once everything
+        // is registered, by helper.doRegister().
+        helper.addExtensionPointDefaultImplementations(defaultImpls.toArray());
 
         // register abilities
         for (Matcher<T> ability : abilities) {
@@ -158,6 +161,42 @@ public class EasyExtensionAutoConfiguration<T> {
         }
     }
 
+    /**
+     * Sort a scanned bean into default implementation, ability or business.
+     * <p>
+     * Annotations and implemented extension points are read from the bean's target class: the bean may be a Spring AOP
+     * proxy, which carries neither. The bean itself, proxy included, is what gets registered, so Spring advice
+     * (caching, transactions, ...) still applies when the framework invokes it.
+     * </p>
+     */
+    private void collectByAnnotation(InstanceHolder holder, List<Object> defaultImpls, List<Matcher<T>> abilities,
+                                     List<Matcher<T>> businesses) throws RegisterParamException, ProxyException {
+        Object instance = holder.getInstance();
+        Class<?> targetClass = holder.getTargetClass();
+        if (targetClass.isAnnotationPresent(ExtensionPointDefaultImplementation.class)) {
+            defaultImpls.add(AnnProxyConvertUtils.convertAnnExtensionPointGroupDefaultImplementation(instance, targetClass));
+        } else if (targetClass.isAnnotationPresent(Ability.class)) {
+            abilities.add(AnnProxyConvertUtils.convertAnnAbilityToProxy(asMatcher(instance, "@Ability"), targetClass));
+        } else if (targetClass.isAnnotationPresent(Business.class)) {
+            businesses.add(AnnProxyConvertUtils.convertAnnBusinessToProxy(asMatcher(instance, "@Business"), targetClass));
+        } else {
+            // Scanned as an extension component, yet nothing to register it by. Skipping it silently would only
+            // surface much later as "no business matched", so fail at startup instead.
+            throw new RegisterParamException(String.format(
+                    "class [%s] was scanned as an extension component but carries none of @Ability, @Business or "
+                            + "@ExtensionPointDefaultImplementation (the annotations are read from the class itself, "
+                            + "meta-annotations are not supported)", targetClass.getName()));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Matcher<T> asMatcher(Object instance, String annotation) throws RegisterParamException {
+        if (instance instanceof Matcher<?> matcher) {
+            return (Matcher<T>) matcher;
+        }
+        throw new RegisterParamException("instance annotated with " + annotation + " should implement Matcher interface");
+    }
+
     @Autowired(required = false)
     public void setAbilities(List<IAbility<T>> abilities) {
         this.abilities = abilities;
@@ -168,9 +207,98 @@ public class EasyExtensionAutoConfiguration<T> {
         this.businesses = businesses;
     }
 
-    @Autowired(required = false)
+    /**
+     * Set the one default implementation. Kept for callers that configure the auto-configuration by hand;
+     * the container uses {@link #setExtensionPointGroupImplementationBeans(ObjectProvider)}.
+     */
     public void setExtensionPointGroupImplementation(IExtensionPointGroupDefaultImplementation<T> extensionPointGroupImplementation) {
-        this.extensionPointGroupImplementation = extensionPointGroupImplementation;
+        this.extensionPointGroupImplementations = extensionPointGroupImplementation == null ? null : List.of(extensionPointGroupImplementation);
+    }
+
+    /**
+     * Set the default implementations that are beans of their own (as opposed to classes annotated with
+     * {@code @ExtensionPointDefaultImplementation}), for callers that configure the auto-configuration by hand.
+     */
+    public void setExtensionPointGroupImplementations(List<IExtensionPointGroupDefaultImplementation<T>> extensionPointGroupImplementations) {
+        this.extensionPointGroupImplementations = extensionPointGroupImplementations;
+    }
+
+    /**
+     * Default implementations that are beans of their own; there may be several, each for its own extension points.
+     * <p>
+     * If one of several is {@code @Primary}, it alone is the default implementation, as it was before 3.4 when a
+     * single bean was injected and {@code @Primary} chose it.
+     * </p>
+     */
+    @Autowired(required = false)
+    public void setExtensionPointGroupImplementationBeans(ObjectProvider<IExtensionPointGroupDefaultImplementation<T>> beans) {
+        List<IExtensionPointGroupDefaultImplementation<T>> all = beans.orderedStream().toList();
+        if (all.size() > 1) {
+            IExtensionPointGroupDefaultImplementation<T> primary = beans.getIfUnique();
+            if (primary != null) {
+                logger.info("{} extension point default implementation beans found, [{}] is @Primary: it is the default "
+                        + "implementation, the others are ignored", all.size(), primary.getClass().getName());
+                all = List.of(primary);
+            }
+        }
+        this.extensionPointGroupImplementations = all;
+    }
+
+    /**
+     * Where the resolved chain of the current request is kept; a thread local unless a bean says otherwise.
+     * Set by hand, or by {@link #setSessionManagerBeans(ObjectProvider)}.
+     */
+    public void setSessionManager(IScopedSessionManager sessionManager) {
+        this.sessionManager = sessionManager;
+    }
+
+    /**
+     * The {@link IScopedSessionManager} bean, if there is one. With several (and none {@code @Primary}) it is not
+     * clear which one is meant for this context, so none is used.
+     */
+    @Autowired(required = false)
+    public void setSessionManagerBeans(ObjectProvider<IScopedSessionManager> beans) {
+        this.sessionManager = uniqueBean(beans, "IScopedSessionManager");
+    }
+
+    /**
+     * How one business is picked when several match (and the policy allows it).
+     * Set by hand, or by {@link #setBusinessMatchSelectorBeans(ObjectProvider)}.
+     */
+    public void setBusinessMatchSelector(BusinessMatchSelector<T> businessMatchSelector) {
+        this.businessMatchSelector = businessMatchSelector;
+    }
+
+    /**
+     * The {@link BusinessMatchSelector} bean, if there is one. With several (and none {@code @Primary}) it is not
+     * clear which one is meant for this context, so none is used.
+     */
+    @Autowired(required = false)
+    public void setBusinessMatchSelectorBeans(ObjectProvider<BusinessMatchSelector<T>> beans) {
+        this.businessMatchSelector = uniqueBean(beans, "BusinessMatchSelector");
+    }
+
+    /**
+     * The one bean (or the {@code @Primary} one among several), {@code null} if there is none or it is ambiguous.
+     */
+    private static <B> B uniqueBean(ObjectProvider<B> beans, String type) {
+        B unique = beans.getIfUnique();
+        if (unique == null) {
+            long count = beans.stream().count();
+            if (count > 1) {
+                logger.warn("{} {} beans found and none is @Primary: it is not clear which one is meant for the extension "
+                        + "context, none is used. Mark one @Primary, or call the setter of the extension context yourself.", count, type);
+            }
+        }
+        return unique;
+    }
+
+    /**
+     * Interceptors around every call to an extension implementation, in {@code @Order} order.
+     */
+    @Autowired(required = false)
+    public void setInterceptors(List<ExtensionInterceptor> interceptors) {
+        this.interceptors = interceptors;
     }
 
     @Autowired(required = false)

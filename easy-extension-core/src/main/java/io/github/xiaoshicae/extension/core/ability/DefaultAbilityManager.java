@@ -14,9 +14,22 @@ import java.util.List;
 import java.util.Map;
 
 public class DefaultAbilityManager<T> implements IAbilityManager<T> {
-    // Synchronized LinkedHashMap for O(1) lookup and ordered iteration.
+    /**
+     * Immutable view of the registered abilities: O(1) lookup by code plus the abilities in registration order.
+     *
+     * @param <T>    matcher param class
+     * @param byCode the abilities by code
+     * @param all    the abilities in registration order
+     */
+    private record Snapshot<T>(Map<String, IAbility<T>> byCode, List<IAbility<T>> all) {
+    }
+
+    private final Object registrationLock = new Object();
+
+    // Copy-on-write: registration happens at startup and is rare, so it builds a new snapshot under the lock;
+    // reads happen on every request and just dereference the current one, with no lock and no copying.
     // Mirrors DefaultBusinessManager so the two managers share one concurrency model.
-    private final Map<String, IAbility<T>> abilities = Collections.synchronizedMap(new LinkedHashMap<>());
+    private volatile Snapshot<T> snapshot = new Snapshot<>(Collections.emptyMap(), Collections.emptyList());
 
     @Override
     public void registerAbility(IAbility<T> ability) throws RegisterException {
@@ -37,21 +50,22 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
             }
         }
 
-        synchronized (abilities) {
-            if (abilities.containsKey(ability.code())) {
+        synchronized (registrationLock) {
+            Snapshot<T> current = snapshot;
+            if (current.byCode().containsKey(ability.code())) {
                 throw new RegisterDuplicateException(String.format("ability [%s] already registered", ability.code()));
             }
-            abilities.put(ability.code(), ability);
+            Map<String, IAbility<T>> byCode = new LinkedHashMap<>(current.byCode());
+            byCode.put(ability.code(), ability);
+            snapshot = new Snapshot<>(
+                    Collections.unmodifiableMap(byCode),
+                    Collections.unmodifiableList(new ArrayList<>(byCode.values())));
         }
     }
 
     @Override
     public IAbility<T> getAbility(String abilityCode) throws QueryException {
-        if (abilityCode == null) {
-            throw new QueryParamException("abilityCode should not be null");
-        }
-
-        IAbility<T> ability = abilities.get(abilityCode);
+        IAbility<T> ability = findAbility(abilityCode);
         if (ability == null) {
             throw new QueryNotFoundException(String.format("ability not found by code [%s]", abilityCode));
         }
@@ -60,9 +74,15 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
     }
 
     @Override
-    public List<IAbility<T>> listAllAbilities() {
-        synchronized (abilities) {
-            return Collections.unmodifiableList(new ArrayList<>(abilities.values()));
+    public IAbility<T> findAbility(String abilityCode) throws QueryException {
+        if (abilityCode == null) {
+            throw new QueryParamException("abilityCode should not be null");
         }
+        return snapshot.byCode().get(abilityCode);
+    }
+
+    @Override
+    public List<IAbility<T>> listAllAbilities() {
+        return snapshot.all();
     }
 }

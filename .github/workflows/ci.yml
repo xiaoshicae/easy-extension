@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Supported matrix: JDK 17/21 x Spring Boot 3.5/4.0.
+  # The code base is compiled with --release 17 (see pom.xml); Spring Boot versions are overridden
+  # on the command line so the same sources are tested against both Boot generations.
+  test:
+    name: test (JDK ${{ matrix.java }}, Spring Boot ${{ matrix.boot }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { java: 17, boot: "3.5.16", spring: "6.2.19" }
+          - { java: 21, boot: "3.5.16", spring: "6.2.19" }
+          - { java: 17, boot: "4.0.5",  spring: "7.0.6" }
+          - { java: 21, boot: "4.0.5",  spring: "7.0.6" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - name: Build and test
+        run: >
+          mvn -B -ntp -Dgpg.skip=true -Djapicmp.skip=true
+          -Dspring-boot-starter.version=${{ matrix.boot }}
+          -Dspring-boot-starter-web.version=${{ matrix.boot }}
+          -Dspring-boot-configuration-processor.version=${{ matrix.boot }}
+          -Dspring.version=${{ matrix.spring }}
+          test
+
+  # Binary/source API compatibility against the previously released artifact (japicmp).
+  # Fails the build on incompatible changes in public API.
+  api-compat:
+    name: api compatibility (japicmp)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Verify (includes japicmp)
+        run: mvn -B -ntp -Dgpg.skip=true -DskipTests -Dmaven.javadoc.skip=true verify

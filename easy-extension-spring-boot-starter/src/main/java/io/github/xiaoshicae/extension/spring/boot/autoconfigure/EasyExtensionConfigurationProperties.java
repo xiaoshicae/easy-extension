@@ -1,5 +1,7 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure;
 
+import io.github.xiaoshicae.extension.core.business.MultiMatchPolicy;
+import io.github.xiaoshicae.extension.core.business.UnknownBusinessPolicy;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -20,6 +22,20 @@ public class EasyExtensionConfigurationProperties {
      * whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability.
      */
     private boolean allowUnknownBusiness = false;
+
+    /**
+     * 没有任何业务匹配时怎么办：reject 请求报错（no business matched），default 走默认实现兜底。不配置时跟随 allow-unknown-business。
+     * what to do when no business matches: reject fails the request (no business matched), default serves it with the default implementations.
+     * When not set, follows allow-unknown-business.
+     */
+    private UnknownBusinessPolicy unknownBusinessPolicy;
+
+    /**
+     * 多个业务同时匹配时怎么办：reject 请求报错（multiple business found），select 由 business-match-order / BusinessMatchSelector 选一个（并打印一次 WARN）。不配置时跟随 allow-unknown-business。
+     * what to do when several businesses match: reject fails the request (multiple business found), select lets business-match-order / BusinessMatchSelector pick one
+     * (and logs a WARN once per combination). When not set, follows allow-unknown-business.
+     */
+    private MultiMatchPolicy multiMatchPolicy;
 
     /**
      * 是否启用Session自动清理过滤器，在Web请求结束后自动清理ThreadLocal中的Session数据，防止内存泄漏
@@ -51,6 +67,44 @@ public class EasyExtensionConfigurationProperties {
 
     public void setAllowUnknownBusiness(boolean allowUnknownBusiness) {
         this.allowUnknownBusiness = allowUnknownBusiness;
+    }
+
+    public UnknownBusinessPolicy getUnknownBusinessPolicy() {
+        return unknownBusinessPolicy;
+    }
+
+    public void setUnknownBusinessPolicy(UnknownBusinessPolicy unknownBusinessPolicy) {
+        this.unknownBusinessPolicy = unknownBusinessPolicy;
+    }
+
+    public MultiMatchPolicy getMultiMatchPolicy() {
+        return multiMatchPolicy;
+    }
+
+    public void setMultiMatchPolicy(MultiMatchPolicy multiMatchPolicy) {
+        this.multiMatchPolicy = multiMatchPolicy;
+    }
+
+    /**
+     * The policy in force for a request that matches no business: the explicit
+     * {@code unknown-business-policy}, else what {@code allow-unknown-business} stands for.
+     */
+    public UnknownBusinessPolicy effectiveUnknownBusinessPolicy() {
+        if (unknownBusinessPolicy != null) {
+            return unknownBusinessPolicy;
+        }
+        return allowUnknownBusiness ? UnknownBusinessPolicy.DEFAULT : UnknownBusinessPolicy.REJECT;
+    }
+
+    /**
+     * The policy in force for a request that matches several businesses: the explicit
+     * {@code multi-match-policy}, else what {@code allow-unknown-business} stands for.
+     */
+    public MultiMatchPolicy effectiveMultiMatchPolicy() {
+        if (multiMatchPolicy != null) {
+            return multiMatchPolicy;
+        }
+        return allowUnknownBusiness ? MultiMatchPolicy.SELECT : MultiMatchPolicy.REJECT;
     }
 
     public boolean getEnableSessionAutoCleanup() {

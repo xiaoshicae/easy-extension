@@ -21,6 +21,17 @@ public class OrderedCodeBusinessMatchSelector<T> implements BusinessMatchSelecto
         this.order = order == null ? List.of() : List.copyOf(order);
     }
 
+    /**
+     * The configured order of business codes.
+     *
+     * @return the codes, most preferred first; empty if none is configured, in which case the first matched
+     * business (registration order) always wins
+     * @since 3.4
+     */
+    public List<String> order() {
+        return order;
+    }
+
     @Override
     public IBusiness<T> select(List<IBusiness<T>> matchedBusinesses, T param) {
         if (matchedBusinesses.isEmpty()) {

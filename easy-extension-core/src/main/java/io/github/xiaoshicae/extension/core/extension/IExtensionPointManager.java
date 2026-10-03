@@ -48,4 +48,28 @@ public interface IExtensionPointManager {
      * @throws QueryNotFoundException if instance not found
      */
     <T> T getExtensionPointImplementationInstance(Class<T> extensionPointClass, String name) throws QueryException;
+
+    /**
+     * Like {@link #getExtensionPointImplementationInstance(Class, String)}, but answers {@code null} instead of
+     * throwing {@link QueryNotFoundException} when there is no such instance.
+     * <p>
+     * A miss is the normal case on the lookup hot path (a business implements only some of the extension points,
+     * the rest is served further down the chain), and creating an exception for each of them would dominate the
+     * cost of a lookup. The default implementation delegates to
+     * {@link #getExtensionPointImplementationInstance(Class, String)}, so existing implementations keep working;
+     * override it with a lookup that does not throw.
+     * </p>
+     *
+     * @return instance that implement {@code extensionPointClass}, or {@code null} if not found
+     * @throws QueryParamException if {@code extensionPointClass} is null, {@code extensionPointClass} is not an
+     *                             interface or {@code name} is null
+     * @since 3.4
+     */
+    default <T> T findExtensionPointImplementationInstance(Class<T> extensionPointClass, String name) throws QueryException {
+        try {
+            return getExtensionPointImplementationInstance(extensionPointClass, name);
+        } catch (QueryNotFoundException e) {
+            return null;
+        }
+    }
 }

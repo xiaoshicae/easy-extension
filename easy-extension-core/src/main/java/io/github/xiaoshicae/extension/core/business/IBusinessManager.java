@@ -30,6 +30,23 @@ public interface IBusinessManager<T> {
     IBusiness<T> getBusiness(String businessCode) throws QueryException;
 
     /**
+     * Like {@link #getBusiness(String)}, but answers {@code null} instead of throwing
+     * {@link QueryNotFoundException} when there is no such business.
+     *
+     * @param businessCode code of business
+     * @return the business, or {@code null} if not found
+     * @throws QueryParamException if {@code businessCode} is null
+     * @since 3.4
+     */
+    default IBusiness<T> findBusiness(String businessCode) throws QueryException {
+        try {
+            return getBusiness(businessCode);
+        } catch (QueryNotFoundException e) {
+            return null;
+        }
+    }
+
+    /**
      * Get all businesses.
      *
      * @return all businesses

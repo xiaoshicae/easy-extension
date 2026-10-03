@@ -69,5 +69,32 @@ public class DefaultExtensionPointManagerTest {
         ExtensionPoint getInstance = manager.getExtensionPointImplementationInstance(ExtensionPoint.class, "name");
         assertEquals(instance, getInstance);
     }
+
+    @Test
+    public void testFindExtensionPointImplementationInstance() throws ExtensionException {
+        QueryException exception;
+        DefaultExtensionPointManager manager = new DefaultExtensionPointManager();
+
+        // invalid arguments are still reported, as with get
+        exception = assertThrows(QueryException.class, () -> manager.findExtensionPointImplementationInstance(null, null));
+        assertEquals("extension point class should not be null", exception.getMessage());
+
+        class NotInterfaceClass {}
+        exception = assertThrows(QueryException.class, () -> manager.findExtensionPointImplementationInstance(NotInterfaceClass.class, null));
+        assertEquals("extension point class should be an interface type", exception.getMessage());
+
+        interface ExtensionPoint {}
+        exception = assertThrows(QueryException.class, () -> manager.findExtensionPointImplementationInstance(ExtensionPoint.class, null));
+        assertEquals("name should not be null", exception.getMessage());
+
+        // a miss is not an error: null, nothing thrown
+        assertNull(manager.findExtensionPointImplementationInstance(ExtensionPoint.class, "n"));
+
+        class ExtensionPointImpl implements ExtensionPoint {}
+        ExtensionPointImpl instance = new ExtensionPointImpl();
+        manager.registerExtensionPointImplementationInstance(ExtensionPoint.class, "name", instance);
+        assertSame(instance, manager.findExtensionPointImplementationInstance(ExtensionPoint.class, "name"));
+        assertNull(manager.findExtensionPointImplementationInstance(ExtensionPoint.class, "other"));
+    }
 }
 

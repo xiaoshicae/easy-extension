@@ -3,16 +3,12 @@ package io.github.xiaoshicae.extension.core.util;
 
 import io.github.xiaoshicae.extension.core.IExtensionRegister;
 import io.github.xiaoshicae.extension.core.ability.IAbility;
-import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
 import io.github.xiaoshicae.extension.core.business.IBusiness;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.RegisterException;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
-import io.github.xiaoshicae.extension.core.proxy.ExtPointDefaultImplProxyFactory;
 
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Extension context register helper.
@@ -44,9 +40,25 @@ public class ExtensionContextRegisterByAnnHelper<T> {
             extensionContextRegisterHelper.setExtensionPointDefaultImplementation((IExtensionPointGroupDefaultImplementation<T>) defaultImpl);
             return this;
         }
-        List<Class<?>> implExtPoints = Arrays.stream(instance.getClass().getInterfaces()).filter(i -> i.isAnnotationPresent(ExtensionPoint.class)).toList();
-        ExtPointDefaultImplProxyFactory<T> extPointDefaultImplProxyFactory = new ExtPointDefaultImplProxyFactory<>(instance, implExtPoints);
-        extensionContextRegisterHelper.setExtensionPointDefaultImplementation(extPointDefaultImplProxyFactory.getProxy());
+        extensionContextRegisterHelper.setExtensionPointDefaultImplementation(
+                AnnProxyConvertUtils.<T>convertAnnExtensionPointGroupDefaultImplementation(instance));
+        return this;
+    }
+
+    /**
+     * Add default implementations that each answer for the extension points they implement; see
+     * {@link ExtensionContextRegisterHelper#addExtensionPointDefaultImplementations(IExtensionPointGroupDefaultImplementation[])}.
+     *
+     * @since 3.4
+     */
+    @SuppressWarnings("unchecked")
+    public ExtensionContextRegisterByAnnHelper<T> addExtensionPointDefaultImplementations(Object... instances) throws ProxyException {
+        for (Object instance : instances) {
+            IExtensionPointGroupDefaultImplementation<T> defaultImpl = instance instanceof IExtensionPointGroupDefaultImplementation<?> d
+                    ? (IExtensionPointGroupDefaultImplementation<T>) d
+                    : AnnProxyConvertUtils.<T>convertAnnExtensionPointGroupDefaultImplementation(instance);
+            extensionContextRegisterHelper.addExtensionPointDefaultImplementations(defaultImpl);
+        }
         return this;
     }
 

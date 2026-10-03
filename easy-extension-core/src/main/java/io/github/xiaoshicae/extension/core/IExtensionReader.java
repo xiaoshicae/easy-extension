@@ -25,10 +25,39 @@ public interface IExtensionReader<T> {
 
     /**
      * Get extension point default implementation instance.
+     * <p>
+     * When several default implementations are registered (each for its own extension points) this is the one
+     * registered first; {@link #listExtensionPointDefaultImplementations()} lists them all.
+     * </p>
      *
      * @return extension point default implementation instance
      */
     IExtensionPointGroupDefaultImplementation<T> getExtensionPointDefaultImplementation();
+
+    /**
+     * Get all extension point default implementations, in registration order.
+     *
+     * @return all default implementations; empty if none is registered
+     * @since 3.4
+     */
+    default List<IExtensionPointGroupDefaultImplementation<T>> listExtensionPointDefaultImplementations() {
+        IExtensionPointGroupDefaultImplementation<T> defaultImplementation = getExtensionPointDefaultImplementation();
+        return defaultImplementation == null ? List.of() : List.of(defaultImplementation);
+    }
+
+    /**
+     * Fingerprint of the registry: a short hash over the extension points, businesses, abilities and default
+     * implementations (codes, priorities, mounted abilities, implemented extension points). It changes when
+     * the registry changes in a way that affects how a request resolves, and is carried by every
+     * {@link io.github.xiaoshicae.extension.core.session.ResolvedChain} to tell which registry it belongs to.
+     *
+     * @return the fingerprint
+     * @throws UnsupportedOperationException if this reader does not support it
+     * @since 3.4
+     */
+    default String registryVersion() {
+        throw new UnsupportedOperationException("registryVersion() is not supported by this reader");
+    }
 
     /**
      * Get all ability instance.

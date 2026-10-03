@@ -21,6 +21,7 @@ public class ExtensionContextRegisterHelper<T> {
     private final Set<Class<?>> allExtensionPointClasses = new LinkedHashSet<>();
     private Class<T> matcherParamClass;
     private IExtensionPointGroupDefaultImplementation<T> defaultImplementation;
+    private final List<IExtensionPointGroupDefaultImplementation<T>> additionalDefaultImplementations = new ArrayList<>();
     private final List<IAbility<T>> abilities = new ArrayList<>();
     private final List<IBusiness<T>> businesses = new ArrayList<>();
 
@@ -40,8 +41,26 @@ public class ExtensionContextRegisterHelper<T> {
         return this;
     }
 
+    /**
+     * Set the default implementation that implements all extension points.
+     * To split the defaults up, each answering for some of the extension points, use
+     * {@link #addExtensionPointDefaultImplementations(IExtensionPointGroupDefaultImplementation[])} instead.
+     */
     public ExtensionContextRegisterHelper<T> setExtensionPointDefaultImplementation(IExtensionPointGroupDefaultImplementation<T> instance) {
         defaultImplementation = instance;
+        return this;
+    }
+
+    /**
+     * Add default implementations that each answer for the extension points they implement; no extension point
+     * may be implemented by two of them. Extension points without a default implementation must be
+     * {@code @ExtensionPoint(mandatory = true)}.
+     *
+     * @since 3.4
+     */
+    @SafeVarargs
+    public final ExtensionContextRegisterHelper<T> addExtensionPointDefaultImplementations(IExtensionPointGroupDefaultImplementation<T>... instances) {
+        additionalDefaultImplementations.addAll(Arrays.asList(instances));
         return this;
     }
 
@@ -66,8 +85,13 @@ public class ExtensionContextRegisterHelper<T> {
         // 2. register matcher param class
         register.registerMatcherParamClass(matcherParamClass);
 
-        // 3. register extension point default implementation instance
-        register.registerExtensionPointDefaultImplementation(defaultImplementation);
+        // 3. register extension point default implementations
+        if (defaultImplementation != null) {
+            register.registerExtensionPointDefaultImplementation(defaultImplementation);
+        }
+        for (IExtensionPointGroupDefaultImplementation<T> additional : additionalDefaultImplementations) {
+            register.addExtensionPointDefaultImplementation(additional);
+        }
 
         // 4. register abilities
         for (IAbility<T> ability : abilities) {
@@ -78,5 +102,8 @@ public class ExtensionContextRegisterHelper<T> {
         for (IBusiness<T> business : businesses) {
             register.registerBusiness(business);
         }
+
+        // 6. everything is in: check the registry is complete (every extension point has a default or is mandatory)
+        register.validateRegistration();
     }
 }

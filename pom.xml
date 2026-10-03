@@ -40,11 +40,19 @@
         <junit-jupiter-api.version>5.10.3</junit-jupiter-api.version>
         <mockito-core.version>5.14.2</mockito-core.version>
 
-        <jdk.version>21</jdk.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <maven.compiler.compilerVersion>21</maven.compiler.compilerVersion>
+        <!-- Language/API baseline: JDK 17. CI verifies on JDK 17 and 21. -->
+        <jdk.version>17</jdk.version>
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Binary/source API compatibility gate (japicmp), runs in `mvn verify`.
+             The baseline is the previously released version; update it right after each release.
+             Use -Djapicmp.skip=true when building offline. -->
+        <japicmp.version>0.26.2</japicmp.version>
+        <easy-extension.baseline.version>3.3.6</easy-extension.baseline.version>
+        <japicmp.skip>false</japicmp.skip>
+        <!-- Where the baseline jars are downloaded from (see maven-antrun-plugin below). Point it at a mirror if needed. -->
+        <japicmp.baseline.repository>https://repo.maven.apache.org/maven2</japicmp.baseline.repository>
     </properties>
 
     <dependencyManagement>
@@ -139,6 +147,56 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Pin the compiler plugin so child modules that configure it do not trigger
+                     "build.plugins.plugin.version is missing" warnings. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                </plugin>
+
+                <!-- Downloads the previously released jar that japicmp compares against, straight from the
+                     repository and verified against its published SHA-1.
+                     Why not simply let japicmp resolve it as a dependency? Until the version is bumped for the next
+                     release the project version IS the baseline version, and Maven then resolves that dependency to
+                     the module's own freshly built jar from the reactor: the build compares itself with itself and
+                     the gate passes vacuously. Declared by the modules that are compared (not by this aggregator pom). -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>3.1.0</version>
+                    <executions>
+                        <execution>
+                            <id>fetch-api-baseline</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>run</goal>
+                            </goals>
+                            <configuration>
+                                <skip>${japicmp.skip}</skip>
+                                <target>
+                                    <property name="baseline.dir" value="${project.build.directory}/japicmp-baseline"/>
+                                    <property name="baseline.jar" value="${baseline.dir}/${project.artifactId}-${easy-extension.baseline.version}-baseline.jar"/>
+                                    <property name="baseline.url"
+                                              value="${japicmp.baseline.repository}/io/github/xiaoshicae/${project.artifactId}/${easy-extension.baseline.version}/${project.artifactId}-${easy-extension.baseline.version}.jar"/>
+                                    <mkdir dir="${baseline.dir}"/>
+                                    <get src="${baseline.url}" dest="${baseline.jar}" skipexisting="true" retries="3"/>
+                                    <get src="${baseline.url}.sha1" dest="${baseline.jar}.sha1" skipexisting="true" retries="3"/>
+                                    <checksum file="${baseline.jar}" algorithm="SHA-1" fileext=".sha1" verifyproperty="baseline.checksum.ok"/>
+                                    <fail message="The baseline jar ${baseline.jar} does not match its published SHA-1. Delete ${baseline.dir} and build again.">
+                                        <condition>
+                                            <isfalse value="${baseline.checksum.ok}"/>
+                                        </condition>
+                                    </fail>
+                                </target>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.sonatype.central</groupId>
@@ -177,13 +235,59 @@
                     <detectOfflineLinks>true</detectOfflineLinks>
                     <linksource>true</linksource>
                     <detectJavaApiLink>true</detectJavaApiLink>
-                    <source>21</source>
+                    <source>${jdk.version}</source>
                 </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
                         <goals>
                             <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- API compatibility gate: fails the build on binary- or source-incompatible changes
+                 relative to the previously released artifact (see easy-extension.baseline.version). -->
+            <plugin>
+                <groupId>com.github.siom79.japicmp</groupId>
+                <artifactId>japicmp-maven-plugin</artifactId>
+                <version>${japicmp.version}</version>
+                <configuration>
+                    <skip>${japicmp.skip}</skip>
+                    <!-- Downloaded by maven-antrun-plugin (fetch-api-baseline), not resolved as a dependency: see there.
+                         The file name carries the baseline version, so that a baseline bumped after a release is
+                         downloaded again instead of reusing the jar of the old one left in target/. -->
+                    <oldVersion>
+                        <file>
+                            <path>${project.build.directory}/japicmp-baseline/${project.artifactId}-${easy-extension.baseline.version}-baseline.jar</path>
+                        </file>
+                    </oldVersion>
+                    <newVersion>
+                        <file>
+                            <path>${project.build.directory}/${project.build.finalName}.jar</path>
+                        </file>
+                    </newVersion>
+                    <parameter>
+                        <onlyModified>true</onlyModified>
+                        <breakBuildOnBinaryIncompatibleModifications>true</breakBuildOnBinaryIncompatibleModifications>
+                        <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
+                        <ignoreMissingClasses>true</ignoreMissingClasses>
+                        <skipPomModules>true</skipPomModules>
+                        <!-- An element WITH a default value added to an annotation is compatible for every use of the
+                             annotation (binary and source). japicmp reports it as "abstract method added" because it
+                             cannot know that nobody implements the annotation interface itself. Every such addition has
+                             to be acknowledged here, one by one. -->
+                        <excludes>
+                            <exclude>io.github.xiaoshicae.extension.core.annotation.ExtensionPoint#mandatory()</exclude>
+                        </excludes>
+                    </parameter>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>api-compat</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>cmp</goal>
                         </goals>
                     </execution>
                 </executions>

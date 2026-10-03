@@ -32,6 +32,23 @@ public interface IAbilityManager<T> {
     IAbility<T> getAbility(String abilityCode) throws QueryException;
 
     /**
+     * Like {@link #getAbility(String)}, but answers {@code null} instead of throwing
+     * {@link QueryNotFoundException} when there is no such ability.
+     *
+     * @param abilityCode code of ability
+     * @return the ability, or {@code null} if not found
+     * @throws QueryParamException if {@code abilityCode} is null
+     * @since 3.4
+     */
+    default IAbility<T> findAbility(String abilityCode) throws QueryException {
+        try {
+            return getAbility(abilityCode);
+        } catch (QueryNotFoundException e) {
+            return null;
+        }
+    }
+
+    /**
      * Get all abilities.
      *
      * @return all abilities

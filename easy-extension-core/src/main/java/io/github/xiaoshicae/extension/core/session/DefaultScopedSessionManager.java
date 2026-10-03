@@ -3,6 +3,7 @@ package io.github.xiaoshicae.extension.core.session;
 import io.github.xiaoshicae.extension.core.exception.SessionException;
 import io.github.xiaoshicae.extension.core.exception.SessionNotFoundException;
 import io.github.xiaoshicae.extension.core.exception.SessionParamException;
+import io.github.xiaoshicae.extension.core.trace.ResolveTrace.ResolutionEntry;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,31 +15,82 @@ import java.util.TreeMap;
 
 /**
  * Scoped session data holder.
- * Holds both priority-to-code mapping and code set for O(1) lookup.
+ * <p>
+ * Either holds a {@link ResolvedChain} that was bound as a whole (what the extension context does), or accumulates
+ * code/priority pairs one at a time through {@link IScopedSessionManager#setScopedMatchedCode}. Either way the codes
+ * are available as an immutable list that is built once, not on every lookup.
+ * </p>
+ * Accessed by a single thread only (it lives in a thread local), so it needs no synchronization.
  */
 class ScopedSessionData {
-    private final TreeMap<Integer, String> priorityToCodeMap = new TreeMap<>();
-    private final Set<String> codeSet = new HashSet<>();
+    // only used when entries are added one at a time; a session bound as a chain never needs them
+    private TreeMap<Integer, String> priorityToCodeMap;
+    private Set<String> codeSet;
+    private ResolvedChain chain;
+    private List<String> codes;
+
+    static ScopedSessionData of(ResolvedChain chain) {
+        ScopedSessionData data = new ScopedSessionData();
+        data.chain = chain;
+        return data;
+    }
 
     public boolean containsPriority(Integer priority) {
+        materialize();
         return priorityToCodeMap.containsKey(priority);
     }
 
     public boolean containsCode(String code) {
+        materialize();
         return codeSet.contains(code);
     }
 
     public void put(Integer priority, String code) {
+        materialize();
         priorityToCodeMap.put(priority, code);
         codeSet.add(code);
+        codes = null;
     }
 
     public List<String> getCodes() {
-        return priorityToCodeMap.values().stream().toList();
+        if (chain != null) {
+            return chain.codes();
+        }
+        if (codes == null) {
+            codes = List.copyOf(priorityToCodeMap.values());
+        }
+        return codes;
+    }
+
+    /**
+     * The chain this session was bound with, or {@code null} if it was accumulated entry by entry.
+     */
+    public ResolvedChain getChain() {
+        return chain;
     }
 
     public boolean isEmpty() {
-        return priorityToCodeMap.isEmpty();
+        return chain == null && (priorityToCodeMap == null || priorityToCodeMap.isEmpty());
+    }
+
+    /**
+     * Entries are about to be added: set up the structures that hold them, starting from the entries of the chain
+     * if the session was bound as one.
+     */
+    private void materialize() {
+        if (priorityToCodeMap == null) {
+            priorityToCodeMap = new TreeMap<>();
+            codeSet = new HashSet<>();
+        }
+        if (chain == null) {
+            return;
+        }
+        for (ResolutionEntry entry : chain.entries()) {
+            priorityToCodeMap.put(entry.priority(), entry.code());
+            codeSet.add(entry.code());
+        }
+        chain = null;
+        codes = null;
     }
 }
 
@@ -59,6 +111,19 @@ public class DefaultScopedSessionManager implements IScopedSessionManager {
             throw new SessionParamException(String.format("scope [%s], code [%s] already exist", scope, code));
         }
         sessionData.put(priority, code);
+    }
+
+    @Override
+    public void bindScopedChain(String scope, ResolvedChain chain) throws SessionException {
+        assertNotNull(scope, "scope");
+        assertNotNull(chain, "chain");
+        scopedSessionDataLocal.get().put(scope, ScopedSessionData.of(chain));
+    }
+
+    @Override
+    public ResolvedChain getScopedChain(String scope) {
+        ScopedSessionData sessionData = scopedSessionDataLocal.get().get(scope);
+        return sessionData == null ? null : sessionData.getChain();
     }
 
     @Override

@@ -1,5 +1,8 @@
 package io.github.xiaoshicae.extension.core;
 
+import io.github.xiaoshicae.extension.core.exception.QueryException;
+import io.github.xiaoshicae.extension.core.proxy.InvocationExceptions;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -25,6 +28,7 @@ public class FirstMatchedExtPointProxyFactory<T> {
     public static class FirstMatchedExtPointInvocationHandler<T> implements InvocationHandler {
         private final Class<T> extensionPointClass;
         private final IExtensionFactory extensionFactory;
+        private final boolean legacyWrapping = InvocationExceptions.legacyWrapping();
 
         public FirstMatchedExtPointInvocationHandler(Class<T> extensionPointClass, IExtensionFactory extensionFactory) {
             this.extensionPointClass = extensionPointClass;
@@ -33,8 +37,13 @@ public class FirstMatchedExtPointProxyFactory<T> {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            T firstMatchedExtension = extensionFactory.getFirstMatchedExtension(extensionPointClass);
-            return method.invoke(firstMatchedExtension, args);
+            T firstMatchedExtension;
+            try {
+                firstMatchedExtension = extensionFactory.getFirstMatchedExtension(extensionPointClass);
+            } catch (QueryException e) {
+                throw InvocationExceptions.queryFailure(method, extensionPointClass.getSimpleName(), e, legacyWrapping);
+            }
+            return InvocationExceptions.invoke(method, firstMatchedExtension, args, legacyWrapping);
         }
     }
 }

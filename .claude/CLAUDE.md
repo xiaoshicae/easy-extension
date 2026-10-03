@@ -19,7 +19,7 @@
 | `easy-extension-spring-boot-starter` | Maven | Spring 集成(依赖 core) |
 | `easy-extension-admin-spring-boot-starter` | Maven | 管理后台(依赖 core + spring-web) |
 | `easy-extension-admin-ui-frontend` | npm / React | 后台前端,作为 webjar 嵌入 admin-starter |
-| `easy-extension-intellij-plugin` | Gradle / Kotlin | IDE 插件,独立发布到 JetBrains Marketplace |
+| `easy-extension-intellij-plugin` | Gradle(Kotlin DSL 构建脚本)/ Java | IDE 插件,独立发布到 JetBrains Marketplace |
 
 模块依赖**单向**(starter → core,反向禁止)。详见 `rules/multi-module.md`。
 
@@ -123,7 +123,8 @@ git config core.hooksPath .githooks
 
 ## 子项目独立性
 
-- `easy-extension-intellij-plugin` 用 Gradle / Kotlin,**不进 Maven 构建链**,独立发布。改这个模块时 `stop-check.sh` 会跑 `./gradlew compileKotlin`。
+- `easy-extension-intellij-plugin` 用 Gradle,源码是 **Java**(只有构建脚本是 Kotlin DSL),**不进 Maven 构建链**,独立发布。
+  注意: `stop-check.sh` 目前只在 `.kt` 文件被改动时才跑 `./gradlew compileKotlin`,而插件源码是 `.java`,所以改插件不会被这个钩子编译,需要手动 `./gradlew compileJava`。
 - `easy-extension-admin-ui-frontend` 用 npm,构建产物嵌入 `admin-starter`。前端文件改动只触发 `prettier --write`,不强行编译。
 
 ---

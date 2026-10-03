@@ -15,8 +15,22 @@ import java.util.Map;
 
 
 public class DefaultBusinessManager<T> implements IBusinessManager<T> {
-    // Synchronized LinkedHashMap for O(1) lookup and ordered iteration
-    private final Map<String, IBusiness<T>> businesses = Collections.synchronizedMap(new LinkedHashMap<>());
+    /**
+     * Immutable view of the registered businesses: O(1) lookup by code plus the businesses in registration order.
+     *
+     * @param <T>    matcher param class
+     * @param byCode the businesses by code
+     * @param all    the businesses in registration order
+     */
+    private record Snapshot<T>(Map<String, IBusiness<T>> byCode, List<IBusiness<T>> all) {
+    }
+
+    private final Object registrationLock = new Object();
+
+    // Copy-on-write: registration happens at startup and is rare, so it builds a new snapshot under the lock;
+    // reads happen on every request (each session init walks all businesses) and just dereference the current one,
+    // with no lock and no copying.
+    private volatile Snapshot<T> snapshot = new Snapshot<>(Collections.emptyMap(), Collections.emptyList());
 
     @Override
     public void registerBusiness(IBusiness<T> business) throws RegisterException {
@@ -33,20 +47,22 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
             }
         }
 
-        synchronized (businesses) {
-            if (businesses.containsKey(business.code())) {
+        synchronized (registrationLock) {
+            Snapshot<T> current = snapshot;
+            if (current.byCode().containsKey(business.code())) {
                 throw new RegisterDuplicateException(String.format("business with code [%s] already register", business.code()));
             }
-            businesses.put(business.code(), business);
+            Map<String, IBusiness<T>> byCode = new LinkedHashMap<>(current.byCode());
+            byCode.put(business.code(), business);
+            snapshot = new Snapshot<>(
+                    Collections.unmodifiableMap(byCode),
+                    Collections.unmodifiableList(new ArrayList<>(byCode.values())));
         }
     }
 
     @Override
     public IBusiness<T> getBusiness(String businessCode) throws QueryException {
-        if (businessCode == null) {
-            throw new QueryParamException("businessCode should not be null");
-        }
-        IBusiness<T> business = businesses.get(businessCode);
+        IBusiness<T> business = findBusiness(businessCode);
         if (business == null) {
             throw new QueryNotFoundException(String.format("business not found by code [%s]", businessCode));
         }
@@ -54,9 +70,15 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
     }
 
     @Override
-    public List<IBusiness<T>> listAllBusinesses() {
-        synchronized (businesses) {
-            return Collections.unmodifiableList(new ArrayList<>(businesses.values()));
+    public IBusiness<T> findBusiness(String businessCode) throws QueryException {
+        if (businessCode == null) {
+            throw new QueryParamException("businessCode should not be null");
         }
+        return snapshot.byCode().get(businessCode);
+    }
+
+    @Override
+    public List<IBusiness<T>> listAllBusinesses() {
+        return snapshot.all();
     }
 }

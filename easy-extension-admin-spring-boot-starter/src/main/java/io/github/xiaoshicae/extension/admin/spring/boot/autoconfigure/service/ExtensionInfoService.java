@@ -110,17 +110,25 @@ public class ExtensionInfoService {
         return new MatcherParamInfo(resolveClassInfo(reader.getMatcherParamClass()));
     }
 
+    /**
+     * The default implementation, as one class. When several default implementations are registered (each for its
+     * own extension points) this is the one registered first; each extension point shows the source of the default
+     * that actually answers for it, see {@link #getAllExtensionPoints()}.
+     * If there is no default implementation at all (every extension point is mandatory) the class info is empty.
+     */
     public DefaultImplInfo getDefaultImplInfo() {
         return cached(KEY_DEFAULT_IMPL, () -> {
             IExtensionPointGroupDefaultImplementation<?> defaultImpl = reader.getExtensionPointDefaultImplementation();
-            Class<?> clazz;
-            if (defaultImpl instanceof IProxy<?> proxy) {
-                clazz = resolveClassWithAnn(proxy.getInstance().getClass(), ExtensionPointDefaultImplementation.class);
-            } else {
-                clazz = resolveClassWithAnn(defaultImpl.getClass(), ExtensionPointDefaultImplementation.class);
+            if (defaultImpl == null) {
+                return new DefaultImplInfo(new ClassInfo("", "", "", ""));
             }
-            return new DefaultImplInfo(resolveClassInfo(clazz));
+            return new DefaultImplInfo(resolveClassInfo(defaultImplClass(defaultImpl)));
         });
+    }
+
+    private Class<?> defaultImplClass(IExtensionPointGroupDefaultImplementation<?> defaultImpl) {
+        Class<?> clazz = defaultImpl instanceof IProxy<?> proxy ? proxy.getTargetClass() : defaultImpl.getClass();
+        return resolveClassWithAnn(clazz, ExtensionPointDefaultImplementation.class);
     }
 
     public List<ExtensionPointInfo> getAllExtensionPoints() {
@@ -152,12 +160,20 @@ public class ExtensionInfoService {
     }
 
     private List<ExtensionPointInfo> computeAllExtensionPoints() {
-        DefaultImplInfo defaultImplInfo = getDefaultImplInfo();
-        String sourceCode = defaultImplInfo.classInfo().sourceCode();
+        // extension point -> source of the default implementation that answers for it (the defaults may share the work)
+        Map<Class<?>, String> defaultSources = new HashMap<>();
+        for (IExtensionPointGroupDefaultImplementation<?> defaultImpl : reader.listExtensionPointDefaultImplementations()) {
+            String sourceCode = resolveClassInfo(defaultImplClass(defaultImpl)).sourceCode();
+            for (Class<?> implemented : defaultImpl.implementExtensionPoints()) {
+                defaultSources.putIfAbsent(implemented, sourceCode);
+            }
+        }
 
         List<ExtensionPointInfo> result = new ArrayList<>();
         for (Class<?> extPointClass : reader.listAllExtensionPoint()) {
-            String defaultImplCode = ClassUtils.transformSourceCodeWithInterface(sourceCode, extPointClass);
+            String sourceCode = defaultSources.get(extPointClass);
+            // none for a mandatory extension point: it has no default implementation
+            String defaultImplCode = sourceCode == null ? "" : ClassUtils.transformSourceCodeWithInterface(sourceCode, extPointClass);
             List<String> scenarios = extractScenarios(extPointClass);
             int version = extractVersion(extPointClass);
             ExtensionPointInfo info = new ExtensionPointInfo(resolveClassInfo(extPointClass), defaultImplCode, scenarios, version);
@@ -240,7 +256,7 @@ public class ExtensionInfoService {
             List<String> implExtensionPoints = ability.implementExtensionPoints().stream().map(Class::getName).toList();
             Class<?> clazz;
             if (ability instanceof IProxy<?> proxy) {
-                clazz = resolveClassWithAnn(proxy.getInstance().getClass(), Ability.class);
+                clazz = resolveClassWithAnn(proxy.getTargetClass(), Ability.class);
             } else {
                 clazz = resolveClassWithAnn(ability.getClass(), Ability.class);
             }
@@ -258,7 +274,7 @@ public class ExtensionInfoService {
             List<String> implementExtensionPoints = business.implementExtensionPoints().stream().map(Class::getName).toList();
             Class<?> clazz;
             if (business instanceof IProxy<?> proxy) {
-                clazz = resolveClassWithAnn(proxy.getInstance().getClass(), Business.class);
+                clazz = resolveClassWithAnn(proxy.getTargetClass(), Business.class);
             } else {
                 clazz = resolveClassWithAnn(business.getClass(), Business.class);
             }

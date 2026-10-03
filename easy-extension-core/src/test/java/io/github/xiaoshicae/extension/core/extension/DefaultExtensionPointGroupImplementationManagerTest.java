@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -47,6 +48,21 @@ public class DefaultExtensionPointGroupImplementationManagerTest {
         manager.registerExtensionPointImplementationInstance(instanceX);
         IFace instance = manager.getExtensionPointImplementationInstance(IFace.class, "InstanceX");
         assertSame(instanceX, instance);
+    }
+
+    @Test
+    public void testFindExtensionPointImplementationInstance() throws Exception {
+        DefaultExtensionPointGroupImplementationManager<Object> manager = new DefaultExtensionPointGroupImplementationManager<>();
+
+        assertNull(manager.findExtensionPointImplementationInstance(IFace.class, "InstanceX"), "a miss is null, not an exception");
+
+        InstanceX instanceX = new InstanceX();
+        manager.registerExtensionPointImplementationInstance(instanceX);
+        assertSame(instanceX, manager.findExtensionPointImplementationInstance(IFace.class, "InstanceX"));
+        assertNull(manager.findExtensionPointImplementationInstance(IFace.class, "other"));
+
+        QueryException e = assertThrows(QueryException.class, () -> manager.findExtensionPointImplementationInstance(IFace.class, null));
+        assertEquals("name should not be null", e.getMessage());
     }
 }
 

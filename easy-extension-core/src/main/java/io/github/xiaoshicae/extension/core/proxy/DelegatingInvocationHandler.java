@@ -14,11 +14,15 @@ import java.util.Set;
  * If the method is declared on the proxy interface (e.g., IAbilityProxy, IBusinessProxy),
  * it is forwarded to the proxy template. Otherwise, it is forwarded to the real instance.
  * </p>
+ * <p>
+ * Exceptions thrown by the target are rethrown unchanged, see {@link InvocationExceptions}.
+ * </p>
  */
 class DelegatingInvocationHandler implements InvocationHandler {
     private final Object proxyTemplate;
     private final Object realInstance;
     private final Set<Method> proxyMethods;
+    private final boolean legacyWrapping = InvocationExceptions.legacyWrapping();
 
     /**
      * @param proxyTemplate the proxy template object that handles framework interface methods
@@ -33,6 +37,7 @@ class DelegatingInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        return proxyMethods.contains(method) ? method.invoke(proxyTemplate, args) : method.invoke(realInstance, args);
+        Object target = proxyMethods.contains(method) ? proxyTemplate : realInstance;
+        return InvocationExceptions.invoke(method, target, args, legacyWrapping);
     }
 }

@@ -54,6 +54,38 @@ public class DefaultAbilityManagerTest {
     }
 
     @Test
+    public void testFindAbility() throws Exception {
+        DefaultAbilityManager<Object> manager = new DefaultAbilityManager<>();
+
+        QueryException e = assertThrows(QueryException.class, () -> manager.findAbility(null));
+        assertEquals("abilityCode should not be null", e.getMessage());
+
+        assertNull(manager.findAbility("c"), "a miss is null, not an exception");
+
+        Ability4 ability4 = new Ability4();
+        manager.registerAbility(ability4);
+        assertSame(ability4, manager.findAbility("Ability4"));
+    }
+
+    @Test
+    public void testListAllAbilitiesHandsOutSnapshots() throws Exception {
+        DefaultAbilityManager<Object> manager = new DefaultAbilityManager<>();
+
+        List<IAbility<Object>> empty = manager.listAllAbilities();
+        assertSame(empty, manager.listAllAbilities(), "reads do not copy");
+
+        manager.registerAbility(new Ability4());
+        List<IAbility<Object>> one = manager.listAllAbilities();
+        assertTrue(empty.isEmpty(), "a list handed out earlier does not change when abilities are registered later");
+        assertEquals(1, one.size());
+        assertThrows(UnsupportedOperationException.class, () -> one.add(null));
+
+        manager.registerAbility(new Ability5());
+        assertEquals(1, one.size());
+        assertEquals(2, manager.listAllAbilities().size());
+    }
+
+    @Test
     public void testListAllAbilities() throws QueryException {
         QueryException e;
         DefaultAbilityManager<Object> manager = new DefaultAbilityManager<>();

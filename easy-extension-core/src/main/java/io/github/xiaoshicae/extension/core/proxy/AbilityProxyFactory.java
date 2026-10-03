@@ -11,7 +11,21 @@ public class AbilityProxyFactory<T>  {
     private final AbilityTemplate<T> tpl;
 
     public AbilityProxyFactory(String code, Matcher<T> abilityExtImplInstance, List<Class<?>> implExtPoints) throws ProxyException {
-        this.tpl = new AbilityTemplate<>(code, abilityExtImplInstance, implExtPoints);
+        this(code, abilityExtImplInstance, Utils.classOf(abilityExtImplInstance), implExtPoints);
+    }
+
+    /**
+     * @param code                   code of the ability
+     * @param abilityExtImplInstance the ability implementation
+     * @param targetClass            the class that carries the metadata of the ability; differs from the class of
+     *                               {@code abilityExtImplInstance} when that is a proxy created by a container
+     * @param implExtPoints          the extension points the ability implements
+     * @throws ProxyException if {@code targetClass} is null, an extension point is not a public interface, or the
+     *                        instance does not implement it
+     * @since 3.4
+     */
+    public AbilityProxyFactory(String code, Matcher<T> abilityExtImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
+        this.tpl = new AbilityTemplate<>(code, abilityExtImplInstance, targetClass, implExtPoints);
     }
 
     @SuppressWarnings("unchecked")
@@ -30,12 +44,15 @@ public class AbilityProxyFactory<T>  {
     private static class AbilityTemplate<T> implements IAbilityProxy<T> {
         private final String code;
         private final Matcher<T> extImplInstance;
+        private final Class<?> targetClass;
         private final List<Class<?>> implExtPoints;
 
-        public AbilityTemplate(String code, Matcher<T> extImplInstance, List<Class<?>> implExtPoints) throws ProxyException {
+        public AbilityTemplate(String code, Matcher<T> extImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
             Utils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateTargetClass(targetClass);
             this.code = code;
             this.extImplInstance = extImplInstance;
+            this.targetClass = targetClass;
             this.implExtPoints = implExtPoints;
         }
 
@@ -57,6 +74,11 @@ public class AbilityProxyFactory<T>  {
         @Override
         public Matcher<T> getInstance() {
             return extImplInstance;
+        }
+
+        @Override
+        public Class<?> getTargetClass() {
+            return targetClass;
         }
     }
 }

@@ -7,13 +7,17 @@ import io.github.xiaoshicae.extension.core.business.UsedAbility;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.exception.ProxyException;
 import io.github.xiaoshicae.extension.core.exception.ProxyParamException;
+import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
+import io.github.xiaoshicae.extension.core.proxy.IProxy;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -113,6 +117,82 @@ public class AnnProxyConvertUtilsTest {
 
         String s = ((E3) ability).doE3();
         assertEquals("Ab4 doE3", s);
+    }
+
+    /**
+     * What a container such as Spring AOP hands out: a JDK proxy that implements the interfaces of the class but
+     * carries neither its annotations nor its class identity.
+     */
+    @SuppressWarnings("unchecked")
+    private static Matcher<Object> containerProxyOf(Object target) {
+        return (Matcher<Object>) Proxy.newProxyInstance(
+                AnnProxyConvertUtilsTest.class.getClassLoader(),
+                new Class<?>[]{Matcher.class, E1.class, E2.class, E3.class},
+                (proxy, method, args) -> method.invoke(target, args));
+    }
+
+    @Test
+    public void testTargetClassDefaultsToTheClassOfTheInstance() throws ProxyException {
+        IAbility<Object> ability = AnnProxyConvertUtils.convertAnnAbilityToProxy(new Ab4());
+        assertSame(Ab4.class, ((IProxy<?>) ability).getTargetClass());
+
+        IBusiness<Object> business = AnnProxyConvertUtils.convertAnnBusinessToProxy(new C4());
+        assertSame(C4.class, ((IProxy<?>) business).getTargetClass());
+    }
+
+    @Test
+    public void testConvertAnnAbilityToProxyReadsMetadataFromTheTargetClass() throws ProxyException {
+        Matcher<Object> containerProxy = containerProxyOf(new Ab4());
+
+        ProxyException e = assertThrows(ProxyParamException.class, () -> AnnProxyConvertUtils.convertAnnAbilityToProxy(containerProxy));
+        assertTrue(e.getMessage().startsWith("ability ["), e.getMessage());
+        assertTrue(e.getMessage().endsWith("] must annotated with @Ability"), e.getMessage());
+
+        IAbility<Object> ability = AnnProxyConvertUtils.convertAnnAbilityToProxy(containerProxy, Ab4.class);
+        assertEquals("ab4", ability.code());
+        assertEquals(List.of(E1.class, E2.class, E3.class), ability.implementExtensionPoints());
+        assertSame(containerProxy, ((IProxy<?>) ability).getInstance(), "the container's proxy is what gets called");
+        assertSame(Ab4.class, ((IProxy<?>) ability).getTargetClass());
+        assertTrue(ability.match("123"));
+        assertEquals("Ab4 doE3", ((E3) ability).doE3());
+    }
+
+    @Test
+    public void testConvertAnnBusinessToProxyReadsMetadataFromTheTargetClass() throws ProxyException {
+        Matcher<Object> containerProxy = containerProxyOf(new C4());
+
+        ProxyException e = assertThrows(ProxyParamException.class, () -> AnnProxyConvertUtils.convertAnnBusinessToProxy(containerProxy));
+        assertTrue(e.getMessage().startsWith("business ["), e.getMessage());
+        assertTrue(e.getMessage().endsWith("] must annotated with @Business"), e.getMessage());
+
+        IBusiness<Object> business = AnnProxyConvertUtils.convertAnnBusinessToProxy(containerProxy, C4.class);
+        assertEquals("c4", business.code());
+        assertEquals(10, business.priority());
+        assertEquals(6, business.usedAbilities().size());
+        assertEquals(List.of(E1.class, E2.class, E3.class), business.implementExtensionPoints());
+        assertSame(containerProxy, ((IProxy<?>) business).getInstance(), "the container's proxy is what gets called");
+        assertSame(C4.class, ((IProxy<?>) business).getTargetClass());
+        assertTrue(business.match("123"));
+        assertEquals("C4 doE3", ((E3) business).doE3());
+    }
+
+    @Test
+    public void testConvertAnnExtensionPointGroupDefaultImplementationReadsMetadataFromTheTargetClass() throws ProxyException {
+        Matcher<Object> containerProxy = containerProxyOf(new Ab4());
+
+        IExtensionPointGroupDefaultImplementation<Object> defaultImpl =
+                AnnProxyConvertUtils.convertAnnExtensionPointGroupDefaultImplementation(containerProxy, Ab4.class);
+        assertEquals(List.of(E1.class, E2.class, E3.class), defaultImpl.implementExtensionPoints());
+        assertSame(containerProxy, ((IProxy<?>) defaultImpl).getInstance());
+        assertSame(Ab4.class, ((IProxy<?>) defaultImpl).getTargetClass());
+        assertEquals("Ab4 doE3", ((E3) defaultImpl).doE3());
+    }
+
+    @Test
+    public void testTargetClassMustNotBeNull() {
+        ProxyException e = assertThrows(ProxyParamException.class,
+                () -> new io.github.xiaoshicae.extension.core.proxy.AbilityProxyFactory<>("ab4", new Ab4(), null, List.of(E1.class)));
+        assertEquals("target class should not be null", e.getMessage());
     }
 }
 

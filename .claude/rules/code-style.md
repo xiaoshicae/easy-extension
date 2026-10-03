@@ -27,7 +27,8 @@
 | `core/annotation` | 注解定义 |
 | `core/exception` | 自定义异常 |
 | `core/interfaces` | 公共标记接口(如 `Priority`) |
-| `core/session` | 会话管理 |
+| `core/session` | 会话管理(`IScopedSessionManager`、不可变的 `ResolvedChain`、`ExtensionSessionScope`) |
+| `core/interceptor` | 对扩展点实现调用的环绕拦截(`ExtensionInterceptor` / `ExtensionInvocation`) |
 | `core/trace` | 调用链跟踪 |
 | `core/util` | 工具类 |
 

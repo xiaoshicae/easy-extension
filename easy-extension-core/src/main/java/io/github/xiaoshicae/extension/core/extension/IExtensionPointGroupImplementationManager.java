@@ -42,4 +42,22 @@ public interface IExtensionPointGroupImplementationManager<T> {
      * @throws QueryNotFoundException if instance not found
      */
     <E> E getExtensionPointImplementationInstance(Class<E> extensionPointClass, String code) throws QueryException;
+
+    /**
+     * Like {@link #getExtensionPointImplementationInstance(Class, String)}, but answers {@code null} instead of
+     * throwing {@link QueryNotFoundException} when there is no such instance; see
+     * {@link IExtensionPointManager#findExtensionPointImplementationInstance(Class, String)} for why.
+     *
+     * @return instance that implement {@code extensionPointClass}, or {@code null} if not found
+     * @throws QueryParamException if {@code extensionPointClass} is null, {@code extensionPointClass} is not an interface
+     *                             or {@code code} is null
+     * @since 3.4
+     */
+    default <E> E findExtensionPointImplementationInstance(Class<E> extensionPointClass, String code) throws QueryException {
+        try {
+            return getExtensionPointImplementationInstance(extensionPointClass, code);
+        } catch (QueryNotFoundException e) {
+            return null;
+        }
+    }
 }
