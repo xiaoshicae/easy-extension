@@ -37,21 +37,21 @@
 | 层 | 类型 | 角色 | 取代 3.x 的 |
 |---|---|---|---|
 | 1 | `@ExtensionPoint` | 扩展点接口,没有属性 | 同名(去掉 `mandatory`、`scenarios`、`version`) |
-| 1 | `@Business` | 业务:`code`、`abilities`、`first` | `@Business(priority, abilities)` |
+| 1 | `@Business` | 业务:`code`、`abilities`、`overridingAbilities` | `@Business(priority, abilities)` |
 | 1 | `@Ability` | 能力:`code`、`requires`、`excludes` | 同名 |
 | 1 | `@WithIdentity` | 入口(或测试)上的身份绑定:业务码,或从方法参数取的 SpEL | 入口处手写的 `initSession` / `ExtensionSessionScope.run` |
-| 1 | `Identity` | 请求"是谁":业务码,可收窄启用的能力 | `@MatcherParam` 对象 |
+| 1 | `Identity` | 请求"是谁":业务码,可收窄启用的能力 | `Matcher<P>`、`@MatcherParam` 对象(判定逻辑挪到入口,见 §8) |
 | 1 | `Extensions` | 注入、`run` / `call`、`all`、`wrap` | `IExtensionContext` 及四对 Manager |
-| 2 | `IdentityResolver<Req>` | HTTP 过滤器里的自定义身份:请求 → `Identity` | `Matcher` 的扫描逻辑 |
+| 2 | `IdentityResolver<Req>` | HTTP 过滤器里的自定义身份:请求 → `Identity`(只被 HTTP 过滤器使用) | 新增 |
 | 2 | `ExtensionInterceptor`、`Invocation` | 环绕拦截 | 同名(语义不变) |
 | 2 | `@DefaultProvider` | 默认实现要注入 Bean 时用 | `@ExtensionPointDefaultImplementation` |
 | 3 | `Session` | 不可变的已解析身份:显式持有、解释 | `ResolvedChain`、`IExtensionSession`、`ExtensionSessionScope` |
 | 3 | `Explanation`、`Description` | 每个方法由谁回答;注册表的 JSON 描述 | `ExtensionExplanation`、`ResolveTrace`、admin 的数据模型 |
 | 3 | `ExtensionException` 与 `RegistryException`、`ResolutionException`、`ExtensionNotFoundException` | 全部 unchecked | 13 个异常类 |
 
-可选子包 `core.matching`(默认 resolver):`Matcher<Req>`、`MatcherIdentityResolver<Req>`。其余全部放 `core.internal`。starter 与 test-kit 的公开类型见 §4.7。
+其余全部放 `core.internal`。4.0 没有 `Matcher` 兼容层(ADR-0002 S12):身份永远是显式的。starter 与 test-kit 的公开类型见 §4.6。
 
-计数口径:表里是 core 的**顶层**公开类型(17 个,另有 `core.matching` 的 2 个),不含嵌套类型(`Extensions.Builder`、`Session.Binding` 等)、starter 和 test-kit。"第 1 层 6 个类型"是新手要认识的类型:HTTP 请求头绑定的用户不需要 `@WithIdentity`,RPC / MQ / 定时任务的用户需要它;`Extensions` 有十几个成员,第 1 层只用 `run` / `call` / `all` / `wrap` / `of`。
+计数口径:表里是 core 的**顶层**公开类型(17 个),不含嵌套类型(`Extensions.Builder`、`Session.Binding` 等)、starter 和 test-kit。"第 1 层 6 个类型"是新手要认识的类型:HTTP 请求头绑定的用户不需要 `@WithIdentity`,RPC / MQ / 定时任务的用户需要它;`Extensions` 有十几个成员,第 1 层只用 `run` / `call` / `all` / `wrap` / `of`。
 
 ## 4. 签名草图
 
@@ -70,8 +70,8 @@ public @interface Business {
     String code();
     /** 挂载的能力。业务自己没实现的方法,按声明顺序由它们回答。 */
     String[] abilities() default {};
-    /** 要先于业务自己回答的能力(也算挂载),按声明顺序。例如包邮、促销这类要压过业务默认逻辑的能力。 */
-    String[] first() default {};
+    /** 覆盖业务自己的能力(也算挂载),按声明顺序:它们实现的方法,先于业务自己回答。例如包邮、风控这类要压过业务自己逻辑的能力。 */
+    String[] overridingAbilities() default {};
 }
 
 @Documented @Retention(RUNTIME) @Target(TYPE)
@@ -155,7 +155,7 @@ public interface Extensions {
         Builder add(Class<?> declaredAs, Object implementation);   // 实例是容器代理时:declaredAs 是带注解的用户类
 
         /** 不靠注解、用数据登记(例如租户配置存在库里,一个类对应很多个业务)。上面的 add 读完注解后调用的就是它们。 */
-        Builder business(String code, List<String> first, List<String> abilities, Object implementation);
+        Builder business(String code, List<String> overridingAbilities, List<String> abilities, Object implementation);
         Builder ability(String code, List<String> requires, List<String> excludes, Object implementation);
         Builder provider(Object implementation);
 
@@ -220,7 +220,7 @@ public record Description(String fingerprint,
                           List<String> warnings) {
     public record ExtensionPointInfo(Class<?> type, List<MethodInfo> methods) { }
     public record MethodInfo(String signature, boolean required) { }      // required = 没有 default 的抽象方法
-    public record BusinessInfo(String code, Class<?> implementation, List<String> first, List<String> abilities, List<Class<?>> extensionPoints) { }
+    public record BusinessInfo(String code, Class<?> implementation, List<String> overridingAbilities, List<String> abilities, List<Class<?>> extensionPoints) { }
     public record AbilityInfo(String code, Class<?> implementation, List<String> requires, List<String> excludes, List<Class<?>> extensionPoints) { }
     public record ProviderInfo(Class<?> implementation, List<Class<?>> extensionPoints) { }
 }
@@ -233,24 +233,7 @@ public final class ResolutionException extends ExtensionException {             
 public final class ExtensionNotFoundException extends ExtensionException { }    // 调用:没有实现者的抽象方法
 ```
 
-### 4.6 可选:`core.matching`(保留"每个业务自带 match()"的风格)
-
-```java
-public interface Matcher<Req> { boolean match(Req request); }      // 业务和能力可选实现
-
-public final class MatcherIdentityResolver<Req> implements IdentityResolver<Req> {
-    /** 传入带 @Business / @Ability 的对象。业务按 match() 选出;能力按 match() 决定是否启用(不实现 Matcher 的视为启用),
-     *  结果映射成 Identity.only(...),只在该业务挂载的能力里取交集(没有挂载的能力即使 match() 为 true 也忽略)。 */
-    public static <Req> MatcherIdentityResolver<Req> of(Object... businessesAndAbilities);
-    public MatcherIdentityResolver<Req> onNoMatch(NoMatch how);            // NONE(默认层兜底)| REJECT
-    public MatcherIdentityResolver<Req> onMultipleMatches(MultiMatch how); // REJECT | FIRST | ORDERED
-    public MatcherIdentityResolver<Req> order(String... businessCodes);    // ORDERED 时的优先级
-    public enum NoMatch { NONE, REJECT }              // 默认 REJECT:不静默退回默认层
-    public enum MultiMatch { REJECT, FIRST, ORDERED } // 默认 REJECT
-}
-```
-
-### 4.7 starter 与 test-kit 的公开类型
+### 4.6 starter 与 test-kit 的公开类型
 
 ```java
 // easy-extension-spring-boot-starter
@@ -270,9 +253,6 @@ public final class ExtensionTaskDecorator implements TaskDecorator { }   // 沿�
 |---|---|---|
 | `web.business-header` | 无 | 业务码所在的请求头;配了才注册 Web filter(只在 servlet 应用里) |
 | `web.abilities-header` | 无 | 能力码所在的请求头,逗号分隔,对应 `only(...)`;缺失或空白 = 全部启用 |
-| `matching.no-match` | `reject` | 仅 Matcher 风格:没有业务匹配。`none` = 只用默认层 |
-| `matching.multi-match` | `reject` | 仅 Matcher 风格:多个业务匹配。`first` / `ordered` |
-| `matching.order` | 空 | 仅 Matcher 风格:`ordered` 时的业务优先级 |
 
 "身份 → 链"缓存的容量等内部参数不对外配置,用内部默认值(§5.1)。
 
@@ -280,16 +260,16 @@ public final class ExtensionTaskDecorator implements TaskDecorator { }   // 沿�
 
 ### 5.1 链的构造
 
-输入 `Identity`,业务记为 `B`;`B` 挂载的能力 = `first` ∪ `abilities`:
+输入 `Identity`,业务记为 `B`;`B` 挂载的能力 = `overridingAbilities` ∪ `abilities`:
 
 1. `Identity.none()`:链为空,只有默认提供者和接口 `default` 回答。
 2. `B` 不存在 → `ResolutionException`:`business [B] not found`。
 3. 启用哪些能力:启用集合 = (`only(...)` 所列的;没调用 `only` 则是挂载的**全部**)减去 `without(...)` 所列的。`only` / `without` 里列了 `B` 没有挂载的能力 → `ResolutionException`:`business [B] does not mount ability [a]`。
-4. 启用集合里每个能力 `requires` 的能力,也必须在启用集合里,否则 `ResolutionException`:`ability [a] requires ability [r], which is not enabled for business [B]`。`requires` 在建库时只按"挂载"校验过,这一步补上请求期收窄(`only` / `without`、Matcher 风格的 `match()`)之后的情形。
-5. 链 = 启用的 `first`(按 `first` 的声明顺序)→ **业务自己** → 启用的 `abilities`(按 `abilities` 的声明顺序)。
+4. 启用集合里每个能力 `requires` 的能力,也必须在启用集合里,否则 `ResolutionException`:`ability [a] requires ability [r], which is not enabled for business [B]`。`requires` 在建库时只按"挂载"校验过,这一步补上请求期收窄(`only` / `without`)之后的情形。
+5. 链 = 启用的 `overridingAbilities`(按声明顺序)→ **业务自己** → 启用的 `abilities`(按声明顺序)。
 6. 链的后面依次是各 `@DefaultProvider`,最后是接口自己的 `default`。
 
-一句话:**先于业务的能力 → 业务自己 → 其余能力 → 默认。**
+一句话:**覆盖业务的能力 → 业务自己 → 其余能力 → 默认。**
 
 `Identity` 是不可变的值对象:`only` / `without` 里的能力是集合,顺序和重复项无关(`only(a, b)` 等于 `only(b, a)`);`only` 再次调用是替换,`without` 多次调用是叠加,与调用先后无关。同一个 `Identity` 得到同一条链,`Extensions` 按 `Identity` 缓存:容量是内部默认值 10000 条(LRU,不对外配置),只缓存合法的身份(未知的业务、能力在进缓存前就被拒绝)。能力头由客户端传来,所以缓存必须有上限;超出上限只影响性能,不影响正确性,因为链是身份的纯函数。
 
@@ -329,7 +309,7 @@ public final class ExtensionTaskDecorator implements TaskDecorator { }   // 沿�
 
 - 同一个类上标了不止一个 `@Business` / `@Ability` / `@DefaultProvider`。
 - 业务码重复;能力码重复(两个命名空间各自检查)。
-- `first` / `abilities` 里的能力码不存在、重复,或同一个能力同时出现在两个列表里。
+- `overridingAbilities` / `abilities` 里的能力码不存在、重复,或同一个能力同时出现在两个列表里。
 - `requires` 的能力没有同时挂载(包括该码根本不存在);`excludes` 的能力同时挂载了。
 - 能力或提供者没有实现任何 `@ExtensionPoint`。
 - 同一个扩展点有两个 `@DefaultProvider`。
@@ -472,7 +452,7 @@ public class FreeShippingAbility implements FreightCalcExtension {
 @Business(code = "biz.fresh", abilities = {"ability.free-shipping"})    // 业务自己没实现的方法,由挂载的能力回答
 public class FreshBusiness implements ColdChainExtension { ... }       // 没有实现 calcFreight,于是包邮能力回答
 
-@Business(code = "biz.retail-plus", first = {"ability.free-shipping"}) // 包邮能力先于业务自己回答
+@Business(code = "biz.retail-plus", overridingAbilities = {"ability.free-shipping"})   // 包邮能力覆盖业务自己的运费逻辑
 public class RetailPlusBusiness implements FreightCalcExtension { ... }
 ```
 
@@ -595,21 +575,13 @@ GET /actuator/extensions/explain?business=biz.retail&type=com.acme.FreightCalcEx
 - **路由 Bean**(普通注入拿到的)。为"已收集的实现所实现的每个 `@ExtensionPoint` 接口"注册一个 `@Primary` 的 Bean(`Extensions.extension(type)`),不论接口在哪个包、哪个 jar;扫描包树里的 `@ExtensionPoint` 接口同样注册。启动期检查:某个注入点要一个 `@ExtensionPoint` 类型的 Bean,却解析到别的 Bean 或没有 → 失败并提示 `@ExtensionScan`(3.x 的注入点后处理器有同样的检查)。**不要注入 `List<E>`**:`@Primary` 只管单值,集合会连路由 Bean 一起注入;要全部实现用 `extensions.all(E)`。
 - `Extensions` Bean 是一个**门面**,没有依赖,所以可以注入到任何地方,包括业务 Bean。真正的注册表在全部单例实例化之后才构建并冻结,再接到门面上:收集(`getBeansWithAnnotation`,AOP 代理感知;`add(目标类, Bean)` 读注解、调用 Bean)、校验、冻结。就绪点是门面自己的 `afterSingletonsInstantiated`:此前调用(构造器、`@PostConstruct`)得到"尚未就绪"的错误;应用自己的 `SmartInitializingSingleton` 与它的先后取决于 Bean 的注册顺序,不要在那里调用扩展点,改用 `ApplicationRunner` 或 `ContextRefreshedEvent`。校验失败(`RegistryException`)发生在 Web 服务器开始接收请求之前。
 - **`@WithIdentity`**:starter 注册一个 Advisor,切点同时匹配类上和方法上的注解,通知求值表达式(解析结果按方法缓存)后调用 `Extensions.call`。基于 Spring AOP,不依赖 AspectJ;与场景里的 Dubbo、gRPC、MQ 监听、`@Scheduled` 无关,只要入口是 Bean 的方法。规则见 §5.7。
-- HTTP 请求头 filter(只在 servlet 应用里)、`ExtensionTaskDecorator`(不自动贡献,§5.3)、属性见 §4.7、§5.3、§5.6。**Matcher 风格**:没有 resolver Bean,且业务和能力实现的是 `Matcher<HttpServletRequest>` 时,starter 用它们构造 `MatcherIdentityResolver`,交给 Web filter,选项来自 `easy-extension.matching.*`(默认都是 `reject`,不静默退回默认层)。`Req` 是应用自己的参数类时(3.x 里最常见:`Matcher<OrderMatchParam>`),filter 拿不到这个对象,starter 只提供 `MatcherIdentityResolver<Req>` Bean,应用在入口自己 `extensions.run(resolver.resolve(param), ...)`。
-
-```yaml
-easy-extension:
-  matching:
-    no-match: reject        # reject(默认)| none:没有业务匹配时只用默认层
-    multi-match: reject     # reject(默认)| first | ordered
-    order: [biz.retail, biz.fresh]
-```
+- HTTP 请求头 filter(只在 servlet 应用里)、`ExtensionTaskDecorator`(不自动贡献,§5.3)、属性见 §4.6、§5.3、§5.6。
 
 **test-kit(`easy-extension-test`)。** 没有新的公开类型:一个通过 `META-INF/spring.factories` 自动注册的 `TestExecutionListener`,处理 Spring 测试类上的 `@WithIdentity`(§5.7)。`Explanation` 的断言放在进阶里,按需再加。
 
 **Actuator。** 只读的 `extensions` endpoint,序列化 `Description` 与 `Explanation`。UI 另起仓库消费它。
 
-**注解处理器(编译期)。** 报错:`@ExtensionPoint` 不是 `public` 接口;同一模块内业务码或能力码重复;同一个类上标了多个角色注解;`first` 与 `abilities` 里有同一个能力。提示:本模块内引用了找不到的能力码(跨模块的能力只能在启动时校验)。
+**注解处理器(编译期)。** 报错:`@ExtensionPoint` 不是 `public` 接口;同一模块内业务码或能力码重复;同一个类上标了多个角色注解;`overridingAbilities` 与 `abilities` 里有同一个能力。提示:本模块内引用了找不到的能力码(跨模块的能力只能在启动时校验)。
 
 ## 8. 从 3.x 迁移
 
@@ -619,31 +591,31 @@ easy-extension:
 | `IExtensionContext<P>`、`initSession(param)` / `removeSession()` | 入口方法上 `@WithIdentity("#param.bizCode")`(RPC、MQ、HTTP 请求体、定时任务);身份在网关设的请求头里:一行配置;其他:`extensions.run(...)` | 人工 + 部分 recipe |
 | `context.invoke(E.class, e -> ...)` | 注入的 `E`,直接调用 | recipe |
 | `invokeAll` / `invokeReduce` | `extensions.all(E.class)` 加 stream。**不含接口 `default` 体**(3.x 的默认实现是链上的一个对象,会被遍历到),见 §5.2 | 人工 |
-| `@MatcherParam`、`Matcher<P>` | `Matcher<P>` 保留在 `core.matching`;`@MatcherParam` 去掉(类型从 `Matcher<P>` 的泛型参数读) | recipe |
-| `@Business(priority, abilities = {"a", "b::10"})` | 按 3.x **实际解析出的数字**比较:数字小于业务自身 `priority` 的能力 → `first`,其余 → `abilities`,各自按数字升序。未写 `::N` 的能力,3.x 自动编为 1、2……(业务默认是 0;业务写了 `priority = 100` 而能力不写数字,能力就在业务前),recipe 要复现这个编号 | recipe(仅注解方式) |
+| `Matcher<P>.match(param)`、`@MatcherParam`、无命中 / 多命中策略、`BusinessMatchSelector`、`allow-unknown-business` | **没有对应物。**身份是显式的:入口给出业务码(`@WithIdentity` / 请求头 / `extensions.run`),业务码对应唯一的业务。`match()` 里的判断挪到入口:典型的 `bizCode` 相等就是 `@WithIdentity("#param.bizCode")`;能力是否启用是 `only = "#param.abilityCodes"`;复杂的路由写成 Bean 的方法,`@WithIdentity("@routing.bizOf(#param)")`。无命中、多命中这类策略随之消失:一个身份只指一个业务,业务码未知是 `ResolutionException`。原来靠 `allow-unknown-business` 回落到默认实现的,建一个没有实现的 `biz.default` 业务,让路由方法把未知的码映射到它 | 人工(典型情形可 recipe) |
+| `@Business(priority, abilities = {"a", "b::10"})` | 按 3.x **实际解析出的数字**比较:数字小于业务自身 `priority` 的能力 → `overridingAbilities`,其余 → `abilities`,各自按数字升序。未写 `::N` 的能力,3.x 自动编为 1、2……(业务默认是 0;业务写了 `priority = 100` 而能力不写数字,能力就在业务前),recipe 要复现这个编号 | recipe(仅注解方式) |
 | 手写 `IBusiness` / `IAbility`(含数据驱动的业务) | 不再有这两个接口:改成带注解的类,或 `Extensions.builder().business(...)` / `ability(...)` | 人工 |
 | `@ExtensionPointDefaultImplementation class D implements E1, E2` | 把默认体写进接口的 `default` 方法;需要注入的用 `@DefaultProvider` | 人工 |
 | `@ExtensionPoint(mandatory / scenarios / version)` | 全部删掉;接口方法不带 `default` 即为必选。`scenarios` / `version` 只用于 admin 展示;接口演进照旧靠新增 `default` 方法 | recipe |
-| `allow-unknown-business` 与两个策略属性 | `easy-extension.matching.*`(Matcher 风格),或 resolver 自己决定 | 人工 |
 | `IScopedSessionManager`、命名 scope | 一个请求里的多个身份 = 嵌套的 `extensions.call(biz, ...)`,或并列的多个 `Session`(场景 7) | 人工 |
 | `ExtensionSessionScope.run / runWith` | `@WithIdentity` / `extensions.run` / `Extensions.wrap` | recipe |
 | `SessionException`、`InvokeException` 等 13 个异常 | `ResolutionException`、`ExtensionNotFoundException`、`RegistryException` | recipe(`ChangeType`) |
 | 内嵌 admin | Actuator endpoint + 独立的 UI 仓库 | 人工 |
 | `-Deasy-extension.legacy-exception-wrapping` | 删除(代理层不再存在) | —— |
 
-迁移时要特别检查四处语义:**带 `default` 方法的扩展点**(路由按方法,见 §5.2)、**能力与业务自身的先后**(3.x 按数字比较:业务默认 0,未编号的能力自动编为 1、2……;4.0 默认业务在前,3.x 里数字更小的能力要进 `first`)、**能力的启用**(4.0 默认挂载的全部启用;原来靠 `match()` 或请求参数条件启用的,要用 `only` / `without` 或 `MatcherIdentityResolver`;收窄后 `requires` 也会在请求期校验,见 §5.1)、**聚合**(`all(E)` 不含接口 `default` 体,见 §5.2)。
+迁移时要特别检查四处语义:**带 `default` 方法的扩展点**(路由按方法,见 §5.2)、**能力与业务自身的先后**(3.x 按数字比较:业务默认 0,未编号的能力自动编为 1、2……;4.0 默认业务在前,3.x 里数字更小的能力要进 `overridingAbilities`)、**能力的启用**(4.0 默认挂载的全部启用;原来靠 `match()` 按请求启用的,把条件挪到入口:`@WithIdentity` 的 `only`,或 `extensions.run(Identity.of(...).only(...), ...)`;收窄后 `requires` 也会在请求期校验,见 §5.1)、**聚合**(`all(E)` 不含接口 `default` 体,见 §5.2)。
 
 ## 9. 这份草图还没回答的问题
 
-ADR-0001 §9 的六项开放问题里,草图暂定了四项:Q1 取全部实现 = `Extensions.all`(§5.2);Q2 `Matcher` 放 `core.matching` 子包;Q3 沿用 `io.github.xiaoshicae.extension.core` 包名;Q4 缓存默认 10000 条、LRU(§5.1)。Q5(响应式)、Q6(只读页面)仍开放。这份草图自己还有:
+ADR-0001 §9 的六项开放问题里,草图暂定了三项:Q1 取全部实现 = `Extensions.all`(§5.2);Q3 沿用 `io.github.xiaoshicae.extension.core` 包名;Q4 缓存默认 10000 条、LRU(§5.1)。Q2(`Matcher` 放哪)取消:4.0 不带 Matcher(ADR-0002 S12)。Q5(响应式)、Q6(只读页面)仍开放。这份草图自己还有:
 
-1. `first` 的命名。备选:`precedence`、`overriding`。现在用 `first` 是因为它最短,但可能被读成"abilities 里的第一个"。
-2. 请求头缺失、或业务码未知时:现在分别是"不绑定"和 HTTP 400;是否需要一个开关改成绑定 `Identity.none()`(只用默认层)。3.x 的 `allow-unknown-business` 就是这个意思;现在要这样只能写 `IdentityResolver`,或用 Matcher 风格的 `no-match: none`。
-3. 提供者在 `Explanation` 和 `Invocation` 里的标识:现在用类名,是否需要一个显式的 `code`。
-4. `Identity.of(null)` 的校验用 `ResolutionException`(与"身份非法"一致)还是 `IllegalArgumentException`。
-5. 请求期收窄后违反 `requires`:现在抛 `ResolutionException`(§5.1 第 4 步);备选是自动补上被依赖的能力。抛异常更显式,但对 Matcher 风格(`match()` 的结果被映射成 `only(...)`)是比 3.x 更严的行为。
-6. `all(E)` 不含接口 `default` 体(§5.2)。需要"含默认值的聚合"的用户,现在只能自己在 stream 里再加一项。
-7. `@WithIdentity` 的命名(备选 `@BindIdentity`,它也用在测试里,所以现在叫 With)。复杂的路由逻辑现在只能写成 Bean 方法、在 SpEL 里用 `@bean` 调用;是否另给一个类型安全的入口,例如 `@WithIdentity(resolver = ...)` 指向 `IdentityResolver` Bean。
-8. 是否支持零注解的入口绑定:用配置给一个切点表达式和一个身份表达式,例如 `easy-extension.entry.pointcut` 加 `easy-extension.entry.business`。省掉每个入口方法上的注解,代价是又多一套配置语法,现在不做。
-9. Dubbo、gRPC 等传输层元数据的适配(§5.7 末尾)是否出独立模块,以及要不要提供客户端侧把当前身份透传给下游的拦截器。现在只给配方。
-10. 两项由维护者决定的取舍,见 ADR-0002 §4:4.0 是否不带 Matcher 兼容层(`core.matching`、`matching.*`);首个 GA 是否瘦身(编译期处理器、BOM、迁移 recipe 放到 4.x)。
+1. `overridingAbilities` 这个名字偏长,但方向不会读反:`first` 会被读成"`abilities` 里的第一个",`overrides` 会被读成"业务覆盖能力"(那是默认行为)。备选 `overriddenBy`。
+2. 提供者在 `Explanation` 和 `Invocation` 里的标识:现在用类名,是否需要一个显式的 `code`。
+3. `Identity.of(null)` 的校验用 `ResolutionException`(与"身份非法"一致)还是 `IllegalArgumentException`。
+4. 请求期收窄后违反 `requires`:现在抛 `ResolutionException`(§5.1 第 4 步);备选是自动补上被依赖的能力。抛异常更显式。
+5. `all(E)` 不含接口 `default` 体(§5.2)。需要"含默认值的聚合"的用户,现在只能自己在 stream 里再加一项。
+6. 复杂的路由逻辑现在只能写成 Bean 方法、在 `@WithIdentity` 的 SpEL 里用 `@bean` 调用;是否另给一个类型安全的入口,例如 `@WithIdentity(resolver = ...)`。
+7. 是否支持零注解的入口绑定:用配置给一个切点表达式和一个身份表达式,例如 `easy-extension.entry.pointcut` 加 `easy-extension.entry.business`。省掉每个入口方法上的注解,代价是又多一套配置语法,现在不做。
+8. Dubbo、gRPC 等传输层元数据的适配(§5.7 末尾)是否出独立模块,以及要不要提供客户端侧把当前身份透传给下游的拦截器。现在只给配方。
+9. 首个 GA 是否瘦身(编译期处理器、BOM、迁移 recipe 放到 4.x),见 ADR-0002 §4,留给维护者决定。
+
+维护者已确认、不再是问题:4.0 不带 Matcher;请求头缺失或业务码未知时不加"回落到默认层"的开关。建议、待确认:`@WithIdentity` 的名字不改(入口和测试用同一个注解,"with identity"读起来是"在这个身份下执行",不暗示线程绑定这个实现细节)。

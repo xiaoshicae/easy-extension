@@ -79,7 +79,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ### D1 身份判定显式化
 
-> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4):** `Identity.of(biz)` 默认启用业务挂载的全部能力;Web 绑定零代码,`IdentityResolver` 降到第 2 层。
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4、S12):** `Identity.of(biz)` 默认启用业务挂载的全部能力;入口绑定与传输无关(`@WithIdentity`),`IdentityResolver` 降到第 2 层;**`Matcher` 不再提供**(维护者已确认),下文凡提到"`Matcher` 风格保留为可选的默认 resolver"处以此为准。
 
 - **背景。** README 里的 matcher 基本是 `"retail".equals(param.getBizCode())` 和 `param.getAbilityCodes().contains(...)`:身份本来就是请求里的显式数据,`match()` 只是样板。`Matcher<T>` 带来:`initSession` 随业务数线性增长(实测 100 个业务 0.65 µs、1000 个 3.0 µs)、"无命中 / 多命中"两套策略加选择器加 `business-match-order`、泛型 `T` 贯穿 16 个接口、`@MatcherParam`。
 - **决策。** 核心只做"身份 → 链"。输入是显式的 `Identity`(业务码 + 本次启用的能力码),判定交给 `IdentityResolver<Req>`。`Matcher` 风格保留为可选的默认 resolver(`MatcherIdentityResolver`),多命中怎么处理(报错 / 取首个 / 按顺序)是它自己的配置,不再是核心概念。
@@ -110,7 +110,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ### D3 声明顺序代替数字优先级
 
-> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S2):** `chain` + `SELF` 改为 `@Business(abilities, first)`。
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S2):** `chain` + `SELF` 改为 `@Business(abilities, overridingAbilities)`。
 
 - **背景。** 优先级只在"一个业务自己"与"它挂载的能力"之间比较(`ability.free-shipping::10`,数字越小越优先)。数字带来:`::` 字符串解析、自动编号、冲突检测。有些冲突要到每次 `initSession` 才暴露(业务与默认实现之间、不同 code 的默认实现之间)。评审就发现一例:不同 code 的默认实现同优先级,注册通过、每个请求都失败。
 - **决策。** 用有序列表表达:`@Business(code = "biz.retail", chain = {"ability.free-shipping", SELF})`。越靠前越先响应,`SELF` 代表业务自身,必须恰好出现一次。`@DefaultProvider` 和接口 `default` 永远排在链尾。
@@ -217,7 +217,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 ## 9. 待 P1 内决定的开放问题
 
 1. "取全部实现"(3.x 的 `invokeAll` / `invokeReduce`)的 API 形态:`Session.all(Class<E>)` 返回实现列表(草图里的做法),还是注入时标注。(草图暂定:`Extensions.all`,`Session.all` 在第 3 层。)
-2. `Matcher` / `MatcherIdentityResolver` 放在 core 的 `matching` 子包,还是独立的小模块。(草图暂定:`matching` 子包。)
+2. ~~`Matcher` / `MatcherIdentityResolver` 放在 core 的 `matching` 子包,还是独立的小模块。~~ 取消:维护者已确认 4.0 不带 Matcher(ADR-0002 S12)。
 3. 包名:沿用 `io.github.xiaoshicae.extension.core`(推荐,迁移 recipe 简单),还是改根包。(草图暂定:沿用。)
 4. `Extensions` 内按 `Identity` 缓存链的容量上限与淘汰策略。(草图暂定:默认 10000 条,LRU。)
 5. 是否提供响应式(Reactor Context)适配。

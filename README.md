@@ -419,12 +419,12 @@ public class FreeShippingAbility implements FreightCalcExtension {
 @Business(code = "biz.fresh", abilities = {"ability.free-shipping"})
 public class FreshBusiness implements ColdChainExtension { ... }
 
-// 要让能力压过业务自己的逻辑:放进 first
-@Business(code = "biz.retail-plus", first = {"ability.free-shipping"})
+// 要让能力覆盖业务自己的逻辑:放进 overridingAbilities
+@Business(code = "biz.retail-plus", overridingAbilities = {"ability.free-shipping"})
 public class RetailPlusBusiness implements FreightCalcExtension { ... }
 ```
 
-回答顺序固定,一句话:**先于业务的能力(`first`)→ 业务自己 → 其余能力(`abilities`)→ 接口的 `default`。** 按**方法**逐个往下找:一个对象没实现某个方法,就轮到下一个。(兜底要用 Spring Bean 时,有一个排在接口 `default` 之前的 `@DefaultProvider`,见「进阶」。)
+回答顺序固定,一句话:**覆盖业务的能力(`overridingAbilities`)→ 业务自己 → 其余能力(`abilities`)→ 接口的 `default`。** 按**方法**逐个往下找:一个对象没实现某个方法,就轮到下一个。(兜底要用 Spring Bean 时,有一个排在接口 `default` 之前的 `@DefaultProvider`,见「进阶」。)
 
 一个请求默认启用业务挂载的**全部**能力;只启用一部分,见下一节。
 
@@ -558,16 +558,6 @@ Result invoke(Call call, Chain chain) {
 
 注意:gRPC 的监听器回调可能不在 `interceptCall` 的线程上,要在回调里绑定;Dubbo 的异步提供者在别的线程完成响应,要用 `Extensions.wrap` 带上身份。
 
-**继续用 `match()` 的写法。** 业务和能力继续实现 `Matcher<Req>`(在可选的 `core.matching` 子包里),由 `MatcherIdentityResolver` 判定身份。`Req` 是 `HttpServletRequest` 时 Web filter 自动使用它;`Req` 是你自己的参数类时,注入 `MatcherIdentityResolver<Req>`,在入口 `extensions.run(resolver.resolve(param), ...)`。无命中、多命中怎么处理是它的选项,也能用 `easy-extension.matching.*` 配置,默认都是 `reject`,不静默退回默认层:
-
-```yaml
-easy-extension:
-  matching:
-    no-match: reject        # reject(默认)| none:没有业务匹配时只由默认层回答
-    multi-match: reject     # reject(默认)| first | ordered
-    order: [biz.retail, biz.fresh]
-```
-
 **解释"这个身份下,每个方法由谁回答"。**
 
 ```java
@@ -587,8 +577,8 @@ GET /actuator/extensions/explain?business=biz.retail&type=com.acme.FreightCalcEx
 | | 现在(3.x) | 4.0 |
 |---|---|---|
 | 注入 | `@ExtensionInject` 字段 | 普通注入,构造器注入即可 |
-| 判定请求是谁 | 每个业务实现 `Matcher<P>`,配 `@MatcherParam`;入口手写 `initSession(param)` | 入口方法上 `@WithIdentity("#param.bizCode")`;网关设请求头的,一行配置;仍想用 `match()` 也可以 |
-| 谁先回答 | 数字优先级:`priority`、`ability::10` | 业务先答;要让能力先答,写 `first = {...}` |
+| 判定请求是谁 | 每个业务实现 `Matcher<P>`,配 `@MatcherParam`;入口手写 `initSession(param)` | 身份是显式的,没有 `Matcher`:入口方法上 `@WithIdentity("#param.bizCode")`;网关设请求头的,一行配置 |
+| 谁先回答 | 数字优先级:`priority`、`ability::10` | 业务先答;要让能力覆盖业务,写 `overridingAbilities = {...}` |
 | 默认实现 | 一个类实现全部扩展点;没有合理默认值的标 `mandatory` | 接口的 `default` 方法;没有 `default` 的方法就是必选 |
 | 会话 | 手动 `initSession` / `removeSession`,命名 scope | `@WithIdentity` 绑定、还原、清理都是框架的;一个请求里的多个身份用嵌套的 `extensions.call(biz, ...)` |
 | 异步 | 自己把会话带进线程 | `Extensions.wrap(...)` 一行,或给线程池设置 `ExtensionTaskDecorator`;规则处处一样 |
@@ -597,10 +587,11 @@ GET /actuator/extensions/explain?business=biz.retail&type=com.acme.FreightCalcEx
 
 - `@ExtensionInject X x` → 普通注入 `X x`;`context.invoke(X.class, ...)` → 直接调用注入的 `X`;`invokeAll` / `invokeReduce` → `extensions.all(X.class)` 加 stream。
 - `initSession(param)` / `removeSession()` → 入口方法上 `@WithIdentity`,或请求头一行配置;不是 Bean 的入口用 `extensions.run(...)`。
-- `@Business(priority, abilities = {"a::10"})` → 按 3.x **实际解析出的数字**比较:小于业务自身 `priority` 的能力进 `first`,其余进 `abilities`,各自按数字升序。未写数字的能力,3.x 自动编为 1、2……(业务默认是 0)。适用于注解方式注册的类,计划提供 OpenRewrite recipe。
+- **`Matcher` 没有了。** `match(param)`、`@MatcherParam`、无命中 / 多命中策略、`BusinessMatchSelector`、`allow-unknown-business` 都没有对应物:一个身份只指一个业务,业务码未知是 `ResolutionException`。`match()` 里的判断挪到入口:最常见的 `bizCode` 相等,就是 `@WithIdentity("#param.bizCode")`;能力是否启用,是 `only = "#param.abilityCodes"`;复杂的路由写成 Bean 的方法,在表达式里调用:`@WithIdentity("@routing.bizOf(#param)")`。原来靠 `allow-unknown-business` 回落到默认实现的,建一个没有实现的 `biz.default` 业务,让路由方法把未知的码映射到它。
+- `@Business(priority, abilities = {"a::10"})` → 按 3.x **实际解析出的数字**比较:小于业务自身 `priority` 的能力进 `overridingAbilities`,其余进 `abilities`,各自按数字升序。未写数字的能力,3.x 自动编为 1、2……(业务默认是 0)。适用于注解方式注册的类,计划提供 OpenRewrite recipe。
 - `@ExtensionPointDefaultImplementation` 大类 → 接口的 `default` 方法;需要注入的用 `@DefaultProvider`。`@ExtensionPoint` 的 `mandatory` 直接删掉(没有 `default` 就是必选),`scenarios` / `version` 也去掉(它们只用于管理后台展示,接口演进照旧靠新增 `default` 方法)。
 - 手写 `IBusiness` / `IAbility`(含数据驱动的业务) → 带注解的类,或 `Extensions.builder().business(...)` / `.ability(...)`。
-- **要特别检查四处语义**:带 `default` 方法的扩展点(路由按方法而不是按接口)、能力的先后(3.x 按数字比较,业务默认 0、未编号的能力自动编为 1、2……;4.0 默认业务在前,数字更小的能力要进 `first`)、能力的启用(4.0 默认挂载的全部启用,原来靠 `match()` 按请求启用的,用 `only` / `without` 或 Matcher 风格)、聚合(`all` 不含接口的 `default` 体,原来默认实现也会被 `invokeAll` 遍历到)。
+- **要特别检查四处语义**:带 `default` 方法的扩展点(路由按方法而不是按接口)、能力的先后(3.x 按数字比较,业务默认 0、未编号的能力自动编为 1、2……;4.0 默认业务在前,数字更小的能力要进 `overridingAbilities`)、能力的启用(4.0 默认挂载的全部启用,原来靠 `match()` 按请求启用的,把条件挪到入口:`@WithIdentity` 的 `only`,或 `Identity.of(...).only(...)`)、聚合(`all` 不含接口的 `default` 体,原来默认实现也会被 `invokeAll` 遍历到)。
 
 完整对照表见 [API 草图 §8](doc/design/v4-api-sketch.md#8-从-3x-迁移)。
 
