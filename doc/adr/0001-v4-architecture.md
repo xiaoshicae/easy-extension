@@ -121,6 +121,8 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ### D4 Admin 拆出主线
 
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S8):** `@ExtensionPoint` 的 `scenarios` / `version` 一并去掉(它们只被 admin 展示用到)。
+
 - **背景。** admin 是 2.1K 行 Java 加 2.0K 行前端,运行时依赖 JavaParser。"展示源码"靠 sources.jar、文件系统遍历和 `metadata.json`,生产环境脆弱。"冲突检测"的价值在 D3 和构建期校验之后大部分已被取代。
 - **决策。** 主线只提供 Actuator endpoint(JSON:`Extensions.describe()` 与按身份的 `explain`)。UI 另起仓库消费该 JSON。"展示源码"砍掉(IDE 插件已有导航)。注解处理器改做编译期校验。
 - **后果。**
@@ -137,7 +139,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 ### D6–D9(无悬念)
 
 - **D6 异常。** `ExtensionException`(基类)下三个具体类:`RegistryException`(构建期,聚合全部问题)、`ResolutionException`(开会话 / 解析身份)、`ExtensionNotFoundException`(调用期,没有实现者)。所有 API 去掉 `throws`。实现类抛出的异常原样透传,这是契约,有专门的契约测试。
-- **D7 公开 API。** 约 15 个类型公开,其余放 `internal` 包;ArchUnit 守三条:`core` 不依赖 Spring、`internal` 不外泄、公开类型总数设预算上限。
+- **D7 公开 API。** 约 15 个类型公开,其余放 `internal` 包;ArchUnit 守三条:`core` 不依赖 Spring、`internal` 不外泄、公开类型总数设预算上限。(ADR-0002 提议:预算改为 20,按 core 顶层类型计,不含嵌套类型、starter、test-kit。)
 - **D8 starter。** 一个注册器(`ClassPathBeanDefinitionScanner` 加 include filter)把 `@Business` / `@Ability` / `@DefaultProvider` 类注册成普通 Bean,把 `@ExtensionPoint` 接口注册成 `@Primary` 的路由 Bean;`Extensions` 从容器收集(`getBeansWithAnnotation`,AOP 代理感知)。不能用"元注解 `@Component`",因为 core 零依赖,它的注解带不了 Spring 的注解。
 - **D9 工程化。** 版本号改 `${revision}` 加 flatten(现在要手工同步 9 处),开发期用 `-SNAPSHOT`,顺带不再踩"japicmp 基线被 reactor 吞掉"的坑;加 BOM、`easy-extension-test`;加 ArchUnit 与 JMH 基准模块;发 OpenRewrite 迁移 recipe。
 
@@ -157,6 +159,8 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 | 8 | 异常 | 13 个类,12 个受检 | 3 个具体类,全部 unchecked |
 | 9 | 注入 | `@ExtensionInject` 字段 | 普通注入(路由 Bean 为 `@Primary`) |
 
+> [ADR-0002](0002-simplify-user-facing-api.md)(提议中)修订差异 2,并新增差异 10(能力默认全部启用)、11(请求期校验 `requires`)、12(`all(E)` 不含接口 `default` 体)。
+
 ## 5. 风险与缓解
 
 | 风险 | 缓解 |
@@ -164,7 +168,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 | 路由的反射成本 | JMH 基线,以稳定化分支的实测为底线(落到默认实现 55 ns、链头命中 32 ns、`initSession` 100 个业务 0.65 µs,均为普通循环测得,**不是 JMH**,P1 先用 JMH 重测);`MethodHandle` 缓存;每个会话持有预计算的路由表 |
 | Spring AOP / CGLIB 代理 | 注册表同时持有"实现类"和"实例"。starter 传入目标类读注解,调用走 Bean 本身,增强照常生效。沿用稳定化分支的 AOP 容器测试 |
 | 路由 Bean 与业务 Bean 同为某扩展点类型,按类型注入有歧义 | 路由 Bean 设为 `@Primary`;P2 的容器测试覆盖 |
-| 业务 Bean 注入 `Extensions` 造成循环依赖 | `Extensions` 在全部单例实例化之后构建(`SmartInitializingSingleton`);业务侧注入 `ObjectProvider<Extensions>` |
+| 业务 Bean 注入 `Extensions` 造成循环依赖 | `Extensions` 在全部单例实例化之后构建(`SmartInitializingSingleton`);业务侧注入 `ObjectProvider<Extensions>`(ADR-0002 提议:注入的是门面,业务侧不需要 `ObjectProvider`) |
 | 线程绑定与异步 | `Session.wrap(...)`;嵌套时恢复进入前的绑定(稳定化分支评审的高危项,做成契约测试) |
 | 大爆炸重写 | 阶段出口标准(§6);契约测试加黄金文件(§7);新旧差分 |
 | 迁移成本 | OpenRewrite recipe 加迁移指南;3.x 维护分支只收关键修复 |
@@ -206,14 +210,14 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ## 8. 不做什么
 
-类加载隔离与热部署;自带熔断(留拦截器,给 Resilience4j 写适配即可);表达式 DSL 匹配器;Boot 2 与 JDK 8–11;把 `scenarios` / `version` 做成强校验(它们保持为提示性元数据)。
+类加载隔离与热部署;自带熔断(留拦截器,给 Resilience4j 写适配即可);表达式 DSL 匹配器;Boot 2 与 JDK 8–11;把 `scenarios` / `version` 做成强校验(它们保持为提示性元数据;ADR-0002 提议:这两个属性随 admin 一起去掉)。
 
 ## 9. 待 P1 内决定的开放问题
 
-1. "取全部实现"(3.x 的 `invokeAll` / `invokeReduce`)的 API 形态:`Session.all(Class<E>)` 返回实现列表(草图里的做法),还是注入时标注。
-2. `Matcher` / `MatcherIdentityResolver` 放在 core 的 `matching` 子包,还是独立的小模块。
-3. 包名:沿用 `io.github.xiaoshicae.extension.core`(推荐,迁移 recipe 简单),还是改根包。
-4. `Extensions` 内按 `Identity` 缓存链的容量上限与淘汰策略。
+1. "取全部实现"(3.x 的 `invokeAll` / `invokeReduce`)的 API 形态:`Session.all(Class<E>)` 返回实现列表(草图里的做法),还是注入时标注。(草图暂定:`Extensions.all`,`Session.all` 在第 3 层。)
+2. `Matcher` / `MatcherIdentityResolver` 放在 core 的 `matching` 子包,还是独立的小模块。(草图暂定:`matching` 子包。)
+3. 包名:沿用 `io.github.xiaoshicae.extension.core`(推荐,迁移 recipe 简单),还是改根包。(草图暂定:沿用。)
+4. `Extensions` 内按 `Identity` 缓存链的容量上限与淘汰策略。(草图暂定:默认 10000 条,LRU。)
 5. 是否提供响应式(Reactor Context)适配。
 6. Actuator 之外,是否保留一个最小的只读页面。
 
