@@ -189,6 +189,8 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 不要求 P1–P3 严格串行,但 P2 依赖 P1 的接口冻结。
 
+> [ADR-0002](0002-simplify-user-facing-api.md)(提议中)修订 P2:"Web 绑定"扩展为"入口绑定"(`@WithIdentity` 的 AOP,加可选的 HTTP 请求头 filter);`TaskDecorator` 不再自动贡献,只提供 `ExtensionTaskDecorator`。同一文档还提出两项留给维护者决定的范围取舍(是否不带 Matcher 兼容层、首个 GA 是否瘦身),会影响 P1–P3 的内容。
+
 ## 7. 验证策略
 
 1. **行为契约。** 稳定化分支的语义测试是验收集,结构性测试(Manager、Proxy 层)不迁移:

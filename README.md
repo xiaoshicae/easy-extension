@@ -326,7 +326,7 @@ easy-extension:
 
 > ⚠️ **设计稿,尚未实现。** 这一节把 4.0 的用法摊开,为的是在写代码之前评审体验。API 以 [API 草图](doc/design/v4-api-sketch.md) 为准,取舍和理由见 [ADR-0001](doc/adr/0001-v4-architecture.md) 与 [ADR-0002](doc/adr/0002-simplify-user-facing-api.md)(用户面简化,提议中)。要用的话,请按上面的「快速开始」使用当前版本。
 
-**目标:一个典型用户只写两个类、一行配置(外加依赖),其余都是普通注入。** 校验、路由、线程绑定、缓存都留在框架里。
+**目标:一个典型用户只写两个类、一个入口绑定(外加依赖),其余都是普通注入。** 入口绑定与传输无关:HTTP 请求头是一行配置;RPC、MQ、定时任务没有 HTTP,在入口方法上标一个注解。校验、路由、线程绑定、缓存都留在框架里。
 
 ### 60 秒上手
 
@@ -350,10 +350,16 @@ public class RetailBusiness implements FreightCalcExtension {
 }
 ```
 
-**3. 一行配置** — 业务码从哪个请求头来:
+**3. 告诉框架身份从哪来** — 选一种:
 
 ```yaml
+# 网关把业务码放在请求头里(HTTP):一行配置
 easy-extension.web.business-header: X-Biz-Code
+```
+
+```java
+// 身份在请求对象里(RPC、MQ 监听、定时任务,也包括 HTTP 请求体):入口方法上标一个注解,从参数里取
+@WithIdentity("#request.bizCode")      // 不以 # 开头则是业务码字面量,例如 @WithIdentity("biz.retail")
 ```
 
 **4. 普通注入** — 没有 `@ExtensionInject`,也没有 if-else:
@@ -378,8 +384,25 @@ class OrderController {
 | `X-Biz-Code: biz.unknown`(没有这个业务) | —— | HTTP 400:`business [biz.unknown] not found` |
 | 没有请求头,却调用了扩展点 | —— | 报错(没人处理就是 HTTP 500),消息告诉你怎么办 |
 
+**没有 HTTP**(Dubbo、gRPC、MQ、定时任务)时,注入的写法一样,入口方法上标 `@WithIdentity`:
+
+```java
+@DubboService
+class OrderFacadeImpl implements OrderFacade {
+    private final FreightCalcExtension freight;
+    OrderFacadeImpl(FreightCalcExtension freight) { this.freight = freight; }
+
+    @WithIdentity("#request.bizCode")
+    public Result checkout(CheckoutRequest request) { return Result.ok(freight.calcFreight(request.toContext())); }
+}
+
+@Component @WithIdentity("biz.retail")          // 固定业务:定时任务、只服务一个业务的消费者
+class SettleJob { @Scheduled(cron = "0 0 2 * * *") public void settle() { ... } }
+```
+
 - 业务类放在 `@SpringBootApplication` 所在的包树里就会被自动扫描,不需要 `@Component`,也不用写扫描配置。放在包树之外时,症状是"业务码未知"(上表第三行),用 `@ExtensionScan(scanPackages = "...")` 追加包。
-- **请求头是信任边界**:`X-Biz-Code` 应由网关或认证层设置并覆盖客户端传来的值,应用直接暴露在外时任何客户端都能选业务。业务要从认证信息里取,见下面「进阶」里的 `IdentityResolver`。
+- `@WithIdentity` 用 Spring AOP 实现:入口要是 Spring Bean 的方法(同一个类内部的调用不经代理);SpEL 里用参数名需要 `-parameters` 编译(Boot 的 parent 默认开),否则写 `#p0`;表达式结果为 `null` 就不绑定。字面量的业务码写错了,启动时就报。
+- **请求头是信任边界**:`X-Biz-Code` 应由网关或认证层设置并覆盖客户端传来的值,应用直接暴露在外时任何客户端都能选业务。要从认证信息里取,见下面「进阶」。
 - 业务码重复、能力不存在这类问题,启动时一次性全部报出。
 
 ### 复用逻辑:能力
@@ -405,29 +428,53 @@ public class RetailPlusBusiness implements FreightCalcExtension { ... }
 
 一个请求默认启用业务挂载的**全部**能力;只启用一部分,见下一节。
 
-### 非 Web 入口、异步与收窄能力
+### 代码里绑身份、异步与收窄能力
 
 ```java
 private final Extensions extensions;      // 和别的 Bean 一样注入
 
-// MQ 消费者、定时任务:显式带上业务身份
+// 代码里绑身份:入口不是 Spring Bean 的方法,或在一个入口里切换到别的业务
 extensions.run("biz.retail", () -> handle(message));
 
 // 只启用业务挂载的一部分能力;去掉一个用 .without("ability.coupon")
 extensions.run(Identity.of("biz.retail-plus").only("ability.free-shipping"), () -> handle(message));
 
-// 异步:Boot 的 applicationTaskExecutor(@Async 的默认执行器)自动沿用提交时的身份。
-// 自己声明的线程池要设置 ExtensionTaskDecorator;new Thread、CompletableFuture 的默认池、并行流:用 Extensions.wrap(...)
+// 换线程要带身份,框架不自动覆盖任何线程池:包住任务或执行器,或给 Spring 的线程池设置装饰器
 CompletableFuture.runAsync(() -> audit.record(order), Extensions.wrap(executor));   // wrap 是静态方法
+taskExecutor.setTaskDecorator(new ExtensionTaskDecorator());
 
 // 取全部实现并聚合(替代 invokeAll / invokeReduce;不含接口的 default 体)
 BigDecimal discount = extensions.all(PromotionCalcExtension.class).stream()
         .map(e -> e.calcPromotion(ctx)).reduce(BigDecimal.ZERO, BigDecimal::add);
 ```
 
+- 入口方法上也能收窄:`@WithIdentity(value = "#msg.bizCode", only = "#msg.abilityCodes")`。Web 里的能力头 `easy-extension.web.abilities-header`(逗号分隔)对应 `only`;要 `without`,写一个 `IdentityResolver`。
 - `Extensions.wrap` 捕获**调用它的那个线程**当时的身份;任务在本线程内联执行时(直接执行器、线程池饱和),本线程原来的身份会在任务结束后还原,不会被清掉。
-- Web 里的能力头 `easy-extension.web.abilities-header`(逗号分隔)对应 `only`;要 `without`,写一个 `IdentityResolver`。
+- `@Async` 的默认执行器、`new Thread`、`CompletableFuture` 的默认池、并行流的工作线程,都不会自动带身份。给线程池设置 `ExtensionTaskDecorator`(声明成 `TaskDecorator` Bean,Boot 的 `applicationTaskExecutor` 就会采用;已有自己的 `TaskDecorator` 时自己组合,例如 Spring 的 `CompositeTaskDecorator`)。没带时调用扩展点的报错消息会指向 `wrap`。
 - 启用的能力,它 `requires` 的能力也必须启用,否则 `ResolutionException`。
+
+### 一个订单跨多个业务
+
+一次执行只有一个业务身份,所以组合订单有两种做法:**拆开执行再汇总**,或者**把组合本身建成一个业务**。
+
+```java
+@WithIdentity("biz.bundle")                         // 订单入口的身份是"组合业务",订单级规则在它名下
+public Result placeOrder(BundleOrder order) {
+    // 拆开执行:每个业务一份子订单,各自按自己的规则算,应用汇总
+    BigDecimal freight = order.splitByBiz().entrySet().stream()
+            .map(e -> extensions.call(e.getKey(), () -> freightExt.calcFreight(e.getValue())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    return Result.ok(orderPricing.priceOrder(order, freight));   // 订单级规则:此刻线程上绑的是 biz.bundle
+}
+
+// 组合本身是个业务:挂载两边可复用的能力
+@Business(code = "biz.bundle", abilities = {"ability.retail-pricing", "ability.fresh-shipping"})
+class BundleBusiness implements OrderPricingExtension { ... }
+```
+
+- 并行拆分时,每个任务里自己 `extensions.call(biz, ...)`,**不要**用 `Extensions.wrap`:它带过去的是提交方的身份,所有部分都会按提交方的业务回答。
+- 没有"复合身份"(一条链里同时有两个业务):两个业务实现同一方法时谁回答没有合理的默认,合并策略是业务策略;要聚合用 `extensions.all(E)` 或应用里的 reduce。
+- 跨业务的一致性(一部分成功、另一部分失败怎么补偿)不归框架管;异常照常原样抛出。
 
 ### 必选的扩展点
 
@@ -458,16 +505,16 @@ FreightCalcExtension freight = extensions.extension(FreightCalcExtension.class);
     assertEquals(new BigDecimal("8.00"), extensions.call("biz.retail", () -> freight.calcFreight(ctx)));
 }
 
-// Spring 测试:直接指定身份,不用构造请求
+// Spring 测试:同一个注解加在测试类上,不用构造请求
 @SpringBootTest
 @WithIdentity("biz.retail")
 class CheckoutTest { ... }
 ```
 
-`@WithIdentity` 在 `easy-extension-test` 里(test 依赖);`Extensions.of(...)` 与启动时走同一套校验,测试里同样会得到聚合的启动期错误。
+Spring 测试里的 `@WithIdentity` 由 `easy-extension-test`(test 依赖)自动注册的监听器处理;`Extensions.of(...)` 与启动时走同一套校验,测试里同样会得到聚合的启动期错误。
 
 <details>
-<summary><b>进阶</b>(按需再看):兜底要用 Bean、拦截器、身份不在请求头里、解释路由</summary>
+<summary><b>进阶</b>(按需再看):兜底要用 Bean、拦截器、HTTP 里自定义身份、传输层元数据里的身份、解释路由</summary>
 
 **兜底逻辑要用 Spring Bean。** 接口的 `default` 方法拿不到注入的 Bean,这时用 `@DefaultProvider`(每个扩展点至多一个;没有业务或能力实现时由它回答,排在接口的 `default` 之前):
 
@@ -486,7 +533,7 @@ class DefaultTax implements TaxExtension {
 @Bean ExtensionInterceptor metrics(MeterRegistry registry) { ... }
 ```
 
-**身份不在请求头里**(JWT、路径变量、租户表……):提供一个 `IdentityResolver` Bean,它代替那行配置:
+**HTTP 里自定义身份**(例如从 JWT 取):提供一个 `IdentityResolver` Bean,它代替请求头配置:
 
 ```java
 @Bean IdentityResolver<HttpServletRequest> resolver() {
@@ -497,7 +544,19 @@ class DefaultTax implements TaxExtension {
 }
 ```
 
-返回 `Identity.none()` 表示"没有业务,只用默认层";返回 `null` 表示不绑定,调用扩展点时照样报错;抛 `new ResolutionException("...")`,请求得到 HTTP 400。
+返回 `Identity.none()` 表示"没有业务,只用默认层";返回 `null` 表示不绑定,调用扩展点时照样报错;抛 `new ResolutionException("...")`,请求得到 HTTP 400。`@WithIdentity` 里复杂的路由逻辑,写成 Bean 的方法,在表达式里 `@bean` 调用。
+
+**身份在 RPC 的传输层元数据里**(Dubbo 的 attachment、gRPC 的 metadata、MQ 的消息头),或入口不是 Spring Bean:写在 RPC 框架自己的服务端拦截点里。核心里不维护各 RPC 框架的适配器,下面是配方的形状:
+
+```java
+// 伪代码:以所用 RPC 框架的拦截器 API 为准
+Result invoke(Call call, Chain chain) {
+    String biz = call.metadata("biz-code");
+    return biz == null ? chain.proceed() : extensions.call(biz, chain::proceed);
+}
+```
+
+注意:gRPC 的监听器回调可能不在 `interceptCall` 的线程上,要在回调里绑定;Dubbo 的异步提供者在别的线程完成响应,要用 `Extensions.wrap` 带上身份。
 
 **继续用 `match()` 的写法。** 业务和能力继续实现 `Matcher<Req>`(在可选的 `core.matching` 子包里),由 `MatcherIdentityResolver` 判定身份。`Req` 是 `HttpServletRequest` 时 Web filter 自动使用它;`Req` 是你自己的参数类时,注入 `MatcherIdentityResolver<Req>`,在入口 `extensions.run(resolver.resolve(param), ...)`。无命中、多命中怎么处理是它的选项,也能用 `easy-extension.matching.*` 配置,默认都是 `reject`,不静默退回默认层:
 
@@ -528,16 +587,16 @@ GET /actuator/extensions/explain?business=biz.retail&type=com.acme.FreightCalcEx
 | | 现在(3.x) | 4.0 |
 |---|---|---|
 | 注入 | `@ExtensionInject` 字段 | 普通注入,构造器注入即可 |
-| 判定请求是谁 | 每个业务实现 `Matcher<P>`,配 `@MatcherParam` | 一行配置读请求头;别的来源写一个 `IdentityResolver`;仍想用 `match()` 也可以 |
+| 判定请求是谁 | 每个业务实现 `Matcher<P>`,配 `@MatcherParam`;入口手写 `initSession(param)` | 入口方法上 `@WithIdentity("#param.bizCode")`;网关设请求头的,一行配置;仍想用 `match()` 也可以 |
 | 谁先回答 | 数字优先级:`priority`、`ability::10` | 业务先答;要让能力先答,写 `first = {...}` |
 | 默认实现 | 一个类实现全部扩展点;没有合理默认值的标 `mandatory` | 接口的 `default` 方法;没有 `default` 的方法就是必选 |
-| 会话 | 手动 `initSession` / `removeSession`,命名 scope | 不用管;非 Web 入口用 `extensions.run(...)` |
-| 异步 | 自己把会话带进线程 | Boot 自动配置的线程池(`@Async` 的默认执行器)自动沿用;其余包一层 |
+| 会话 | 手动 `initSession` / `removeSession`,命名 scope | `@WithIdentity` 绑定、还原、清理都是框架的;一个请求里的多个身份用嵌套的 `extensions.call(biz, ...)` |
+| 异步 | 自己把会话带进线程 | `Extensions.wrap(...)` 一行,或给线程池设置 `ExtensionTaskDecorator`;规则处处一样 |
 | 异常 | 13 个异常类,多数是受检异常 | 3 个运行时异常 |
 | 管理后台 | 内嵌 UI | Actuator 端点(JSON),UI 另起仓库 |
 
 - `@ExtensionInject X x` → 普通注入 `X x`;`context.invoke(X.class, ...)` → 直接调用注入的 `X`;`invokeAll` / `invokeReduce` → `extensions.all(X.class)` 加 stream。
-- `initSession(param)` / `removeSession()` → 请求头一行配置,或一个 `IdentityResolver`;其他入口用 `extensions.run(...)`。
+- `initSession(param)` / `removeSession()` → 入口方法上 `@WithIdentity`,或请求头一行配置;不是 Bean 的入口用 `extensions.run(...)`。
 - `@Business(priority, abilities = {"a::10"})` → 按 3.x **实际解析出的数字**比较:小于业务自身 `priority` 的能力进 `first`,其余进 `abilities`,各自按数字升序。未写数字的能力,3.x 自动编为 1、2……(业务默认是 0)。适用于注解方式注册的类,计划提供 OpenRewrite recipe。
 - `@ExtensionPointDefaultImplementation` 大类 → 接口的 `default` 方法;需要注入的用 `@DefaultProvider`。`@ExtensionPoint` 的 `mandatory` 直接删掉(没有 `default` 就是必选),`scenarios` / `version` 也去掉(它们只用于管理后台展示,接口演进照旧靠新增 `default` 方法)。
 - 手写 `IBusiness` / `IAbility`(含数据驱动的业务) → 带注解的类,或 `Extensions.builder().business(...)` / `.ability(...)`。
