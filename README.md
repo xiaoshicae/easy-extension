@@ -16,8 +16,12 @@
 </p>
 
 <p align="center">
-  <a href="#怎么解决">怎么解决</a> · <a href="#核心概念">核心概念</a> · <a href="#快速开始">快速开始</a> · <a href="#管理后台">管理后台</a> · <a href="https://github.com/xiaoshicae/easy-extension/wiki">文档</a>
+  <a href="#怎么解决">怎么解决</a> · <a href="#核心概念">核心概念</a> · <a href="#快速开始">快速开始</a> · <a href="#40-新用法预览">4.0 预览</a> · <a href="#管理后台">管理后台</a> · <a href="https://github.com/xiaoshicae/easy-extension/wiki">文档</a>
 </p>
+
+> **版本说明** · 当前发布版本是 3.x,下面的「快速开始」「调用方式」等章节对应当前代码。
+> **4.0 正在设计中,尚未实现**:新用法见 [4.0 新用法预览](#40-新用法预览),决策见
+> [ADR-0001](doc/adr/0001-v4-architecture.md),API 草图见 [doc/design/v4-api-sketch.md](doc/design/v4-api-sketch.md)。
 
 ---
 
@@ -292,7 +296,7 @@ easy-extension:
 
 ## 从 3.3 升级
 
-下一个发布版本（版本号见 [ADR-0001](doc/adr/0001-v4-architecture.md)）对公共 API 只做增量（由 CI 里的 japicmp 门禁保证），但有几处**行为**变化，升级前请对照检查：
+这一批变更（4.0 的基础，见 [ADR-0001](doc/adr/0001-v4-architecture.md)）对公共 API 只做增量（由 CI 里的 japicmp 门禁保证），但有几处**行为**变化，升级前请对照检查：
 
 - **异常原样抛出。** 实现类抛出的异常不再被 `UndeclaredThrowableException` 层层包裹。需要旧行为可加
   JVM 参数 `-Deasy-extension.legacy-exception-wrapping=true`（仅此一个版本，4.0 移除）。它**只认 JVM 系统属性**，
@@ -317,6 +321,202 @@ easy-extension:
   返回类型不同会在创建代理时报错，返回类型相同则调用到不了你的实现。
 
 完整列表见 [CHANGELOG](CHANGELOG.md)。
+
+## 4.0 新用法预览
+
+> ⚠️ **设计稿,尚未实现。** 这一节把 4.0 的用法摊开,为的是在写代码之前评审体验。API 以 [API 草图](doc/design/v4-api-sketch.md) 为准,取舍和理由见 [ADR-0001](doc/adr/0001-v4-architecture.md)。要用的话,请按上面的「快速开始」使用当前版本。
+
+### 和现在比,用法变了什么
+
+| | 现在(3.x) | 4.0 |
+|---|---|---|
+| 注入 | `@ExtensionInject` 字段 | 普通注入,构造器注入即可 |
+| 判定请求属于谁 | 每个业务实现 `Matcher<P>.match(param)`,加 `@MatcherParam` | 一个 `IdentityResolver<Req>` 返回 `Identity`(业务码加本次启用的能力码);仍想用 `match()` 也可以 |
+| 谁先回答 | 数字优先级:`priority`、`ability::10` | 声明顺序:`chain = {"ability.x", SELF}` |
+| 默认实现 | 一个类实现全部扩展点;没有合理默认值的标 `mandatory` | 接口的 `default` 方法就是默认实现;抽象方法就是必选 |
+| 会话 | `initSession` / `removeSession`,命名 scope | `extensions.open(identity)` 得到不可变的 `Session`;Web 层自动绑定 |
+| 异常 | 13 个异常类,多数是受检异常 | 3 个运行时异常 |
+| 管理后台 | 内嵌 UI | Actuator 端点(JSON),UI 另起仓库 |
+
+### 怎么解决?
+
+```java
+@RestController
+public class OrderController {
+
+    private final FreightCalcExtension freight;       // 普通注入:框架给的是按"当前请求身份"路由的 Bean
+
+    OrderController(FreightCalcExtension freight) { this.freight = freight; }
+
+    @PostMapping("/checkout")
+    public String checkout(@RequestBody OrderContext ctx) {
+        return "运费: ¥" + freight.calcFreight(ctx);  // 没有 if-else,也没有 @ExtensionInject
+    }
+}
+```
+
+### 核心概念
+
+- **扩展点** — 一个 `public` 接口,规定"做什么"。方法带 `default` 就是**兜底实现**,不带就是**必选**:链上没人实现,调用时直接报错。
+- **能力** — 可被多个业务复用的通用实现。
+- **业务** — 接入方。`chain` 写出响应顺序,`SELF` 是业务自己:`{"ability.free-shipping", SELF}` 表示包邮能力先回答,业务自己兜底。
+- **身份 `Identity`** — 一个请求"是谁":业务码加上本次启用的能力码。
+- **会话 `Session`** — 身份解析出的、不可变的"回答链"。可以绑定到当前线程,也可以显式传递。
+- **默认提供者 `@DefaultProvider`** — 兜底逻辑需要注入 Bean 时才用,每个扩展点至多一个。
+
+> 一次调用的解析顺序:**`chain`(业务、能力,按声明顺序)→ `@DefaultProvider` → 接口的 `default` 方法**。
+> 按**方法**逐个往下找:一个对象没有实现某个方法,就轮到下一个。
+
+### 快速开始
+
+**1. 引入依赖** — 坐标不变,版本以 4.0 发布为准(尚未发布)。
+
+**2. 定义扩展点**
+
+```java
+@ExtensionPoint
+public interface FreightCalcExtension {
+    default BigDecimal calcFreight(OrderContext ctx) { return new BigDecimal("10.00"); }  // 系统兜底
+}
+```
+
+**3. 定义能力**
+
+```java
+@Ability(code = "ability.free-shipping", excludes = {"ability.rapid-delivery"})
+public class FreeShippingAbility implements FreightCalcExtension {
+    @Override public BigDecimal calcFreight(OrderContext ctx) { return BigDecimal.ZERO; }
+}
+```
+
+**4. 定义业务**
+
+```java
+@Business(code = "biz.retail", chain = {"ability.free-shipping", Business.SELF})
+public class RetailBusiness implements FreightCalcExtension {
+    @Override public BigDecimal calcFreight(OrderContext ctx) { return new BigDecimal("8.00"); }
+}
+```
+
+> `chain` 的顺序就是响应顺序,越靠前越先回答。这里包邮能力先于业务自己,所以带包邮能力的零售请求运费为 0;不带的请求由业务自己回答,为 8.00;没有业务身份的请求落到接口的 `default`,为 10.00。数字优先级、`::10` 都没有了。
+
+**5. 告诉框架"这个请求是谁"**
+
+```java
+@Component
+class OrderIdentityResolver implements IdentityResolver<HttpServletRequest> {
+    @Override public Identity resolve(HttpServletRequest req) {
+        String biz = req.getHeader("X-Biz-Code");
+        if (biz == null) return Identity.none();            // 没有业务:只有默认层回答
+        return Identity.of(biz, abilitiesOf(req));          // 本次启用的能力
+    }
+}
+```
+
+有 `IdentityResolver<HttpServletRequest>` Bean 时,starter 自动在 Web 层打开并绑定会话;MQ 消费者、定时任务显式 `session.run(...)`。
+喜欢"每个业务自带 `match()`"的写法也可以保留:业务和能力继续实现 `Matcher<Req>`,starter 自动用它们判定身份。
+
+**6. 注入即用** — 见上面的示例,没有额外的注解。
+
+### 默认实现、必选、需要注入的默认
+
+```java
+@ExtensionPoint
+public interface InvoiceExtension {
+    Invoice issue(OrderContext ctx);                 // 没有 default = 必选:链上没人实现就失败,不需要占位类
+}
+
+@ExtensionPoint
+public interface TaxExtension {
+    BigDecimal tax(OrderContext ctx);                // 兜底要用税率服务,接口里拿不到 Bean
+}
+
+@DefaultProvider @Component
+class DefaultTax implements TaxExtension {           // 链上没人实现 tax() 时由它回答
+    private final TaxRateService rates;
+    DefaultTax(TaxRateService rates) { this.rates = rates; }
+    @Override public BigDecimal tax(OrderContext ctx) { return rates.standardRate().apply(ctx.amount()); }
+}
+```
+
+零售业务没有实现 `InvoiceExtension` 时,调用 `issue` 会得到:
+
+```
+ExtensionNotFoundException: Extension<InvoiceExtension#issue(OrderContext)> not found:
+  abstract method, none of [biz.retail > ability.free-shipping] implements it
+```
+
+### 异步与线程池
+
+```java
+Session session = Session.require();                       // 请求线程上拿到当前会话(不可变)
+
+executor.submit(session.wrap(() -> notifier.send(order))); // 任务在同一个身份下执行
+CompletableFuture.runAsync(() -> audit.record(order), session.wrap(executor));
+
+// 不想碰线程本地(响应式、测试):显式持有会话,按它回答
+FreightCalcExtension freight = session.extension(FreightCalcExtension.class);
+
+// 取全部实现并聚合(替代 invokeAll / invokeReduce)
+BigDecimal discount = Session.require().all(PromotionCalcExtension.class).stream()
+        .map(e -> e.calcPromotion(ctx)).reduce(BigDecimal.ZERO, BigDecimal::add);
+```
+
+任务在本线程内联执行时(直接执行器、线程池饱和),本线程原来的会话在任务结束后会被还原,不会被清掉。
+`@Async` 由 starter 的 `TaskDecorator` 自动沿用提交时的会话。
+
+### 测试:不起 Spring,断言路由
+
+```java
+Extensions extensions = ExtensionsTest.of(new RetailBusiness(), new FreeShippingAbility());
+
+@Test void freeShippingBeatsTheBusiness() {
+    Session s = extensions.open(Identity.of("biz.retail", "ability.free-shipping"));
+
+    assertRoute(s.explain(FreightCalcExtension.class), "calcFreight").selects("ability.free-shipping");
+    assertEquals(0, s.extension(FreightCalcExtension.class).calcFreight(ctx).signum());
+}
+
+@SpringBootTest
+@WithIdentity(business = "biz.retail", abilities = "ability.free-shipping")   // 业务代码的测试:直接指定身份
+class CheckoutTest { ... }
+```
+
+### 运维:解释、指标、热替换
+
+```
+GET /actuator/extensions                      → 全部扩展点、业务、能力、默认提供者
+GET /actuator/extensions/explain?business=biz.retail&abilities=ability.free-shipping&type=com.acme.FreightCalcExtension
+                                              → 每个方法的候选者和被选中者
+```
+
+```java
+// 指标等横切逻辑:拦截器,用法和现在一样
+@Bean ExtensionInterceptor metrics(MeterRegistry registry) { ... }
+
+// 热替换:构建新的注册表(同样一次性校验),换掉引用;进行中的请求不受影响
+reloadableExtensions.replace(Extensions.builder().add(newGeneration).build());
+```
+
+### 配置
+
+```yaml
+easy-extension:
+  matching:                  # 仅在使用 Matcher 风格(没有自定义 IdentityResolver)时生效
+    no-match: none           # none:没有业务匹配,只由默认层回答 | reject:报错
+    multi-match: reject      # reject | first | ordered
+    order: [biz.retail, biz.fresh]
+```
+
+### 从 3.x 迁移
+
+- `@ExtensionInject X x` → 普通注入 `X x`;`IExtensionContext.invoke(...)` → 注入的 Bean;`invokeAll` / `invokeReduce` → `Session.require().all(X.class)` 加 stream。
+- `@Business(priority, abilities = {"a::10"})` → `chain`:按数字升序排,业务自己的优先级决定 `SELF` 的位置(计划提供 OpenRewrite recipe)。
+- `@ExtensionPointDefaultImplementation` 大类 → 接口 `default` 方法;需要注入的用 `@DefaultProvider`。`@ExtensionPoint(mandatory = true)` 直接删掉。
+- 手写 `IBusiness` / `IAbility`(含数据驱动的业务) → 带注解的类,或 `Extensions.builder().business(code, chain, impl)`。
+- **要特别检查两处语义**:带 `default` 方法的扩展点(路由按方法而不是按接口),以及业务的优先级数字。
+
+完整对照表见 [API 草图 §7](doc/design/v4-api-sketch.md)。
 
 ## 管理后台
 
