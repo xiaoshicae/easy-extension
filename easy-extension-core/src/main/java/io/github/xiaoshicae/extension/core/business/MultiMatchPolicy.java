@@ -6,7 +6,7 @@ package io.github.xiaoshicae.extension.core.business;
  * Independent of {@link UnknownBusinessPolicy}; see there.
  * </p>
  *
- * @since 3.4
+ * @since 4.0
  */
 public enum MultiMatchPolicy {
 

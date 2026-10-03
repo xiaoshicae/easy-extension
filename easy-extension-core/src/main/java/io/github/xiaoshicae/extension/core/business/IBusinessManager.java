@@ -36,7 +36,7 @@ public interface IBusinessManager<T> {
      * @param businessCode code of business
      * @return the business, or {@code null} if not found
      * @throws QueryParamException if {@code businessCode} is null
-     * @since 3.4
+     * @since 4.0
      */
     default IBusiness<T> findBusiness(String businessCode) throws QueryException {
         try {

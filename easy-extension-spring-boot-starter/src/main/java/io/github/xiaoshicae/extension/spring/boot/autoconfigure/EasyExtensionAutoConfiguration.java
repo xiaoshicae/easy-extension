@@ -226,7 +226,7 @@ public class EasyExtensionAutoConfiguration<T> {
     /**
      * Default implementations that are beans of their own; there may be several, each for its own extension points.
      * <p>
-     * If one of several is {@code @Primary}, it alone is the default implementation, as it was before 3.4 when a
+     * If one of several is {@code @Primary}, it alone is the default implementation, as it was before 4.0 when a
      * single bean was injected and {@code @Primary} chose it.
      * </p>
      */

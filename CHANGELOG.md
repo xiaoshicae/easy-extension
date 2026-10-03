@@ -8,9 +8,10 @@ API changes (enforced by the japicmp gate in `mvn verify`).
 ## [Unreleased]
 
 > **Release plan** ([ADR-0001](doc/adr/0001-v4-architecture.md), D0): these changes are the base of the 4.0 line and
-> are not released separately as 3.4.0. If 4.0 is delayed they can be cut as 3.4.0 unchanged. Until the final version
-> is chosen the `@since 3.4` / `since = "3.4"` labels stay as they are; they are replaced in one mechanical pass when
-> the release is prepared (`/release-prep`).
+> are not released separately as 3.4.0. The `@since` / `@Deprecated(since = ...)` labels in the code say `4.0`, which
+> holds for a milestone (for example `4.0.0-M1`) as well as for 4.0.0; the version numbers in the poms are unchanged
+> until the release is prepared (`/release-prep`). If 4.0 is delayed this can still be cut as 3.4.0 by replacing the
+> labels back, one mechanical pass.
 >
 > All API changes below are additive (new classes, new `default` methods, new constructors, new annotation element
 > with a default value). There are **behavior** changes too: read the next section before upgrading.
@@ -95,7 +96,7 @@ same list with advice on what to check.
   rules. If two defaults implement the same extension point the error now names the extension point and the classes;
   defaults with different codes must have different priorities (rejected at registration; a chain holds one entry per
   priority, so every session would have failed to resolve). Among several default beans a `@Primary` one alone is the
-  default, as before 3.4. A default found by annotation that implements an extension point nobody registered is not held
+  default, as before 4.0. A default found by annotation that implements an extension point nobody registered is not held
   against it (a WARN is logged), as before.
 - Admin: each extension point shows the source of the default implementation that answers for it; the "default
   implementation" panel shows the first one, and is empty when there is none. The records are unchanged.
@@ -136,8 +137,9 @@ same list with advice on what to check.
 
 ### Deprecated
 
-- Nothing new. `scopedXxx` / `initScopedSession` keep their `@Deprecated(since = "3.4", forRemoval = true)` marker and
-  will be removed in 4.0.
+- Nothing new. `scopedXxx` / `initScopedSession` keep their `@Deprecated(forRemoval = true)` marker (its `since` now
+  says 4.0) and go away together with the old API when the new core replaces it
+  ([ADR-0001](doc/adr/0001-v4-architecture.md)).
 
 ### Notes for maintainers
 

@@ -38,7 +38,7 @@ public interface IAbilityManager<T> {
      * @param abilityCode code of ability
      * @return the ability, or {@code null} if not found
      * @throws QueryParamException if {@code abilityCode} is null
-     * @since 3.4
+     * @since 4.0
      */
     default IAbility<T> findAbility(String abilityCode) throws QueryException {
         try {

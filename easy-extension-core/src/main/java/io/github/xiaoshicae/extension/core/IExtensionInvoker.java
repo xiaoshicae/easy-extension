@@ -70,7 +70,7 @@ public interface IExtensionInvoker {
     /**
      * @deprecated Use {@link #invoke(String, Class, Function)}.
      */
-    @Deprecated(since = "3.4", forRemoval = true)
+    @Deprecated(since = "4.0", forRemoval = true)
     default <E, R> R scopedInvoke(String scope, Class<E> extensionType, Function<E, R> invoker) {
         return invoke(scope, extensionType, invoker);
     }
@@ -78,7 +78,7 @@ public interface IExtensionInvoker {
     /**
      * @deprecated Use {@link #invokeAll(String, Class, Function)}.
      */
-    @Deprecated(since = "3.4", forRemoval = true)
+    @Deprecated(since = "4.0", forRemoval = true)
     default <E, R> List<R> scopedInvokeAll(String scope, Class<E> extensionType, Function<E, R> invoker) {
         return invokeAll(scope, extensionType, invoker);
     }
@@ -115,7 +115,7 @@ public interface IExtensionInvoker {
     /**
      * @deprecated Use {@link #invokeReduce(String, Class, Function, Object, BinaryOperator)}.
      */
-    @Deprecated(since = "3.4", forRemoval = true)
+    @Deprecated(since = "4.0", forRemoval = true)
     default <E, R> R scopedInvokeReduce(String scope, Class<E> extensionType, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
         return invokeReduce(scope, extensionType, invoker, identity, accumulator);
     }

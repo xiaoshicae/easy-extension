@@ -26,7 +26,7 @@ public class OrderedCodeBusinessMatchSelector<T> implements BusinessMatchSelecto
      *
      * @return the codes, most preferred first; empty if none is configured, in which case the first matched
      * business (registration order) always wins
-     * @since 3.4
+     * @since 4.0
      */
     public List<String> order() {
         return order;

@@ -68,7 +68,7 @@ public @interface ExtensionPoint {
      * </p>
      *
      * @return {@code true} if there is no sensible default and the implementation must come from a business or ability
-     * @since 3.4
+     * @since 4.0
      */
     boolean mandatory() default false;
 }

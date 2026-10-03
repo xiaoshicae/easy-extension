@@ -38,7 +38,7 @@ public interface IExtensionReader<T> {
      * Get all extension point default implementations, in registration order.
      *
      * @return all default implementations; empty if none is registered
-     * @since 3.4
+     * @since 4.0
      */
     default List<IExtensionPointGroupDefaultImplementation<T>> listExtensionPointDefaultImplementations() {
         IExtensionPointGroupDefaultImplementation<T> defaultImplementation = getExtensionPointDefaultImplementation();
@@ -53,7 +53,7 @@ public interface IExtensionReader<T> {
      *
      * @return the fingerprint
      * @throws UnsupportedOperationException if this reader does not support it
-     * @since 3.4
+     * @since 4.0
      */
     default String registryVersion() {
         throw new UnsupportedOperationException("registryVersion() is not supported by this reader");

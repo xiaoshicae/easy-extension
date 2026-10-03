@@ -51,7 +51,7 @@ public interface IExtensionPointGroupImplementationManager<T> {
      * @return instance that implement {@code extensionPointClass}, or {@code null} if not found
      * @throws QueryParamException if {@code extensionPointClass} is null, {@code extensionPointClass} is not an interface
      *                             or {@code code} is null
-     * @since 3.4
+     * @since 4.0
      */
     default <E> E findExtensionPointImplementationInstance(Class<E> extensionPointClass, String code) throws QueryException {
         try {

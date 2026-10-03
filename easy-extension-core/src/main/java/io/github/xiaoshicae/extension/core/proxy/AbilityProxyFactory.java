@@ -22,7 +22,7 @@ public class AbilityProxyFactory<T>  {
      * @param implExtPoints          the extension points the ability implements
      * @throws ProxyException if {@code targetClass} is null, an extension point is not a public interface, or the
      *                        instance does not implement it
-     * @since 3.4
+     * @since 4.0
      */
     public AbilityProxyFactory(String code, Matcher<T> abilityExtImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
         this.tpl = new AbilityTemplate<>(code, abilityExtImplInstance, targetClass, implExtPoints);

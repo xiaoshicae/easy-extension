@@ -159,7 +159,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * @param multiMatchPolicy      what to do when several businesses match
      * @param businessMatchOrder    codes of businesses in order of preference, for when several match and the
      *                              policy lets the selector choose
-     * @since 3.4
+     * @since 4.0
      */
     public DefaultExtensionContext(boolean enableLogger, UnknownBusinessPolicy unknownBusinessPolicy,
                                    MultiMatchPolicy multiMatchPolicy, List<String> businessMatchOrder) {
@@ -171,7 +171,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      *                       thread local; supply another to hold it somewhere else (a store that follows the
      *                       request across threads, a reactive context, ...)
      * @see #DefaultExtensionContext(boolean, UnknownBusinessPolicy, MultiMatchPolicy, List)
-     * @since 3.4
+     * @since 4.0
      */
     public DefaultExtensionContext(boolean enableLogger, UnknownBusinessPolicy unknownBusinessPolicy,
                                    MultiMatchPolicy multiMatchPolicy, List<String> businessMatchOrder,
@@ -280,7 +280,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                     continue;
                 }
                 if (instance instanceof IProxy<?>) {
-                    // Found by annotation. Releases before 3.4 did not hold it against a default implementation that
+                    // Found by annotation. Releases before 4.0 did not hold it against a default implementation that
                     // it implements something nobody registered (an interface of a module that is not scanned).
                     logger.warn("{} default implementation [{}] implements extension point [{}], which is not registered: "
                             + "it is left out", LOG_PREFIX, DefaultsRegistry.describe(instance), implExtClass.getName());
@@ -302,7 +302,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * <p>
      * An implementation that the framework proxied (found by annotation) is judged by what its class declares
      * itself. An extension point it merely inherits, from a superclass or a super-interface, may belong to a module
-     * that is not scanned, and releases before 3.4 did not look at inherited extension points at all: it is left
+     * that is not scanned, and releases before 4.0 did not look at inherited extension points at all: it is left
      * out when it is not registered, and said so when it is (the routing of such a call differs from 3.3).
      * </p>
      */
@@ -319,7 +319,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             }
             if (onlyInherited && enableLogger) {
                 logger.info("{} {} [{}] answers for extension point [{}] through a superclass or a super-interface "
-                        + "(releases before 3.4 did not count those)", LOG_PREFIX, kind, code, implExtClass.getName());
+                        + "(releases before 4.0 did not count those)", LOG_PREFIX, kind, code, implExtClass.getName());
             }
         }
     }

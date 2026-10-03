@@ -21,7 +21,7 @@ public class ExtPointDefaultImplProxyFactory<T> {
      * @param implExtPoints   the extension points the implementation implements
      * @throws ProxyException if {@code targetClass} is null, an extension point is not a public interface, or the
      *                        instance does not implement it
-     * @since 3.4
+     * @since 4.0
      */
     public ExtPointDefaultImplProxyFactory(Object extImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
         this.tpl = new ExtensionPointGroupDefaultImplementationTemplate<>(extImplInstance, targetClass, implExtPoints);

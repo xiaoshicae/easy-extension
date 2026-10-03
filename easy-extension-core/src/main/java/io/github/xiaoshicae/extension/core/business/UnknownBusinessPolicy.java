@@ -7,7 +7,7 @@ package io.github.xiaoshicae.extension.core.business;
  * deserve different answers. (Earlier versions had a single strict/non-strict switch for both.)
  * </p>
  *
- * @since 3.4
+ * @since 4.0
  */
 public enum UnknownBusinessPolicy {
 

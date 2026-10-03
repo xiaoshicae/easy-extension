@@ -29,7 +29,7 @@ public interface IExtensionSession<T> {
      *             pair has been collapsed into a single overload. Will be removed
      *             in a future release.
      */
-    @Deprecated(since = "3.4", forRemoval = true)
+    @Deprecated(since = "4.0", forRemoval = true)
     default void initScopedSession(String scope, T param) throws SessionException {
         initSession(scope, param);
     }
@@ -47,7 +47,7 @@ public interface IExtensionSession<T> {
      * </p>
      *
      * @param scope namespace of session
-     * @since 3.4
+     * @since 4.0
      */
     default void removeSession(String scope) {
         removeSession();
@@ -66,7 +66,7 @@ public interface IExtensionSession<T> {
      * @return the resolved chain
      * @throws SessionException if business miss match or multi match when the policy rejects it
      * @throws UnsupportedOperationException if this session implementation does not support chains
-     * @since 3.4
+     * @since 4.0
      */
     default ResolvedChain resolve(T param) throws SessionException {
         throw new UnsupportedOperationException("resolve() is not supported by this session implementation");
@@ -77,7 +77,7 @@ public interface IExtensionSession<T> {
      *
      * @return the chain, or {@code null} if no session is initialized
      * @throws UnsupportedOperationException if this session implementation does not support chains
-     * @since 3.4
+     * @since 4.0
      */
     default ResolvedChain currentChain() {
         throw new UnsupportedOperationException("currentChain() is not supported by this session implementation");
@@ -87,7 +87,7 @@ public interface IExtensionSession<T> {
      * Scope-aware overload of {@link #currentChain()}.
      *
      * @param scope namespace of session
-     * @since 3.4
+     * @since 4.0
      */
     default ResolvedChain currentChain(String scope) {
         throw new UnsupportedOperationException("currentChain() is not supported by this session implementation");
@@ -104,7 +104,7 @@ public interface IExtensionSession<T> {
      * @param chain a chain obtained from {@link #resolve(Object)} or {@link #currentChain()}
      * @throws SessionException if the chain does not fit this registry
      * @throws UnsupportedOperationException if this session implementation does not support chains
-     * @since 3.4
+     * @since 4.0
      */
     default void bind(ResolvedChain chain) throws SessionException {
         throw new UnsupportedOperationException("bind() is not supported by this session implementation");
@@ -115,7 +115,7 @@ public interface IExtensionSession<T> {
      *
      * @param scope namespace of session
      * @param chain a chain obtained from {@link #resolve(Object)} or {@link #currentChain(String)}
-     * @since 3.4
+     * @since 4.0
      */
     default void bind(String scope, ResolvedChain chain) throws SessionException {
         throw new UnsupportedOperationException("bind() is not supported by this session implementation");

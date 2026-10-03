@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 /**
  * One call to an extension implementation, as seen by an {@link ExtensionInterceptor}.
  *
- * @since 3.4
+ * @since 4.0
  */
 public interface ExtensionInvocation {
 

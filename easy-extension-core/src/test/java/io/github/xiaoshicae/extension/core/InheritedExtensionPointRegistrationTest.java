@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Before 3.4 only the interfaces a class declares itself counted as the extension points it implements. Those it
+ * Before 4.0 only the interfaces a class declares itself counted as the extension points it implements. Those it
  * inherits (from a superclass, from a super-interface) count now, which is how application code usually shares
  * behavior, but they must not stop an application from starting when they belong to a module that is not scanned.
  */
@@ -164,7 +164,7 @@ public class InheritedExtensionPointRegistrationTest {
         try {
             assertEquals("vip price", context.invoke(Price.class, Price::price));
             assertEquals("base discount", context.invoke(Discount.class, Discount::discount),
-                    "the business implements Discount through its superclass: before 3.4 the default answered for it");
+                    "the business implements Discount through its superclass: before 4.0 the default answered for it");
         } finally {
             context.removeSession();
         }

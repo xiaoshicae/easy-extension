@@ -51,7 +51,7 @@ public interface IExtensionFactory {
      *             scoped/non-scoped pair has been collapsed into a single
      *             overload. This method will be removed in a future release.
      */
-    @Deprecated(since = "3.4", forRemoval = true)
+    @Deprecated(since = "4.0", forRemoval = true)
     default <T> T getScopedFirstMatchedExtension(String scope, Class<T> extensionPointType) throws QueryException {
         return getFirstMatchedExtension(scope, extensionPointType);
     }
@@ -59,7 +59,7 @@ public interface IExtensionFactory {
     /**
      * @deprecated Use {@link #getAllMatchedExtension(String, Class)}.
      */
-    @Deprecated(since = "3.4", forRemoval = true)
+    @Deprecated(since = "4.0", forRemoval = true)
     default <T> List<T> getScopedAllMatchedExtension(String scope, Class<T> extensionPointType) throws QueryException {
         return getAllMatchedExtension(scope, extensionPointType);
     }
