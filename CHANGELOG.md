@@ -7,9 +7,13 @@ API changes (enforced by the japicmp gate in `mvn verify`).
 
 ## [Unreleased]
 
-> Planned as **3.4.0**. All API changes below are additive (new classes, new `default` methods, new constructors,
-> new annotation element with a default value). There are **behavior** changes too: read the next section before
-> upgrading. If you would rather ship them with a major version, that is a call for the release (`/release-prep`).
+> **Release plan** ([ADR-0001](doc/adr/0001-v4-architecture.md), D0): these changes are the base of the 4.0 line and
+> are not released separately as 3.4.0. If 4.0 is delayed they can be cut as 3.4.0 unchanged. Until the final version
+> is chosen the `@since 3.4` / `since = "3.4"` labels stay as they are; they are replaced in one mechanical pass when
+> the release is prepared (`/release-prep`).
+>
+> All API changes below are additive (new classes, new `default` methods, new constructors, new annotation element
+> with a default value). There are **behavior** changes too: read the next section before upgrading.
 
 ### Behavior changes — read before upgrading
 
@@ -137,6 +141,9 @@ same list with advice on what to check.
 
 ### Notes for maintainers
 
+- The direction of 4.0 (explicit identity, defaults as interface `default` methods, ordered chains, admin out of the
+  mainline, JDK 17) is recorded in [ADR-0001](doc/adr/0001-v4-architecture.md); the API is sketched in
+  [doc/design/v4-api-sketch.md](doc/design/v4-api-sketch.md). This changelog entry is the behavioral baseline for it.
 - The japicmp gate reports the new annotation element `@ExtensionPoint#mandatory()` as "abstract method added".
   That is compatible for every use of the annotation (it has a default value), so it is acknowledged in the root
   `pom.xml` under `<excludes>`. Every future annotation element needs the same explicit acknowledgement.

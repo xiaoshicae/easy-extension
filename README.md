@@ -292,7 +292,7 @@ easy-extension:
 
 ## 从 3.3 升级
 
-3.4 对公共 API 只做增量（由 CI 里的 japicmp 门禁保证），但有几处**行为**变化，升级前请对照检查：
+下一个发布版本（版本号见 [ADR-0001](doc/adr/0001-v4-architecture.md)）对公共 API 只做增量（由 CI 里的 japicmp 门禁保证），但有几处**行为**变化，升级前请对照检查：
 
 - **异常原样抛出。** 实现类抛出的异常不再被 `UndeclaredThrowableException` 层层包裹。需要旧行为可加
   JVM 参数 `-Deasy-extension.legacy-exception-wrapping=true`（仅此一个版本，4.0 移除）。它**只认 JVM 系统属性**，
@@ -348,6 +348,8 @@ easy-extension:
 ## 文档
 
 [Wiki](https://github.com/xiaoshicae/easy-extension/wiki) · [Go 版本](https://github.com/xiaoshicae/go-easy-extension) · [完整样例](https://github.com/xiaoshicae/easy-extension-sample)
+
+规划中的 4.0:[架构决策 ADR-0001](doc/adr/0001-v4-architecture.md) · [API 草图](doc/design/v4-api-sketch.md)
 
 ## License
 
