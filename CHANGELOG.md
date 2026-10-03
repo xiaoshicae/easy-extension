@@ -144,7 +144,8 @@ same list with advice on what to check.
 ### Notes for maintainers
 
 - The direction of 4.0 (explicit identity, defaults as interface `default` methods, ordered chains, admin out of the
-  mainline, JDK 17) is recorded in [ADR-0001](doc/adr/0001-v4-architecture.md); the API is sketched in
+  mainline, JDK 17) is recorded in [ADR-0001](doc/adr/0001-v4-architecture.md); a proposed simplification of the
+  user-facing API is in [ADR-0002](doc/adr/0002-simplify-user-facing-api.md); the API is sketched in
   [doc/design/v4-api-sketch.md](doc/design/v4-api-sketch.md). This changelog entry is the behavioral baseline for it.
 - The japicmp gate reports the new annotation element `@ExtensionPoint#mandatory()` as "abstract method added".
   That is compatible for every use of the annotation (it has a default value), so it is acknowledged in the root

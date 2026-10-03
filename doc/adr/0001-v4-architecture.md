@@ -5,6 +5,7 @@
 | 状态 | **已采纳**(2026-10-03)。待定项 D0–D5 由维护者交给推荐默认值决定,本文如实记录取舍和理由;D0 经维护者确认:并入 4.0 发布 |
 | 适用 | easy-extension 4.0 主线:core、Spring starter、周边模块、工程化 |
 | 配套 | [4.0 API 草图](../design/v4-api-sketch.md)(P0 评审通过后冻结) |
+| 修订 | 提议中的 [ADR-0002](0002-simplify-user-facing-api.md)(用户面简化)修订 D1、D3,缩小 D4、D7 的范围;通过后生效,下文保留原决策 |
 | 基线 | 本文数据取自 `feat/stability-and-resolution-model` 分支,提交 `18e0dd0`(下称"稳定化分支") |
 
 ## 1. 背景
@@ -78,6 +79,8 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ### D1 身份判定显式化
 
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4):** `Identity.of(biz)` 默认启用业务挂载的全部能力;Web 绑定零代码,`IdentityResolver` 降到第 2 层。
+
 - **背景。** README 里的 matcher 基本是 `"retail".equals(param.getBizCode())` 和 `param.getAbilityCodes().contains(...)`:身份本来就是请求里的显式数据,`match()` 只是样板。`Matcher<T>` 带来:`initSession` 随业务数线性增长(实测 100 个业务 0.65 µs、1000 个 3.0 µs)、"无命中 / 多命中"两套策略加选择器加 `business-match-order`、泛型 `T` 贯穿 16 个接口、`@MatcherParam`。
 - **决策。** 核心只做"身份 → 链"。输入是显式的 `Identity`(业务码 + 本次启用的能力码),判定交给 `IdentityResolver<Req>`。`Matcher` 风格保留为可选的默认 resolver(`MatcherIdentityResolver`),多命中怎么处理(报错 / 取首个 / 按顺序)是它自己的配置,不再是核心概念。
 - **后果。**
@@ -106,6 +109,8 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 - **重新评估的触发条件。** JMH 显示 `invokeDefault` 成本不可接受(预期远低于一次反射调用);或需要 Bean 的默认逻辑成了主流。
 
 ### D3 声明顺序代替数字优先级
+
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S2):** `chain` + `SELF` 改为 `@Business(abilities, first)`。
 
 - **背景。** 优先级只在"一个业务自己"与"它挂载的能力"之间比较(`ability.free-shipping::10`,数字越小越优先)。数字带来:`::` 字符串解析、自动编号、冲突检测。有些冲突要到每次 `initSession` 才暴露(业务与默认实现之间、不同 code 的默认实现之间)。评审就发现一例:不同 code 的默认实现同优先级,注册通过、每个请求都失败。
 - **决策。** 用有序列表表达:`@Business(code = "biz.retail", chain = {"ability.free-shipping", SELF})`。越靠前越先响应,`SELF` 代表业务自身,必须恰好出现一次。`@DefaultProvider` 和接口 `default` 永远排在链尾。
@@ -214,6 +219,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ## 10. 相关文件
 
+- [ADR-0002 用户面简化](0002-simplify-user-facing-api.md)(提议中)
 - [4.0 API 草图](../design/v4-api-sketch.md)
 - `CHANGELOG.md`(稳定化分支的变更与"Behavior changes"一节)
 - `.claude/rules/api-compatibility.md`、`release.md`(4.0 GA 前,发版与兼容性规则按 major 版本处理)

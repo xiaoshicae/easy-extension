@@ -4,7 +4,8 @@
 
 | 编号 | 标题 | 状态 |
 |---|---|---|
-| [0001](0001-v4-architecture.md) | 4.0 架构方向 | 已采纳 |
+| [0001](0001-v4-architecture.md) | 4.0 架构方向 | 已采纳(D1、D3 有提议中的修订) |
+| [0002](0002-simplify-user-facing-api.md) | 用户面简化 | 提议 |
 
 配套的设计草稿放在 [`doc/design/`](../design/)。
 
