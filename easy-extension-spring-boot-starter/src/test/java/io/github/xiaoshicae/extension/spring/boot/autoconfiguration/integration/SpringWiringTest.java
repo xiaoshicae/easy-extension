@@ -179,7 +179,7 @@ public class SpringWiringTest {
 
     @Test
     public void testSeveralSessionManagerBeansDoNotStopTheApplicationFromStarting() throws Exception {
-        // before 4.0 the starter did not look at session manager beans at all
+        // before 3.4 the starter did not look at session manager beans at all
         try (var ctx = start(Map.of(), BaseConfig.class, SessionManagerConfig.class, SecondSessionManagerConfig.class)) {
             IExtensionContext<Param> ec = extensionContext(ctx);
 

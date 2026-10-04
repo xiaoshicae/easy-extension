@@ -25,7 +25,7 @@ public interface IProxy<T> {
      * </p>
      *
      * @return the class behind the instance
-     * @since 4.0
+     * @since 3.4
      */
     default Class<?> getTargetClass() {
         return getInstance().getClass();

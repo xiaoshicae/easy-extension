@@ -25,7 +25,7 @@ package io.github.xiaoshicae.extension.core.interceptor;
  * wrapped by the JDK proxy in {@link java.lang.reflect.UndeclaredThrowableException}, as for any proxy.
  * </p>
  *
- * @since 4.0
+ * @since 3.4
  */
 @FunctionalInterface
 public interface ExtensionInterceptor {

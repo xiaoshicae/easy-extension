@@ -56,7 +56,7 @@ public class ExtensionContextRegisterHelper<T> {
      * may be implemented by two of them. Extension points without a default implementation must be
      * {@code @ExtensionPoint(mandatory = true)}.
      *
-     * @since 4.0
+     * @since 3.4
      */
     @SafeVarargs
     public final ExtensionContextRegisterHelper<T> addExtensionPointDefaultImplementations(IExtensionPointGroupDefaultImplementation<T>... instances) {

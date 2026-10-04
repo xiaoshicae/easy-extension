@@ -56,7 +56,7 @@ public interface IExtensionRegister<T> {
      * @throws RegisterDuplicateException if an extension point {@code instance} implements already has a default
      *                                    implementation
      * @throws UnsupportedOperationException if this register does not support several default implementations
-     * @since 4.0
+     * @since 3.4
      */
     default void addExtensionPointDefaultImplementation(IExtensionPointGroupDefaultImplementation<T> instance) throws RegisterException {
         throw new UnsupportedOperationException("addExtensionPointDefaultImplementation() is not supported by this register");
@@ -69,7 +69,7 @@ public interface IExtensionRegister<T> {
      * @param interceptor the interceptor
      * @throws RegisterParamException        if {@code interceptor} is null
      * @throws UnsupportedOperationException if this register does not support interceptors
-     * @since 4.0
+     * @since 3.4
      */
     default void registerInterceptor(ExtensionInterceptor interceptor) throws RegisterException {
         throw new UnsupportedOperationException("registerInterceptor() is not supported by this register");
@@ -82,7 +82,7 @@ public interface IExtensionRegister<T> {
      * and the Spring starter call it for you.
      *
      * @throws RegisterParamException if an extension point has neither a default implementation nor is mandatory
-     * @since 4.0
+     * @since 3.4
      */
     default void validateRegistration() throws RegisterException {
     }

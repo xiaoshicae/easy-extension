@@ -49,7 +49,7 @@ public class ExtensionContextRegisterByAnnHelper<T> {
      * Add default implementations that each answer for the extension points they implement; see
      * {@link ExtensionContextRegisterHelper#addExtensionPointDefaultImplementations(IExtensionPointGroupDefaultImplementation[])}.
      *
-     * @since 4.0
+     * @since 3.4
      */
     @SuppressWarnings("unchecked")
     public ExtensionContextRegisterByAnnHelper<T> addExtensionPointDefaultImplementations(Object... instances) throws ProxyException {

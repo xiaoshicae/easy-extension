@@ -132,7 +132,7 @@ mvn -B clean deploy -DskipTests=false
 
 ```bash
 # 1. Central 上必须能看到新版本(返回 200;Central 同步可能有延迟,几分钟后重试)
-V=4.0.0
+V=3.4.0
 for a in core annotation-processor spring-boot-starter admin-spring-boot-starter; do
   printf "%s -> " "$a"
   curl -s -o /dev/null -w "%{http_code}\n" \

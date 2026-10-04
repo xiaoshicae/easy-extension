@@ -25,7 +25,7 @@ public class BusinessProxyFactory<T>  {
      * @param implExtPoints           the extension points the business implements
      * @throws ProxyException if {@code targetClass} is null, an extension point is not a public interface, or the
      *                        instance does not implement it
-     * @since 4.0
+     * @since 3.4
      */
     public BusinessProxyFactory(String code, Integer priority, List<UsedAbility> usedAbilities, Matcher<T> businessExtImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
         this.tpl = new BusinessTemplate<>(code, priority, usedAbilities, businessExtImplInstance, targetClass, implExtPoints);

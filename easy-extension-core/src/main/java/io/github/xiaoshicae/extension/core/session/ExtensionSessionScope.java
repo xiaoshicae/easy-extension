@@ -92,7 +92,7 @@ public final class ExtensionSessionScope implements AutoCloseable {
      * default scope held before is bound again; if there was none, {@link IExtensionSession#removeSession()} runs.
      *
      * @see IExtensionSession#bind(ResolvedChain)
-     * @since 4.0
+     * @since 3.4
      */
     public static ExtensionSessionScope restore(IExtensionSession<?> session, ResolvedChain chain) throws SessionException {
         ResolvedChain previous = chainOf(session, null);
@@ -104,7 +104,7 @@ public final class ExtensionSessionScope implements AutoCloseable {
      * Scoped variant of {@link #restore(IExtensionSession, ResolvedChain)}. Closing it binds the session the scope
      * held before again, or, if there was none, removes the session of that scope; other scopes stay.
      *
-     * @since 4.0
+     * @since 3.4
      */
     public static ExtensionSessionScope restoreScoped(IExtensionSession<?> session, String scope, ResolvedChain chain) throws SessionException {
         ResolvedChain previous = chainOf(session, scope);
@@ -145,7 +145,7 @@ public final class ExtensionSessionScope implements AutoCloseable {
      * {@code body} propagate.
      *
      * @see IExtensionSession#bind(ResolvedChain)
-     * @since 4.0
+     * @since 3.4
      */
     public static <R> R runWith(IExtensionSession<?> session, ResolvedChain chain, Supplier<R> body) throws SessionException {
         try (ExtensionSessionScope ignored = restore(session, chain)) {
@@ -156,7 +156,7 @@ public final class ExtensionSessionScope implements AutoCloseable {
     /**
      * Void-returning variant of {@link #runWith(IExtensionSession, ResolvedChain, Supplier)}.
      *
-     * @since 4.0
+     * @since 3.4
      */
     public static void runWith(IExtensionSession<?> session, ResolvedChain chain, Runnable body) throws SessionException {
         try (ExtensionSessionScope ignored = restore(session, chain)) {

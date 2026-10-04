@@ -26,7 +26,7 @@ import java.util.Set;
  * because its codes may not mean the same thing there.
  * </p>
  *
- * @since 4.0
+ * @since 3.4
  */
 public final class ResolvedChain {
 

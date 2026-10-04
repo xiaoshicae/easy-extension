@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Internal helper of the framework's proxy classes, not meant to be called by application code.
  * </p>
  *
- * @since 4.0
+ * @since 3.4
  */
 public final class InvocationExceptions {
 
@@ -43,13 +43,13 @@ public final class InvocationExceptions {
     }
 
     /**
-     * Whether the pre-4.0 exception wrapping was requested through {@link #LEGACY_WRAPPING_PROPERTY}.
+     * Whether the pre-3.4 exception wrapping was requested through {@link #LEGACY_WRAPPING_PROPERTY}.
      * The first time it is, that is logged (once), so that the mode is visible in the logs.
      */
     public static boolean legacyWrapping() {
         boolean legacy = Boolean.getBoolean(LEGACY_WRAPPING_PROPERTY);
         if (legacy && LEGACY_ANNOUNCED.compareAndSet(false, true)) {
-            logger.warn("[Easy Extension] exceptions thrown by extension implementations are wrapped as in releases before 4.0, "
+            logger.warn("[Easy Extension] exceptions thrown by extension implementations are wrapped as in releases before 3.4, "
                     + "because the JVM system property {} is set. It is meant for migrating and will be removed in 4.0.",
                     LEGACY_WRAPPING_PROPERTY);
         }
@@ -60,7 +60,7 @@ public final class InvocationExceptions {
      * Invoke {@code method} on {@code target}, rethrowing what the target threw instead of an
      * {@link InvocationTargetException}.
      *
-     * @param legacy keep the {@link InvocationTargetException} (behavior of releases before 4.0)
+     * @param legacy keep the {@link InvocationTargetException} (behavior of releases before 3.4)
      */
     public static Object invoke(Method method, Object target, Object[] args, boolean legacy) throws Throwable {
         try {
@@ -83,7 +83,7 @@ public final class InvocationExceptions {
      * </p>
      *
      * @param target description of what was invoked, e.g. {@code PriceExtension}
-     * @param legacy throw the {@link QueryException} as is (behavior of releases before 4.0)
+     * @param legacy throw the {@link QueryException} as is (behavior of releases before 3.4)
      */
     public static Throwable queryFailure(Method method, String target, QueryException failure, boolean legacy) {
         if (legacy) {

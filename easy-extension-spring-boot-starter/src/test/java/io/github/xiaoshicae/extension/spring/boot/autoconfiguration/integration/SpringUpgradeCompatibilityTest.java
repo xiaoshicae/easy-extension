@@ -14,7 +14,7 @@ import java.util.function.Function;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Applications that started with 3.3 and must keep starting, whatever 4.0 reads out of their beans and classes.
+ * Applications that started with 3.3 and must keep starting, whatever 3.4 reads out of their beans and classes.
  */
 public class SpringUpgradeCompatibilityTest {
 

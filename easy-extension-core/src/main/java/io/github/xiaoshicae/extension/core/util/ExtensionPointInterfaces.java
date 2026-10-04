@@ -21,7 +21,7 @@ final class ExtensionPointInterfaces {
      * <p>
      * The interfaces the class declares itself come first, in declaration order; they are all taken, so that a
      * problem with one of them (it is not public, say) is reported. An inherited one is only taken if it is public:
-     * a package-private interface cannot be proxied, and releases before 4.0, which looked at the declared
+     * a package-private interface cannot be proxied, and releases before 3.4, which looked at the declared
      * interfaces only, never saw it.
      * </p>
      */

@@ -23,7 +23,7 @@ public class InstanceHolder {
      * a JDK proxy class carries none of them and {@code @Business} / {@code @Ability} are not {@code @Inherited},
      * so a CGLIB subclass does not either.
      *
-     * @since 4.0
+     * @since 3.4
      */
     public Class<?> getTargetClass() {
         return AopProxyUtils.ultimateTargetClass(instance);

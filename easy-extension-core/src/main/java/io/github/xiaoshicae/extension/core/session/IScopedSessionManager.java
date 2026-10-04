@@ -59,7 +59,7 @@ public interface IScopedSessionManager {
      * @param scope namespace of session area
      * @param chain resolved chain
      * @throws SessionParamException if {@code scope} or {@code chain} is null
-     * @since 4.0
+     * @since 3.4
      */
     default void bindScopedChain(String scope, ResolvedChain chain) throws SessionException {
         if (scope == null) {
@@ -80,7 +80,7 @@ public interface IScopedSessionManager {
      * @param scope namespace of session area
      * @return the chain, or {@code null} when the scope holds none, or was not bound as a chain
      * @throws UnsupportedOperationException if this session manager does not keep chains
-     * @since 4.0
+     * @since 3.4
      */
     default ResolvedChain getScopedChain(String scope) {
         throw new UnsupportedOperationException("getScopedChain() is not supported by this session manager");

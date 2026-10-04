@@ -45,7 +45,7 @@ public class AnnProxyConvertUtils {
      * @param targetClass the class that implements the extension points, when {@code instance} is a proxy of it
      * @return the proxy, which implements every extension point {@code targetClass} implements
      * @throws ProxyException if an extension point is not a public interface or {@code instance} does not implement it
-     * @since 4.0
+     * @since 3.4
      */
     public static <T> IExtensionPointGroupDefaultImplementation<T> convertAnnExtensionPointGroupDefaultImplementation(Object instance, Class<?> targetClass) throws ProxyException {
         List<Class<?>> implExtPoints = ExtensionPointInterfaces.implementedBy(targetClass);
@@ -66,7 +66,7 @@ public class AnnProxyConvertUtils {
      * @return the proxy, which implements every extension point {@code targetClass} implements
      * @throws ProxyException if {@code targetClass} is not annotated with {@code @Ability}, its code is blank, or an
      *                        extension point is not a public interface that {@code instance} implements
-     * @since 4.0
+     * @since 3.4
      */
     public static <T> IAbility<T> convertAnnAbilityToProxy(Matcher<T> instance, Class<?> targetClass) throws ProxyException {
         Ability ann = targetClass.getAnnotation(Ability.class);
@@ -94,7 +94,7 @@ public class AnnProxyConvertUtils {
      * @throws ProxyException if {@code targetClass} is not annotated with {@code @Business}, its code or one of its
      *                        abilities is invalid, or an extension point is not a public interface that
      *                        {@code instance} implements
-     * @since 4.0
+     * @since 3.4
      */
     public static <T> IBusiness<T> convertAnnBusinessToProxy(Matcher<T> instance, Class<?> targetClass) throws ProxyException {
         Business ann = targetClass.getAnnotation(Business.class);
