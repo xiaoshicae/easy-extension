@@ -42,8 +42,9 @@ same list with advice on what to check.
 - **Extension points inherited from a superclass or a super-interface now count.** Only the interfaces a class declares
   itself used to. A business whose superclass implements an extension point now answers for it; the default
   implementation used to. Routing changes without any error: check with `explain(Extension.class)`. An inherited
-  extension point that is not registered (its module is not scanned) or not public is ignored, as before; one the class
-  declares itself must still be registered.
+  extension point that is not registered (its module is not scanned) or not public does not stop the start and is not
+  checked, as before; the instance can still be looked up by such an unregistered type, which nothing prevents. One the
+  class declares itself must still be registered.
 - **Spring AOP-proxied implementations take part in matching.** `@Cacheable` / `@Transactional` / `@Async` or aspect-matched
   `@Business` / `@Ability` classes used to be skipped silently. With `allow-unknown-business=true` requests that were
   served by the defaults may now reach them, and overlapping businesses make strict mode fail with
