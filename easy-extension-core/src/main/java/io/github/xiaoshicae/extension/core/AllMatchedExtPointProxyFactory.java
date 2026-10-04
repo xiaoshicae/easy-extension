@@ -40,6 +40,9 @@ public class AllMatchedExtPointProxyFactory<T> {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (ProxyObjectMethods.isObjectMethod(method)) {
+                return ProxyObjectMethods.answer(proxy, method, args, "List<" + extensionPointClass.getSimpleName() + ">");
+            }
             List<T> allMatchedExtension;
             try {
                 allMatchedExtension = extensionFactory.getAllMatchedExtension(extensionPointClass);

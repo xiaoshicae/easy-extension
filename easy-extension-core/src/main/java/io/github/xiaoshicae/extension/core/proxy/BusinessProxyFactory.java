@@ -54,6 +54,7 @@ public class BusinessProxyFactory<T>  {
 
         public BusinessTemplate(String code, Integer priority, List<UsedAbility> usedAbilities, Matcher<T> extImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
             Utils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateNoClash("a business", IBusinessProxy.class, implExtPoints);
             Utils.validateTargetClass(targetClass);
             this.code = code;
             this.priority = priority;

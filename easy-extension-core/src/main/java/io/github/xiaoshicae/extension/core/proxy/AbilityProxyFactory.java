@@ -49,6 +49,7 @@ public class AbilityProxyFactory<T>  {
 
         public AbilityTemplate(String code, Matcher<T> extImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
             Utils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateNoClash("an ability", IAbilityProxy.class, implExtPoints);
             Utils.validateTargetClass(targetClass);
             this.code = code;
             this.extImplInstance = extImplInstance;

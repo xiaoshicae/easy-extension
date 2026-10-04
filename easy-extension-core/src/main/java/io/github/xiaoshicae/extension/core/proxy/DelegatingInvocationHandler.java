@@ -37,6 +37,9 @@ class DelegatingInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        if (method.getDeclaringClass() == Object.class && "equals".equals(method.getName()) && args[0] == proxy) {
+            return true;   // the real instance has never heard of the proxy, and would say that it is not equal to itself
+        }
         Object target = proxyMethods.contains(method) ? proxyTemplate : realInstance;
         return InvocationExceptions.invoke(method, target, args, legacyWrapping);
     }

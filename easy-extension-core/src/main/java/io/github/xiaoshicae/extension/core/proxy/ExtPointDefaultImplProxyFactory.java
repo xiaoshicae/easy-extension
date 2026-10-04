@@ -47,6 +47,7 @@ public class ExtPointDefaultImplProxyFactory<T> {
 
         public ExtensionPointGroupDefaultImplementationTemplate(Object extImplInstance, Class<?> targetClass, List<Class<?>> implExtPoints) throws ProxyException {
             Utils.validateInstance(extImplInstance, implExtPoints);
+            Utils.validateNoClash("a default implementation", IExtensionPointGroupDefaultImplementationProxy.class, implExtPoints);
             Utils.validateTargetClass(targetClass);
             this.extImplInstance = extImplInstance;
             this.targetClass = targetClass;

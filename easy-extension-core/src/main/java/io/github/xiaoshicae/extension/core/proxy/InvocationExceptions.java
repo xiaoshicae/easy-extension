@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -64,6 +65,11 @@ public final class InvocationExceptions {
      */
     public static Object invoke(Method method, Object target, Object[] args, boolean legacy) throws Throwable {
         try {
+            if (!Modifier.isPublic(method.getDeclaringClass().getModifiers())) {
+                // registering an extension point only asks for an interface; one that is not public can be called
+                // reflectively only with the access check off
+                method.trySetAccessible();
+            }
             return method.invoke(target, args);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getTargetException();

@@ -52,6 +52,15 @@ same list with advice on what to check.
 - **New `default` methods on public interfaces are called by the framework:** `IExtensionRegister#validateRegistration()`,
   `IExtensionSession#removeSession(String)`, the `find…` lookups on the managers. An implementation of those interfaces
   that already has a method with the same signature is now called by it.
+- **`toString()`, `hashCode()` and `equals()` of the proxies the framework injects** (`@ExtensionInject`, the `List`
+  ones too) are answered by identity (`Extension<PriceExtension>@1a2b3c`) instead of being forwarded to whichever
+  implementation answers the current request. Forwarded, they threw outside a session (a logger, a debugger, Lombok's
+  `@ToString`, a `HashSet`), `proxy.equals(proxy)` was false inside one, and printing an implementation that holds the
+  proxy of its own extension point overflowed the stack.
+- **An extension point must not declare a method the framework's proxy answers itself:** `code()`, `priority()`,
+  `usedAbilities()`, `implementExtensionPoints()`, `getInstance()`, `getTargetClass()` (`match` is fine). The call went
+  to the framework and never to the implementation. Registering by annotation now fails with `ProxyParamException`
+  naming the method; rename it.
 - **Registration refuses what could never work.** A business, an ability and a default implementation can no longer
   share a code (`RegisterDuplicateException`): a resolved chain holds one entry per code, so one of them used to
   disappear from every chain, with its priority, without any error. A business, or an ability it mounts, without a
@@ -78,6 +87,10 @@ same list with advice on what to check.
   thread, which another scope's `initSession` overwrote.
 - The annotation processor no longer hard-codes `SourceVersion.RELEASE_21`; it follows the compiler
   (`latestSupported()`), so it loads on JDK 17.
+- A package-private extension point could not be called through an injected proxy, nor through any lookup once an
+  interceptor was registered (`UndeclaredThrowableException` caused by `IllegalAccessException`); calling it through the
+  context worked. Registered business and ability proxies, and interceptor-wrapped extensions, were not equal to
+  themselves (`List.of(p).contains(p)` was false).
 - **A refused `registerBusiness` / `registerAbility` left the instance behind.** It was stored first and wired to its
   extension points second; when the second step failed (an extension point listed twice, no code, a place already taken
   under an extension point) the caller got the exception but the instance stayed in the registry, matched requests

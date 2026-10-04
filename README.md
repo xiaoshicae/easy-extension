@@ -317,8 +317,11 @@ easy-extension:
   （原为 `...should not be null`）；默认实现未覆盖某扩展点的报错末尾多了关于 `mandatory = true` 的提示，并且在能力和业务都登记完之后才抛出；
   没有任何默认实现又没有业务匹配时，`initSession` 抛 `SessionException`（原为 `NullPointerException`）；
   `extension point [X] not registered` 末尾带上了实现它的业务、能力或默认实现，链上优先级重复的报错会点名双方。
-- **扩展点接口里不要声明 `getInstance()` / `getTargetClass()`**：这两个名字由框架的代理（`IProxy`）占用，
-  返回类型不同会在创建代理时报错，返回类型相同则调用到不了你的实现。
+- **扩展点接口里不要声明框架的代理自己回答的方法**：`code()`、`priority()`、`usedAbilities()`、`implementExtensionPoints()`、
+  `getInstance()`、`getTargetClass()`（`match` 除外）。调用这些方法到的是框架，到不了你的实现；用注解注册时现在会直接报错并说出方法名，改个名字即可。
+- **`@ExtensionInject` 注入的代理，`toString()` / `hashCode()` / `equals()` 按对象本身回答**（形如 `Extension<PriceExtension>@1a2b3c`），
+  不再转给当前请求的实现。此前在没有会话时会抛异常（日志、调试器、Lombok 的 `@ToString`、`HashSet` 都会碰到），
+  会话里 `proxy.equals(proxy)` 为 `false`，实现类打印持有自己扩展点代理的字段时还会栈溢出。
 
 完整列表见 [CHANGELOG](CHANGELOG.md)。
 

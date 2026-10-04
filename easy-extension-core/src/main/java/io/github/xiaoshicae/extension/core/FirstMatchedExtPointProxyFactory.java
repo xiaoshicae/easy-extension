@@ -37,6 +37,9 @@ public class FirstMatchedExtPointProxyFactory<T> {
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            if (ProxyObjectMethods.isObjectMethod(method)) {
+                return ProxyObjectMethods.answer(proxy, method, args, "Extension<" + extensionPointClass.getSimpleName() + ">");
+            }
             T firstMatchedExtension;
             try {
                 firstMatchedExtension = extensionFactory.getFirstMatchedExtension(extensionPointClass);

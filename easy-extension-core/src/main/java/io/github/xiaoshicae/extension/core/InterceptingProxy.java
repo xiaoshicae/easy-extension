@@ -43,8 +43,12 @@ final class InterceptingProxy {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Object[] arguments = args == null ? NO_ARGUMENTS : args;
-            if (method.getDeclaringClass() == Object.class) {
-                // toString / hashCode / equals are not extension calls
+            if (ProxyObjectMethods.isObjectMethod(method)) {
+                // toString / hashCode / equals are not extension calls. The implementation has never heard of the
+                // proxy, so it would say that the proxy is not equal to itself.
+                if (ProxyObjectMethods.isEqualsToItself(proxy, method, args)) {
+                    return true;
+                }
                 return InvocationExceptions.invoke(method, implementation, arguments, legacyWrapping);
             }
             return new Invocation(this, method, arguments, 0).proceed();
