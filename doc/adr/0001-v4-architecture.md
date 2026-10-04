@@ -79,7 +79,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ### D1 身份判定显式化
 
-> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4、S12):** `Identity.of(biz)`(显式身份)默认启用业务挂载的全部能力;入口绑定与传输无关(`@WithIdentity`),`IdentityResolver` 降到第 2 层;**`Matcher` 保留**:2026-10-03 曾决定不带,2026-10-04 被维护者推翻,恢复为"请求对象 → 身份"的默认方式,严格单命中、无策略、无开关。下文"`Matcher` 风格保留为可选的默认 resolver"处按此理解:`Matcher<P>` 是业务和能力直接实现的接口,匹配在 `Extensions.identityOf`,不是独立的 `MatcherIdentityResolver`。
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4、S12),与下文冲突处以 ADR-0002 为准:** `Identity.of(biz)`(显式身份)启用挂载的、没有 `Matcher` 的能力;入口绑定与传输无关(`@WithIdentity`),`IdentityResolver` 降到第 2 层;**`Matcher` 保留**(据维护者 2026-10-04 的倾向,待确认;2026-10-03 曾决定不带):它是"请求对象 → 身份"的默认方式,严格单命中、无策略、无开关。与下文 D1 的差别:`Matcher<P>` 接口在 core(业务、能力直接实现),匹配在 `Extensions.identityOf`,不是独立的 `MatcherIdentityResolver`;没有可配置的多命中策略;也不是下文否决的"保持 `Matcher` 在核心"(没有全局泛型 `T`、没有策略和选择器)。下文 D1 的决策、后果、否决方案的正文保留为当时的记录。
 
 - **背景。** README 里的 matcher 基本是 `"retail".equals(param.getBizCode())` 和 `param.getAbilityCodes().contains(...)`:身份本来就是请求里的显式数据,`match()` 只是样板。`Matcher<T>` 带来:`initSession` 随业务数线性增长(实测 100 个业务 0.65 µs、1000 个 3.0 µs)、"无命中 / 多命中"两套策略加选择器加 `business-match-order`、泛型 `T` 贯穿 16 个接口、`@MatcherParam`。
 - **决策。** 核心只做"身份 → 链"。输入是显式的 `Identity`(业务码 + 本次启用的能力码),判定交给 `IdentityResolver<Req>`。`Matcher` 风格保留为可选的默认 resolver(`MatcherIdentityResolver`),多命中怎么处理(报错 / 取首个 / 按顺序)是它自己的配置,不再是核心概念。
@@ -159,7 +159,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 | 8 | 异常 | 13 个类,12 个受检 | 3 个具体类,全部 unchecked |
 | 9 | 注入 | `@ExtensionInject` 字段 | 普通注入(路由 Bean 为 `@Primary`) |
 
-> [ADR-0002](0002-simplify-user-facing-api.md)(提议中)修订差异 2,并新增差异 10(能力默认全部启用)、11(请求期校验 `requires`)、12(`all(E)` 不含接口 `default` 体)。
+> [ADR-0002](0002-simplify-user-facing-api.md)(提议中)修订差异 2,并新增差异 10(显式身份启用没有 `Matcher` 的挂载能力,按请求判断的由 `Matcher` 决定)、11(请求期校验 `requires`)、12(`all(E)` 不含接口 `default` 体)、13(无命中 / 多命中一律 `ResolutionException`,没有 `allow-unknown-business`、策略枚举、选择器)。
 
 ## 5. 风险与缓解
 
@@ -189,7 +189,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 不要求 P1–P3 严格串行,但 P2 依赖 P1 的接口冻结。
 
-> [ADR-0002](0002-simplify-user-facing-api.md)(提议中)修订 P2:"Web 绑定"扩展为"入口绑定"(`@WithIdentity` 的 AOP,加可选的 HTTP 请求头 filter);`TaskDecorator` 不再自动贡献,只提供 `ExtensionTaskDecorator`。同一文档还提出两项留给维护者决定的范围取舍(是否不带 Matcher 兼容层、首个 GA 是否瘦身),会影响 P1–P3 的内容。
+> [ADR-0002](0002-simplify-user-facing-api.md)(提议中)修订 P2:"Web 绑定"扩展为"入口绑定"(`@WithIdentity` 的 AOP,加可选的 HTTP 请求头 filter);`TaskDecorator` 不再自动贡献,只提供 `ExtensionTaskDecorator`。同一文档还提出两项留给维护者决定的范围取舍(`Matcher` 的去留:维护者倾向保留,待确认;首个 GA 是否瘦身),会影响 P1–P3 的内容。
 
 ## 7. 验证策略
 
