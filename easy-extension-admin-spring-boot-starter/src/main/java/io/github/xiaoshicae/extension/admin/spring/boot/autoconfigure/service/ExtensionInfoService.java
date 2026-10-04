@@ -107,7 +107,9 @@ public class ExtensionInfoService {
     }
 
     public MatcherParamInfo getMatcherParamInfo() {
-        return new MatcherParamInfo(resolveClassInfo(reader.getMatcherParamClass()));
+        Class<?> matcherParamClass = reader.getMatcherParamClass();
+        // none registered yet (for instance the starter found no extension point): nothing to show, not an error
+        return new MatcherParamInfo(matcherParamClass == null ? new ClassInfo("", "", "", "") : resolveClassInfo(matcherParamClass));
     }
 
     /**
@@ -270,7 +272,9 @@ public class ExtensionInfoService {
         for (IBusiness<?> business : reader.listAllBusiness()) {
             String code = business.code();
             Integer priority = business.priority();
-            List<BusinessInfo.UsedAbility> usedAbilities = business.usedAbilities().stream().map(e -> new BusinessInfo.UsedAbility(e.code(), e.priority())).toList();
+            // null means "no abilities": the core accepts that (ChainResolver, registerBusiness)
+            List<BusinessInfo.UsedAbility> usedAbilities = business.usedAbilities() == null ? List.of()
+                    : business.usedAbilities().stream().map(e -> new BusinessInfo.UsedAbility(e.code(), e.priority())).toList();
             List<String> implementExtensionPoints = business.implementExtensionPoints().stream().map(Class::getName).toList();
             Class<?> clazz;
             if (business instanceof IProxy<?> proxy) {

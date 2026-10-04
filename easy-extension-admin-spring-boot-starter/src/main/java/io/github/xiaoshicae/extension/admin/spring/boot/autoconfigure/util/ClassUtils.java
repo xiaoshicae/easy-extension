@@ -2,6 +2,7 @@ package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -290,7 +291,9 @@ public class ClassUtils {
     private static ClassOrInterfaceDeclaration getClassNode(String sourceCode) {
         // Create a new parser per invocation. Admin module has low concurrency,
         // and this avoids ThreadLocal leak in thread-pool environments.
-        JavaParser parser = new JavaParser();
+        // JavaParser's default language level is Java 11: sources with switch expressions, text blocks, records or
+        // pattern matching would not parse, and the admin would show them empty.
+        JavaParser parser = new JavaParser(new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21));
         ParseResult<CompilationUnit> result = parser.parse(sourceCode);
         if (!result.isSuccessful() || !result.getResult().isPresent()) {
             return null;

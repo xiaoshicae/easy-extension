@@ -15,6 +15,20 @@ API changes (enforced by the japicmp gate in `mvn verify`).
 > All API changes below are additive (new classes, new `default` methods, new constructors, new annotation element
 > with a default value). There are **behavior** changes too: read the next section before upgrading.
 
+### Security
+
+- **Admin: the built-in Basic authentication could be bypassed** (3.3.0 to 3.3.6, where it was introduced). The filter
+  decided what the admin API is by comparing the raw request URI with `<admin path>/easy-extension-api`, while Spring
+  MVC matches the path *within the application*. With `server.servlet.context-path` set (the common case), with a path
+  parameter on a segment (`/easy-extension-admin;x=y/...`), with percent-encoding (`/%65asy-extension-admin/...`), with a
+  doubled slash when MVC matches with the `AntPathMatcher`, or with `easy-extension.admin.path` written without a leading
+  slash, the admin API (the sources of your classes, the layout of the application, `POST .../cache/refresh`) was
+  served **without credentials**. The filter now treats a request as one for the admin API if any of the raw URI, the
+  path as Spring MVC reads it and the path as the servlet container normalized it says so. An application that sets
+  `easy-extension.admin.auth.basic.*` and runs behind a context path should consider the API exposed until it upgrades.
+- **Admin: a user name with an empty password was accepted** (`${ADMIN_PASSWORD:}` with the variable unset): any client
+  that knew the user name passed. It now fails the start (`password must not be empty`).
+
 ### Behavior changes — read before upgrading
 
 No source or binary break, but these change what an existing application does. The README ("从 3.3 升级") has the
@@ -52,6 +66,12 @@ same list with advice on what to check.
 - **New `default` methods on public interfaces are called by the framework:** `IExtensionRegister#validateRegistration()`,
   `IExtensionSession#removeSession(String)`, the `find…` lookups on the managers. An implementation of those interfaces
   that already has a method with the same signature is now called by it.
+- **Admin: the error handler and the favicon belong to the admin only.** `GlobalExceptionHandler` was a
+  `@RestControllerAdvice` without a selector, so every error of the host application (403, 404, 405, validation
+  failures ...) became `500 {"msg":"Internal server error"}` and was logged at ERROR; it applies to the admin API now. The
+  admin answered `/favicon.ico` of the application with its own icon; its icon is at `<admin path>/favicon.ico` now. An
+  empty `easy-extension.admin.auth.basic.username` leaves the built-in authentication off, as documented (it failed the
+  start).
 - **`toString()`, `hashCode()` and `equals()` of the proxies the framework injects** (`@ExtensionInject`, the `List`
   ones too) are answered by identity (`Extension<PriceExtension>@1a2b3c`) instead of being forwarded to whichever
   implementation answers the current request. Forwarded, they threw outside a session (a logger, a debugger, Lombok's
@@ -87,6 +107,10 @@ same list with advice on what to check.
   thread, which another scope's `initSession` overwrote.
 - The annotation processor no longer hard-codes `SourceVersion.RELEASE_21`; it follows the compiler
   (`latestSupported()`), so it loads on JDK 17.
+- Admin: `/businesses` answered 500 when one business returns `null` from `usedAbilities()` (the core accepts that),
+  `/matcher-param` answered 500 while no matcher param class is registered, a negative `offset` was a 500 and
+  `limit=abc` a 500 instead of a 400, and the source of a class that uses JDK 14+ syntax (switch expressions, text
+  blocks, records, pattern matching) was shown empty.
 - `getLastResolveTrace()` reported the request that was resolved before when `initSession` failed (`no business
   matched`) while every lookup said there was no session; it is `null` then, like after `removeSession()`.
 - A lookup in a named scope (`getFirstMatchedExtension(scope, ...)`, `invoke(scope, ...)`) threw a plain

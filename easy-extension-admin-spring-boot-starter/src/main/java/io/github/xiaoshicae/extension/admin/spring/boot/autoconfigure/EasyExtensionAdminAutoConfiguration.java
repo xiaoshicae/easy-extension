@@ -10,6 +10,7 @@ import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.Sourc
 import io.github.xiaoshicae.extension.core.IExtensionReader;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -108,7 +109,9 @@ public class EasyExtensionAdminAutoConfiguration {
      * beans (e.g. a Spring Security bridge) — the filter requires ALL to pass.
      */
     @Bean
-    @ConditionalOnProperty(prefix = "easy-extension.admin.auth.basic", name = "username")
+    // not @ConditionalOnProperty: a property that is set to nothing (${ADMIN_USER:} with the variable unset) counts as
+    // present there, which would then fail the start instead of leaving the built-in authentication off
+    @ConditionalOnExpression("!'${easy-extension.admin.auth.basic.username:}'.isEmpty()")
     public BasicAuthAdminAuthenticationProvider basicAuthAdminAuthenticationProvider(
             EasyExtensionAdminConfigurationProperties properties) {
         var basic = properties.getAuth().getBasic();

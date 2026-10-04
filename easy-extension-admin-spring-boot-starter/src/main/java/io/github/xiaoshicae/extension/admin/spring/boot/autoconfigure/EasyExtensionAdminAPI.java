@@ -57,7 +57,7 @@ public class EasyExtensionAdminAPI {
             @RequestParam(value = "limit", defaultValue = "50") int limit) {
         int cappedLimit = Math.min(Math.max(limit, 1), Consts.DEFAULT_MAX_PAGINATION_LIMIT);
         List<ExtensionPointInfo> all = extensionInfoService.getAllExtensionPoints();
-        int fromIndex = Math.min(offset, all.size());
+        int fromIndex = Math.min(Math.max(offset, 0), all.size());
         int toIndex = Math.min(fromIndex + cappedLimit, all.size());
         return Response.OK(all.subList(fromIndex, toIndex), all.size());
     }
@@ -75,7 +75,7 @@ public class EasyExtensionAdminAPI {
             @RequestParam(value = "limit", defaultValue = "50") int limit) {
         int cappedLimit = Math.min(Math.max(limit, 1), Consts.DEFAULT_MAX_PAGINATION_LIMIT);
         List<AbilityInfo> all = extensionInfoService.getAllAbilities();
-        int fromIndex = Math.min(offset, all.size());
+        int fromIndex = Math.min(Math.max(offset, 0), all.size());
         int toIndex = Math.min(fromIndex + cappedLimit, all.size());
         return Response.OK(all.subList(fromIndex, toIndex), all.size());
     }
@@ -93,7 +93,7 @@ public class EasyExtensionAdminAPI {
             @RequestParam(value = "limit", defaultValue = "50") int limit) {
         int cappedLimit = Math.min(Math.max(limit, 1), Consts.DEFAULT_MAX_PAGINATION_LIMIT);
         List<BusinessInfo> all = extensionInfoService.getAllBusiness();
-        int fromIndex = Math.min(offset, all.size());
+        int fromIndex = Math.min(Math.max(offset, 0), all.size());
         int toIndex = Math.min(fromIndex + cappedLimit, all.size());
         return Response.OK(all.subList(fromIndex, toIndex), all.size());
     }

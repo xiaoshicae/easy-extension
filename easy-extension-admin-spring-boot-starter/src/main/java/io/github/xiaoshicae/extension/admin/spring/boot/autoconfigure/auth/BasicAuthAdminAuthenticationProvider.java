@@ -35,6 +35,10 @@ public class BasicAuthAdminAuthenticationProvider implements AdminAuthentication
         if (password == null) {
             throw new IllegalArgumentException("password must not be null");
         }
+        if (password.isEmpty()) {
+            // typically ${ADMIN_PASSWORD:} with the variable not set: refuse to start rather than guard the API with nothing
+            throw new IllegalArgumentException("password must not be empty");
+        }
         this.expectedUsername = username;
         this.expectedPasswordBytes = password.getBytes(StandardCharsets.UTF_8);
         this.realm = realm == null || realm.isBlank() ? "Easy Extension Admin" : realm;

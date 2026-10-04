@@ -66,7 +66,8 @@ public class EasyExtensionWebMvcConfigurer implements WebMvcConfigurer {
                 .addResourceLocations(adminUiLocation)
                 .setCacheControl(CacheControl.noCache())
                 .resourceChain(false);
-        registry.addResourceHandler("/favicon.ico")
+        // under the admin path: "/favicon.ico" is the favicon of the application the admin is part of, not of the admin
+        registry.addResourceHandler(uiRootPath + "/favicon.ico")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/easy-extension-admin-ui/" + Consts.ADMIN_UI_VERSION + "/")
                 .setCacheControl(CacheControl.maxAge(java.time.Duration.ofDays(7)))
                 .resourceChain(false);

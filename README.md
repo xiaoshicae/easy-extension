@@ -323,6 +323,10 @@ easy-extension:
   不再转给当前请求的实现。此前在没有会话时会抛异常（日志、调试器、Lombok 的 `@ToString`、`HashSet` 都会碰到），
   会话里 `proxy.equals(proxy)` 为 `false`，实现类打印持有自己扩展点代理的字段时还会栈溢出。
 
+- **管理后台**：内置的 Basic 认证此前在配置了 `server.servlet.context-path` 等情况下可被绕过（**安全修复**，详见 CHANGELOG 的 Security 一节），
+  升级后这类部署会开始要求你配置过的凭据；用户名配了而密码为空，现在启动失败；用户名留空则不启用内置认证（此前反而启动失败）。
+  管理后台的错误处理器现在只作用于它自己的接口（此前会把宿主应用的所有错误改写成 500），`/favicon.ico` 也不再被它占用。
+
 完整列表见 [CHANGELOG](CHANGELOG.md)。
 
 ## 管理后台
