@@ -322,6 +322,14 @@ easy-extension:
 - **`@ExtensionInject` 注入的代理，`toString()` / `hashCode()` / `equals()` 按对象本身回答**（形如 `Extension<PriceExtension>@1a2b3c`），
   不再转给当前请求的实现。此前在没有会话时会抛异常（日志、调试器、Lombok 的 `@ToString`、`HashSet` 都会碰到），
   会话里 `proxy.equals(proxy)` 为 `false`，实现类打印持有自己扩展点代理的字段时还会栈溢出。
+- **扫描到的类，`@Profile` / `@Conditional…` 按应用的环境判断。** 扫描器此前用自己新建的环境（只认系统属性和环境变量，
+  不认 `application.yml` 里激活的 profile 和配置），所以 `application.yml` 里激活了 `prod` 时，`@Profile("prod")` 的业务仍被排除、
+  `@Profile("!prod")` 的反而被注册，`@ConditionalOnProperty` 也读不到应用里配的属性。现在与应用里的其它组件一致；
+  以前被错误注册或漏掉的业务会变，升级后请对照 `listAllBusiness()` 检查。
+- **同时是 `@Component` 的业务开始参与匹配。** 应用自己的 `@ComponentScan` 先注册了这个类，扩展扫描见到同名 Bean 就跳过，
+  业务从未注册（运行时才报 `no business matched`，启动不报错）。现在只注册一次，不会多创建一份。
+  另：用 `@Bean` 方法自己创建的实例，只有实现了 `IBusiness` / `IAbility` / `IExtensionPointGroupDefaultImplementation` 才会被登记；
+  类上有注解不够，要么这个类在扫描包内（由扫描登记，`@Bean` 创建的那份不会再登记），要么实现这些接口。
 
 - **管理后台**：内置的 Basic 认证此前在配置了 `server.servlet.context-path` 等情况下可被绕过（**安全修复**，详见 CHANGELOG 的 Security 一节），
   升级后这类部署会开始要求你配置过的凭据；用户名配了而密码为空，现在启动失败；用户名留空则不启用内置认证（此前反而启动失败）。

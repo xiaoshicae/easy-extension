@@ -11,15 +11,16 @@ import java.util.List;
 @ConfigurationProperties(prefix = "easy-extension")
 public class EasyExtensionConfigurationProperties {
     /**
-     * 是否启用日志，扩展点匹配过程会打印相应的一致
+     * 是否启用日志，扩展点匹配过程会打印相应的日志
      * whether to enable logs, the extension point matching process will print log
      */
     private boolean enableLog = false;
 
 
     /**
-     * 是否允许未知业务，当没有业务身份可以匹配时，如果不允许未知业务则请求报错，如果允许，则扩展点会走默认能力兜底
-     * whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability.
+     * 是否允许未知业务（旧开关）：只决定没有显式配置的 unknown-business-policy / multi-match-policy。false 等于两者都是 reject，true 等于 default + select。
+     * Legacy switch for the two policies, it only decides the ones that are not set explicitly: false means unknown-business-policy and multi-match-policy are both reject
+     * (a request that matches no business, or several, fails), true means default and select (the default implementations serve it, one of several is picked).
      */
     private boolean allowUnknownBusiness = false;
 
@@ -44,12 +45,10 @@ public class EasyExtensionConfigurationProperties {
     private boolean enableSessionAutoCleanup = true;
 
     /**
-     * 业务匹配优先级顺序，使用业务 code。当多个业务同时匹配时（非 strict 模式），按此顺序选择优先级最高的。
-     * 未列出的业务按注册顺序排在末尾。
-     * <p>
-     * Business match priority order by business code. When multiple businesses match
-     * (non-strict mode), the one appearing first in this list wins.
-     * </p>
+     * 业务匹配优先级顺序，使用业务 code。多个业务同时匹配且 multi-match-policy 为 select 时，按此顺序选择排在最前的。
+     * 未列出的业务按注册顺序排在末尾。multi-match-policy 为 reject 时不使用。
+     * Business match priority order by business code. When several businesses match and multi-match-policy is select,
+     * the one appearing first in this list wins; businesses not listed come last, in registration order. Not used when multi-match-policy is reject.
      */
     private List<String> businessMatchOrder = List.of();
 

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProce
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.util.StringUtils;
 
 import static org.springframework.util.Assert.notNull;
@@ -44,19 +45,24 @@ public class ExtensionScannerConfigurer implements BeanDefinitionRegistryPostPro
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
+        String[] packages = StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);
+
         // scan @ExtensionPoint
-        ExtensionPointScanner extensionPointScanner = new ExtensionPointScanner(registry);
-        extensionPointScanner.setResourceLoader(getApplicationContext());
-        extensionPointScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+        configure(new ExtensionPointScanner(registry)).scan(packages);
 
         // scan @MatcherParam
-        ClassScanner classScanner = new ClassScanner(registry);
-        classScanner.setResourceLoader(getApplicationContext());
-        classScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+        configure(new ClassScanner(registry)).scan(packages);
 
         // scan @Ability, @Business, @ExtensionPointDefaultImplementation ...
-        InstanceScanner scanner = new InstanceScanner(registry);
+        configure(new InstanceScanner(registry)).scan(packages);
+    }
+
+    private <S extends ClassPathBeanDefinitionScanner> S configure(S scanner) {
         scanner.setResourceLoader(getApplicationContext());
-        scanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+        // A scanner made from a bare bean definition registry makes an environment of its own, one that knows neither the
+        // active profiles nor the properties of the application: @Profile and @ConditionalOnProperty on a scanned class
+        // would be decided by that one.
+        scanner.setEnvironment(getApplicationContext().getEnvironment());
+        return scanner;
     }
 }

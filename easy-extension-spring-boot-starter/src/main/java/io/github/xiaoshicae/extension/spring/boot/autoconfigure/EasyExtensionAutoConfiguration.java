@@ -114,7 +114,8 @@ public class EasyExtensionAutoConfiguration<T> {
             throw new RegisterParamException("instance annotated with @MatcherParam not found, classes scanned but none annotated with @MatcherParam");
         }
         if (matcherParamClasses.size() > 1) {
-            throw new RegisterParamException("More than one instance annotated with @MatcherParam found");
+            throw new RegisterParamException("More than one instance annotated with @MatcherParam found: "
+                    + matcherParamClasses.stream().map(Class::getName).sorted().toList());
         }
         helper.setMatcherParamClass((Class<T>) matcherParamClasses.get(0));
     }
@@ -176,9 +177,9 @@ public class EasyExtensionAutoConfiguration<T> {
         if (targetClass.isAnnotationPresent(ExtensionPointDefaultImplementation.class)) {
             defaultImpls.add(AnnProxyConvertUtils.convertAnnExtensionPointGroupDefaultImplementation(instance, targetClass));
         } else if (targetClass.isAnnotationPresent(Ability.class)) {
-            abilities.add(AnnProxyConvertUtils.convertAnnAbilityToProxy(asMatcher(instance, "@Ability"), targetClass));
+            abilities.add(AnnProxyConvertUtils.convertAnnAbilityToProxy(asMatcher(instance, targetClass, "@Ability"), targetClass));
         } else if (targetClass.isAnnotationPresent(Business.class)) {
-            businesses.add(AnnProxyConvertUtils.convertAnnBusinessToProxy(asMatcher(instance, "@Business"), targetClass));
+            businesses.add(AnnProxyConvertUtils.convertAnnBusinessToProxy(asMatcher(instance, targetClass, "@Business"), targetClass));
         } else {
             // Scanned as an extension component, yet nothing to register it by. Skipping it silently would only
             // surface much later as "no business matched", so fail at startup instead.
@@ -190,11 +191,12 @@ public class EasyExtensionAutoConfiguration<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private Matcher<T> asMatcher(Object instance, String annotation) throws RegisterParamException {
+    private Matcher<T> asMatcher(Object instance, Class<?> targetClass, String annotation) throws RegisterParamException {
         if (instance instanceof Matcher<?> matcher) {
             return (Matcher<T>) matcher;
         }
-        throw new RegisterParamException("instance annotated with " + annotation + " should implement Matcher interface");
+        throw new RegisterParamException(String.format(
+                "instance annotated with %s should implement Matcher interface, but [%s] does not", annotation, targetClass.getName()));
     }
 
     @Autowired(required = false)

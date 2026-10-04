@@ -7,6 +7,7 @@ import org.springframework.beans.PropertyValues;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.InjectionMetadata;
 import org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor;
 import org.springframework.core.ResolvableType;
@@ -113,7 +114,9 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
             Object dependency;
             try {
                 dependency = Objects.requireNonNull(beanFactory).getBean(injectBeanName);
-            } catch (BeansException e) {
+            } catch (NoSuchBeanDefinitionException e) {
+                // only a missing bean is "not registered"; any other failure (the bean exists but cannot be created)
+                // propagates as it is, with its own message
                 throw new BeanCreationException(String.format(
                         "%s of class [%s] failed to resolve @ExtensionInject dependency for field [%s]: no bean [%s] found. " +
                         "Ensure the extension point type is registered via @ExtensionScan or registerExtensionPoint().",

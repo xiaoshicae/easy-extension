@@ -40,8 +40,14 @@ public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar 
     }
 
     void registerExtensionInjectBeanDefinitions(BeanDefinitionRegistry registry) {
+        String beanName = ExtensionInjectAnnotationBeanPostProcessor.class.getName();
+        if (registry.containsBeanDefinition(beanName)) {
+            // every configuration class that carries @ExtensionScan gets here; one post processor serves them all, and
+            // registering it again would be an overriding of a bean definition, which Spring Boot does not allow
+            return;
+        }
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class);
-        registry.registerBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class.getName(), builder.getBeanDefinition());
+        registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
     }
 
     private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata) {

@@ -87,6 +87,17 @@ same list with advice on what to check.
   priority is refused at registration, and `validateRegistration()` (called by `doRegister()` and the starter) refuses
   one whose priority is a default implementation's (for example `Integer.MAX_VALUE`): every request for such a
   business failed. An application that did one of these now fails at startup, and the message says which codes.
+- **Starter: `@Profile` and `@Conditional…` on scanned classes follow the application.** The scanners made an
+  environment of their own, one that reads the system properties and environment variables only: not the active
+  profiles or the properties that come from `application.yml`, `setActiveProfiles(...)` or any other property source of
+  the application. So with `prod` active in `application.yml`, `@Profile("prod")` was false and `@Profile("!prod")` was
+  true, and `@ConditionalOnProperty` did not find a property set there. A scanned business, ability or default
+  implementation with such a condition is now registered when the application would register any other component with
+  it; for a class that had been registered (or left out) wrongly, that changes the registry.
+- **Starter: a business that is also a `@Component` takes part.** The application's own `@ComponentScan` registers
+  the class first; the extension scan then saw a bean of that name, skipped the class, and the business was never
+  registered (`no business matched` at runtime, no error at startup). It is registered once now: a class that is a
+  bean already is handed over to the extension context as it is, not created a second time.
 
 ### Fixed
 
@@ -129,6 +140,43 @@ same list with advice on what to check.
   while answering for none (or only some) of its extension points, could not be registered again, and left the cached
   registry fingerprint stale. Registration is now serialized and checks everything the second step could refuse before
   it changes anything.
+- **Starter: a business that needs a service that calls an extension point did not start** with Spring Boot's default
+  `spring.main.allow-circular-references=false`. Every bean with an `@ExtensionInject` field depended on the extension
+  context to create the proxy, and the context depends on every business: `BizA` → `PricingService` →
+  `Pricing` proxy → context → `BizA`. The proxy asks for the context when it is first called, not when it is created
+  (`LazyExtensionFactory`), so the cycle is gone. Applications that had enabled circular references to get around it
+  can switch them off again.
+- **Starter: starting failed where two `@ExtensionScan` classes, or a `scanPackages` that names the package of the
+  annotated class (which is scanned anyway), met Spring Boot's ban on bean definition overriding.** The same
+  extension point or `@MatcherParam` class was registered twice, and so was the `@ExtensionInject` post processor.
+  The scanners register what an earlier scan already registered once, and the second `@ExtensionScan` does not
+  register the post processor again. The `@MatcherParam` holder bean is named after the full class name now (it was the
+  short name: two `Param` classes in different packages hit the same name, and where overriding is allowed one of them
+  was silently dropped).
+- **Starter: a bean named like an extension point stopped the application** (`@Service("greeter")` next to the
+  extension point `Greeter`: `ConflictingBeanDefinitionException`). The scanner never registers anything under that
+  name, so it is not a conflict.
+- **Starter: extension points were not found by type before the first call** when the application is started by a class
+  loader of its own (Spring Boot devtools restart, other launchers): the scanner loaded the interface with the
+  library's class loader, which cannot see the application's classes, and went without the factory bean's object type.
+  `@ConditionalOnBean(Greeter.class)` and `getBeanNamesForType(Greeter.class, true, false)` came back empty.
+  It loads with the application's class loader.
+- **Starter: `@ExtensionInject` reported "no bean … found, ensure the extension point type is registered" for any
+  failure** while the proxy was created, for example when the application's own extension context bean could not be
+  created, which hid the real cause. Only a missing bean is reported that way now; anything else propagates with its
+  own message.
+- **Starter: error messages name the culprit.** A `@Business`/`@Ability` that does not implement `Matcher` says which
+  class (with dozens of businesses, the old text alone sent you through all of them), and several classes annotated
+  with `@MatcherParam` are listed.
+- **Starter: the configuration metadata IDEs show for `easy-extension.*` was stale.** The file under
+  `src/main/resources/META-INF` was never shipped (the configuration processor writes its own from the Javadoc of
+  `EasyExtensionConfigurationProperties`, and that one overwrites it), so the descriptions that were kept up to date by
+  hand reached nobody. The file is removed and the Javadoc says what the properties do now (the legacy switch and the
+  two policies, `business-match-order` against `multi-match-policy`; the typo in `enable-log` is gone).
+- `@ExtensionInject` and `@ExtensionScan` document what they do and do not do: only fields are injected (the
+  annotation is allowed on parameters, where it has no effect), and an instance the application creates with a `@Bean`
+  method is registered only if it is an `IAbility` / `IBusiness` / `IExtensionPointGroupDefaultImplementation`; the
+  annotation on its class is not enough.
 
 ### Changed
 
@@ -183,6 +231,9 @@ same list with advice on what to check.
   of that type if there is exactly one (or one is `@Primary`). The starter also picks up a `BusinessMatchSelector` bean
   on the same terms. With several and no `@Primary` none is used and a WARN says so, instead of failing the startup.
   `IScopedSessionManager` gained `default` methods to bind and read a chain, so existing implementations keep working.
+- Starter: `LazyExtensionFactory`, and a constructor of `FirstMatchedExtensionFactoryBean` /
+  `AllMatchedExtensionFactoryBean` that takes an `ObjectProvider<IExtensionFactory>` (the one the container uses; the
+  old constructors stay).
 - `removeSession(String scope)`, `registryVersion()`. `ResolveTrace` lists every default implementation in its
   resolution chain (`getDefaultImplCode()` keeps reporting the first); `OrderedCodeBusinessMatchSelector#order()`.
 - `IProxy#getTargetClass()`, overloads of `AnnProxyConvertUtils.convertAnn…` and the proxy factories that take the
