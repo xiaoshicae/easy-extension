@@ -79,7 +79,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 
 ### D1 身份判定显式化
 
-> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4、S12):** `Identity.of(biz)` 默认启用业务挂载的全部能力;入口绑定与传输无关(`@WithIdentity`),`IdentityResolver` 降到第 2 层;**`Matcher` 不再提供**(维护者已确认),下文凡提到"`Matcher` 风格保留为可选的默认 resolver"处以此为准。
+> **提议中的修订([ADR-0002](0002-simplify-user-facing-api.md) S3、S4、S12):** `Identity.of(biz)`(显式身份)默认启用业务挂载的全部能力;入口绑定与传输无关(`@WithIdentity`),`IdentityResolver` 降到第 2 层;**`Matcher` 保留**:2026-10-03 曾决定不带,2026-10-04 被维护者推翻,恢复为"请求对象 → 身份"的默认方式,严格单命中、无策略、无开关。下文"`Matcher` 风格保留为可选的默认 resolver"处按此理解:`Matcher<P>` 是业务和能力直接实现的接口,匹配在 `Extensions.identityOf`,不是独立的 `MatcherIdentityResolver`。
 
 - **背景。** README 里的 matcher 基本是 `"retail".equals(param.getBizCode())` 和 `param.getAbilityCodes().contains(...)`:身份本来就是请求里的显式数据,`match()` 只是样板。`Matcher<T>` 带来:`initSession` 随业务数线性增长(实测 100 个业务 0.65 µs、1000 个 3.0 µs)、"无命中 / 多命中"两套策略加选择器加 `business-match-order`、泛型 `T` 贯穿 16 个接口、`@MatcherParam`。
 - **决策。** 核心只做"身份 → 链"。输入是显式的 `Identity`(业务码 + 本次启用的能力码),判定交给 `IdentityResolver<Req>`。`Matcher` 风格保留为可选的默认 resolver(`MatcherIdentityResolver`),多命中怎么处理(报错 / 取首个 / 按顺序)是它自己的配置,不再是核心概念。
@@ -217,7 +217,7 @@ D6–D9 没有悬念,直接做。D0–D5 的理由如下。
 ## 9. 待 P1 内决定的开放问题
 
 1. "取全部实现"(3.x 的 `invokeAll` / `invokeReduce`)的 API 形态:`Session.all(Class<E>)` 返回实现列表(草图里的做法),还是注入时标注。(草图暂定:`Extensions.all`,`Session.all` 在第 3 层。)
-2. ~~`Matcher` / `MatcherIdentityResolver` 放在 core 的 `matching` 子包,还是独立的小模块。~~ 取消:维护者已确认 4.0 不带 Matcher(ADR-0002 S12)。
+2. `Matcher` 放哪:`Matcher<P>` 接口在 core(业务、能力直接实现),匹配逻辑在 `Extensions.identityOf`,不另建模块(ADR-0002 S12,2026-10-04 修订)。
 3. 包名:沿用 `io.github.xiaoshicae.extension.core`(推荐,迁移 recipe 简单),还是改根包。(草图暂定:沿用。)
 4. `Extensions` 内按 `Identity` 缓存链的容量上限与淘汰策略。(草图暂定:默认 10000 条,LRU。)
 5. 是否提供响应式(Reactor Context)适配。

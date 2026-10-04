@@ -326,7 +326,7 @@ easy-extension:
 
 > ⚠️ **设计稿,尚未实现。** 这一节把 4.0 的用法摊开,为的是在写代码之前评审体验。API 以 [API 草图](doc/design/v4-api-sketch.md) 为准,取舍和理由见 [ADR-0001](doc/adr/0001-v4-architecture.md) 与 [ADR-0002](doc/adr/0002-simplify-user-facing-api.md)(用户面简化,提议中)。要用的话,请按上面的「快速开始」使用当前版本。
 
-**目标:一个典型用户只写两个类、一个入口绑定(外加依赖),其余都是普通注入。** 入口绑定与传输无关:HTTP 请求头是一行配置;RPC、MQ、定时任务没有 HTTP,在入口方法上标一个注解。校验、路由、线程绑定、缓存都留在框架里。
+**目标:一个典型用户只写两个类(业务带一个 `match`)、一个入口注解(外加依赖),其余都是普通注入。** 入口绑定与传输无关:HTTP 请求体、RPC、MQ 的入口都是 Bean 的方法,标 `@WithIdentity`,请求对象交给业务和能力的 `Matcher` 判断;网关把业务码放在请求头里的,一行配置。校验、匹配、路由、线程绑定、缓存都留在框架里。
 
 ### 60 秒上手
 
@@ -341,28 +341,17 @@ public interface FreightCalcExtension {
 }
 ```
 
-**2. 业务** — 一个带 `@Business` 的类,实现它关心的扩展点:
+**2. 业务** — 一个带 `@Business` 的类,实现它关心的扩展点,再实现 `Matcher`:这个请求归不归我:
 
 ```java
 @Business(code = "biz.retail")
-public class RetailBusiness implements FreightCalcExtension {
+public class RetailBusiness implements Matcher<CheckoutRequest>, FreightCalcExtension {
+    @Override public boolean match(CheckoutRequest r) { return "biz.retail".equals(r.bizCode()); }
     @Override public BigDecimal calcFreight(OrderContext ctx) { return new BigDecimal("8.00"); }
 }
 ```
 
-**3. 告诉框架身份从哪来** — 选一种:
-
-```yaml
-# 网关把业务码放在请求头里(HTTP):一行配置
-easy-extension.web.business-header: X-Biz-Code
-```
-
-```java
-// 身份在请求对象里(RPC、MQ 监听、定时任务,也包括 HTTP 请求体):入口方法上标一个注解,从参数里取
-@WithIdentity("#request.bizCode")      // 不以 # 开头则是业务码字面量,例如 @WithIdentity("biz.retail")
-```
-
-**4. 普通注入** — 没有 `@ExtensionInject`,也没有 if-else:
+**3. 入口** — 入口方法上标 `@WithIdentity`:它的第一个参数交给各个业务的 `match`。**4. 普通注入** — 没有 `@ExtensionInject`,也没有 if-else:
 
 ```java
 @RestController
@@ -370,8 +359,8 @@ class OrderController {
     private final FreightCalcExtension freight;
     OrderController(FreightCalcExtension freight) { this.freight = freight; }
 
-    @PostMapping("/checkout")
-    String checkout(@RequestBody OrderContext ctx) { return "运费: ¥" + freight.calcFreight(ctx); }
+    @PostMapping("/checkout") @WithIdentity
+    String checkout(@RequestBody CheckoutRequest request) { return "运费: ¥" + freight.calcFreight(request.toContext()); }
 }
 ```
 
@@ -379,12 +368,12 @@ class OrderController {
 
 | 请求 | 回答者 | 结果 |
 |---|---|---|
-| `X-Biz-Code: biz.retail` | 业务自己 | 8.00 |
-| `X-Biz-Code: biz.other`(另一个没有实现它的业务) | 接口的 `default` | 10.00 |
-| `X-Biz-Code: biz.unknown`(没有这个业务) | —— | HTTP 400:`business [biz.unknown] not found` |
-| 没有请求头,却调用了扩展点 | —— | 报错(没人处理就是 HTTP 500),消息告诉你怎么办 |
+| `bizCode=biz.retail` | 业务自己 | 8.00 |
+| `bizCode=biz.other`(另一个没有实现它的业务,它的 `match` 认领了这个请求) | 接口的 `default` | 10.00 |
+| `bizCode=biz.unknown`(没有业务认领) | —— | 报错 `no business matches a CheckoutRequest (…)`(没人处理就是 HTTP 500;要 400 写一个 `@ExceptionHandler`) |
+| 两个业务都认领了 | —— | 报错 `businesses [a, b] all match a CheckoutRequest; …` |
 
-**没有 HTTP**(Dubbo、gRPC、MQ、定时任务)时,注入的写法一样,入口方法上标 `@WithIdentity`:
+**RPC(Dubbo、gRPC)、MQ** 的写法一样,入口方法上标 `@WithIdentity`;**没有请求对象的入口**(定时任务、固定业务的消费者)直接给业务码;**网关把业务码放在请求头里**时,一行配置,不需要 `match`:
 
 ```java
 @DubboService
@@ -392,7 +381,7 @@ class OrderFacadeImpl implements OrderFacade {
     private final FreightCalcExtension freight;
     OrderFacadeImpl(FreightCalcExtension freight) { this.freight = freight; }
 
-    @WithIdentity("#request.bizCode")
+    @WithIdentity
     public Result checkout(CheckoutRequest request) { return Result.ok(freight.calcFreight(request.toContext())); }
 }
 
@@ -400,33 +389,42 @@ class OrderFacadeImpl implements OrderFacade {
 class SettleJob { @Scheduled(cron = "0 0 2 * * *") public void settle() { ... } }
 ```
 
-- 业务类放在 `@SpringBootApplication` 所在的包树里就会被自动扫描,不需要 `@Component`,也不用写扫描配置。放在包树之外时,症状是"业务码未知"(上表第三行),用 `@ExtensionScan(scanPackages = "...")` 追加包。
-- `@WithIdentity` 用 Spring AOP 实现:入口要是 Spring Bean 的方法(同一个类内部的调用不经代理);SpEL 里用参数名需要 `-parameters` 编译(Boot 的 parent 默认开),否则写 `#p0`;表达式结果为 `null` 就不绑定。字面量的业务码写错了,启动时就报。
-- **请求头是信任边界**:`X-Biz-Code` 应由网关或认证层设置并覆盖客户端传来的值,应用直接暴露在外时任何客户端都能选业务。要从认证信息里取,见下面「进阶」。
+```yaml
+easy-extension.web.business-header: X-Biz-Code    # 网关设的请求头(HTTP):显式身份,不运行 Matcher
+```
+
+- 业务类放在 `@SpringBootApplication` 所在的包树里就会被自动扫描,不需要 `@Component`,也不用写扫描配置。放在包树之外时,症状是"没有业务认领"(上表第三行),用 `@ExtensionScan(scanPackages = "...")` 追加包。
+- **业务恰好一个命中**:没命中、多个命中都是 `ResolutionException`,在进入方法体之前抛出。`match` 要快、没有副作用,每次入口每个业务调用一次(100 个业务约 0.6 µs,一次性程序粗测)。两个业务重叠只在重叠的那类请求上才暴露,用有代表性的请求调用 `extensions.identityOf(...)` 写单测。
+- 一个类只能有一个 `Matcher<P>`(Java 不允许同一个接口带两个类型参数),所以一个服务里的业务和能力约定同一个 P:常见做法是所有请求 DTO 实现同一个小接口(放在 api 模块里,不依赖 easy-extension),`Matcher` 取这个接口。第一个参数不是请求对象时,在请求对象的参数上标 `@MatcherParam`。
+- `@WithIdentity` 用 Spring AOP 实现:入口要是 Spring Bean 的方法(同一个类内部的调用不经代理)。字面量的业务码写错了,启动时就报。
+- **请求头是信任边界**:`X-Biz-Code` 应由网关或认证层设置并覆盖客户端传来的值,应用直接暴露在外时任何客户端都能选业务。要从认证信息里取,见下面「进阶」。**请求头绑定的是显式身份,不运行 Matcher**:业务挂载的全部能力启用;能力要按请求判断时,入口用 `@WithIdentity`(无值)。
 - 业务码重复、能力不存在这类问题,启动时一次性全部报出。
+
 
 ### 复用逻辑:能力
 
-**能力**是可被多个业务复用的实现,业务用 `abilities` 挂载它:
+**能力**是可被多个业务复用的实现,业务用 `abilities` 挂载它。能力也可以实现 `Matcher`:这个请求要不要我:
 
 ```java
 @Ability(code = "ability.free-shipping")
-public class FreeShippingAbility implements FreightCalcExtension {
+public class FreeShippingAbility implements Matcher<CheckoutRequest>, FreightCalcExtension {
+    @Override public boolean match(CheckoutRequest r) { return r.abilityCodes().contains("free-shipping"); }
     @Override public BigDecimal calcFreight(OrderContext ctx) { return BigDecimal.ZERO; }
 }
 
 // 业务自己没实现的方法,由挂载的能力回答
 @Business(code = "biz.fresh", abilities = {"ability.free-shipping"})
-public class FreshBusiness implements ColdChainExtension { ... }
+public class FreshBusiness implements Matcher<CheckoutRequest>, ColdChainExtension { ... }
 
 // 要让能力覆盖业务自己的逻辑:放进 overridingAbilities
 @Business(code = "biz.retail-plus", overridingAbilities = {"ability.free-shipping"})
-public class RetailPlusBusiness implements FreightCalcExtension { ... }
+public class RetailPlusBusiness implements Matcher<CheckoutRequest>, FreightCalcExtension { ... }
 ```
 
 回答顺序固定,一句话:**覆盖业务的能力(`overridingAbilities`)→ 业务自己 → 其余能力(`abilities`)→ 接口的 `default`。** 按**方法**逐个往下找:一个对象没实现某个方法,就轮到下一个。(兜底要用 Spring Bean 时,有一个排在接口 `default` 之前的 `@DefaultProvider`,见「进阶」。)
 
-一个请求默认启用业务挂载的**全部**能力;只启用一部分,见下一节。
+挂载的能力里:**没有 `Matcher` 的,业务被选中后始终启用;有 `Matcher` 的,由它的 `match` 按请求决定。** 显式身份(请求头、字面量、`extensions.run`)没有请求对象,不运行 Matcher,挂载的全部能力启用;要收窄,见下一节。
+
 
 ### 代码里绑身份、异步与收窄能力
 
@@ -439,6 +437,9 @@ extensions.run("biz.retail", () -> handle(message));
 // 只启用业务挂载的一部分能力;去掉一个用 .without("ability.coupon")
 extensions.run(Identity.of("biz.retail-plus").only("ability.free-shipping"), () -> handle(message));
 
+// 手动匹配:@WithIdentity(无值)替你做的就是这一步
+extensions.run(extensions.identityOf(message), () -> handle(message));
+
 // 换线程要带身份,框架不自动覆盖任何线程池:包住任务或执行器,或给 Spring 的线程池设置装饰器
 CompletableFuture.runAsync(() -> audit.record(order), Extensions.wrap(executor));   // wrap 是静态方法
 taskExecutor.setTaskDecorator(new ExtensionTaskDecorator());
@@ -448,7 +449,7 @@ BigDecimal discount = extensions.all(PromotionCalcExtension.class).stream()
         .map(e -> e.calcPromotion(ctx)).reduce(BigDecimal.ZERO, BigDecimal::add);
 ```
 
-- 入口方法上也能收窄:`@WithIdentity(value = "#msg.bizCode", only = "#msg.abilityCodes")`。Web 里的能力头 `easy-extension.web.abilities-header`(逗号分隔)对应 `only`;要 `without`,写一个 `IdentityResolver`。
+- 显式身份不运行 `Matcher`,所以这里的收窄靠 `only` / `without`;要按请求内容决定哪些能力启用,让能力实现 `Matcher`(见上一节)。Web 里的能力头 `easy-extension.web.abilities-header`(逗号分隔)对应 `only`;要 `without`,写一个 `IdentityResolver`。
 - `Extensions.wrap` 捕获**调用它的那个线程**当时的身份;任务在本线程内联执行时(直接执行器、线程池饱和),本线程原来的身份会在任务结束后还原,不会被清掉。
 - `@Async` 的默认执行器、`new Thread`、`CompletableFuture` 的默认池、并行流的工作线程,都不会自动带身份。给线程池设置 `ExtensionTaskDecorator`(声明成 `TaskDecorator` Bean,Boot 的 `applicationTaskExecutor` 就会采用;已有自己的 `TaskDecorator` 时自己组合,例如 Spring 的 `CompositeTaskDecorator`)。没带时调用扩展点的报错消息会指向 `wrap`。
 - 启用的能力,它 `requires` 的能力也必须启用,否则 `ResolutionException`。
@@ -473,6 +474,7 @@ class BundleBusiness implements OrderPricingExtension { ... }
 ```
 
 - 并行拆分时,每个任务里自己 `extensions.call(biz, ...)`,**不要**用 `Extensions.wrap`:它带过去的是提交方的身份,所有部分都会按提交方的业务回答。
+- 拆开的子订单也可以交给 `Matcher`:`extensions.call(extensions.identityOf(sub), () -> ...)`。
 - 没有"复合身份"(一条链里同时有两个业务):两个业务实现同一方法时谁回答没有合理的默认,合并策略是业务策略;要聚合用 `extensions.all(E)` 或应用里的 reduce。
 - 跨业务的一致性(一部分成功、另一部分失败怎么补偿)不归框架管;异常照常原样抛出。
 
@@ -505,13 +507,19 @@ FreightCalcExtension freight = extensions.extension(FreightCalcExtension.class);
     assertEquals(new BigDecimal("8.00"), extensions.call("biz.retail", () -> freight.calcFreight(ctx)));
 }
 
-// Spring 测试:同一个注解加在测试类上,不用构造请求
+// 测 Matcher 本身:有代表性的请求对象 → 命中的业务
+@Test void retailRequestIsClaimedByRetail() {
+    assertEquals("biz.retail", extensions.identityOf(new CheckoutRequest("biz.retail", ...)).business());
+}
+
+// Spring 测试:同一个注解(字面量)加在测试类上,不用构造请求
 @SpringBootTest
 @WithIdentity("biz.retail")
 class CheckoutTest { ... }
 ```
 
-Spring 测试里的 `@WithIdentity` 由 `easy-extension-test`(test 依赖)自动注册的监听器处理;`Extensions.of(...)` 与启动时走同一套校验,测试里同样会得到聚合的启动期错误。
+
+Spring 测试里的 `@WithIdentity("biz.retail")`(字面量,测试类上没有请求对象)由 `easy-extension-test`(test 依赖)自动注册的监听器处理;`Extensions.of(...)` 与启动时走同一套校验,测试里同样会得到聚合的启动期错误。
 
 <details>
 <summary><b>进阶</b>(按需再看):兜底要用 Bean、拦截器、HTTP 里自定义身份、传输层元数据里的身份、解释路由</summary>
@@ -544,7 +552,8 @@ class DefaultTax implements TaxExtension {
 }
 ```
 
-返回 `Identity.none()` 表示"没有业务,只用默认层";返回 `null` 表示不绑定,调用扩展点时照样报错;抛 `new ResolutionException("...")`,请求得到 HTTP 400。`@WithIdentity` 里复杂的路由逻辑,写成 Bean 的方法,在表达式里 `@bean` 调用。
+返回 `Identity.none()` 表示"没有业务,只用默认层";返回 `null` 表示不绑定,调用扩展点时照样报错;抛 `new ResolutionException("...")`,请求得到 HTTP 400。这里返回的是显式身份,**不运行 Matcher**。要用上业务和能力的 `Matcher`(例如业务码在请求头、其余在请求体),在 resolver 里自己组装匹配参数:`return extensions.identityOf(new OrderFacts(...));`。
+
 
 **身份在 RPC 的传输层元数据里**(Dubbo 的 attachment、gRPC 的 metadata、MQ 的消息头),或入口不是 Spring Bean:写在 RPC 框架自己的服务端拦截点里。核心里不维护各 RPC 框架的适配器,下面是配方的形状:
 
@@ -577,7 +586,7 @@ GET /actuator/extensions/explain?business=biz.retail&type=com.acme.FreightCalcEx
 | | 现在(3.x) | 4.0 |
 |---|---|---|
 | 注入 | `@ExtensionInject` 字段 | 普通注入,构造器注入即可 |
-| 判定请求是谁 | 每个业务实现 `Matcher<P>`,配 `@MatcherParam`;入口手写 `initSession(param)` | 身份是显式的,没有 `Matcher`:入口方法上 `@WithIdentity("#param.bizCode")`;网关设请求头的,一行配置 |
+| 判定请求是谁 | 每个业务、能力实现 `Matcher<P>`,配 `@MatcherParam`;入口手写 `initSession(param)` | `Matcher<P>` 保留(每个类自己的 P,严格单命中);入口方法上 `@WithIdentity`;业务码在网关设的请求头里的,一行配置 |
 | 谁先回答 | 数字优先级:`priority`、`ability::10` | 业务先答;要让能力覆盖业务,写 `overridingAbilities = {...}` |
 | 默认实现 | 一个类实现全部扩展点;没有合理默认值的标 `mandatory` | 接口的 `default` 方法;没有 `default` 的方法就是必选 |
 | 会话 | 手动 `initSession` / `removeSession`,命名 scope | `@WithIdentity` 绑定、还原、清理都是框架的;一个请求里的多个身份用嵌套的 `extensions.call(biz, ...)` |
@@ -587,11 +596,11 @@ GET /actuator/extensions/explain?business=biz.retail&type=com.acme.FreightCalcEx
 
 - `@ExtensionInject X x` → 普通注入 `X x`;`context.invoke(X.class, ...)` → 直接调用注入的 `X`;`invokeAll` / `invokeReduce` → `extensions.all(X.class)` 加 stream。
 - `initSession(param)` / `removeSession()` → 入口方法上 `@WithIdentity`,或请求头一行配置;不是 Bean 的入口用 `extensions.run(...)`。
-- **`Matcher` 没有了。** `match(param)`、`@MatcherParam`、无命中 / 多命中策略、`BusinessMatchSelector`、`allow-unknown-business` 都没有对应物:一个身份只指一个业务,业务码未知是 `ResolutionException`。`match()` 里的判断挪到入口:最常见的 `bizCode` 相等,就是 `@WithIdentity("#param.bizCode")`;能力是否启用,是 `only = "#param.abilityCodes"`;复杂的路由写成 Bean 的方法,在表达式里调用:`@WithIdentity("@routing.bizOf(#param)")`。原来靠 `allow-unknown-business` 回落到默认实现的,建一个没有实现的 `biz.default` 业务,让路由方法把未知的码映射到它。
+- **`Matcher` 保留,规则收紧。** 业务、能力继续实现 `Matcher<P>`,`match` 的写法不变。变化:P 不再是全局唯一的一个类(`registerMatcherParamClass`),而是每个类自己的泛型参数,一个服务里的类约定同一个 P(可以是所有请求 DTO 共同实现的小接口);`@MatcherParam` 改标在入口方法的参数上(默认第一个参数);`initSession(param)` → `@WithIdentity`(无值)或 `extensions.identityOf(param)`;**只有严格匹配**:无命中、多命中都是 `ResolutionException`(这就是 3.x 的默认 `allow-unknown-business=false`),没有选择器、`business-match-order`、`allow-unknown-business`。设置过 `allow-unknown-business=true`(无命中走默认实现、多命中按顺序选一个)的,要让各业务的 `match` 互斥;无命中走默认实现目前没有对应物,见 [API 草图 §9](doc/design/v4-api-sketch.md#9-这份草图还没回答的问题)。
 - `@Business(priority, abilities = {"a::10"})` → 按 3.x **实际解析出的数字**比较:小于业务自身 `priority` 的能力进 `overridingAbilities`,其余进 `abilities`,各自按数字升序。未写数字的能力,3.x 自动编为 1、2……(业务默认是 0)。适用于注解方式注册的类,计划提供 OpenRewrite recipe。
 - `@ExtensionPointDefaultImplementation` 大类 → 接口的 `default` 方法;需要注入的用 `@DefaultProvider`。`@ExtensionPoint` 的 `mandatory` 直接删掉(没有 `default` 就是必选),`scenarios` / `version` 也去掉(它们只用于管理后台展示,接口演进照旧靠新增 `default` 方法)。
 - 手写 `IBusiness` / `IAbility`(含数据驱动的业务) → 带注解的类,或 `Extensions.builder().business(...)` / `.ability(...)`。
-- **要特别检查四处语义**:带 `default` 方法的扩展点(路由按方法而不是按接口)、能力的先后(3.x 按数字比较,业务默认 0、未编号的能力自动编为 1、2……;4.0 默认业务在前,数字更小的能力要进 `overridingAbilities`)、能力的启用(4.0 默认挂载的全部启用,原来靠 `match()` 按请求启用的,把条件挪到入口:`@WithIdentity` 的 `only`,或 `Identity.of(...).only(...)`)、聚合(`all` 不含接口的 `default` 体,原来默认实现也会被 `invokeAll` 遍历到)。
+- **要特别检查五处语义**:带 `default` 方法的扩展点(路由按方法而不是按接口)、能力的先后(3.x 按数字比较,业务默认 0、未编号的能力自动编为 1、2……;4.0 默认业务在前,数字更小的能力要进 `overridingAbilities`)、能力的启用(入口有请求对象时仍由能力的 `Matcher` 决定;显式身份(请求头、字面量、`extensions.run`)不运行 Matcher,挂载的全部启用,要收窄用 `Identity.only` / `without`)、聚合(`all` 不含接口的 `default` 体,原来默认实现也会被 `invokeAll` 遍历到)、匹配(只有严格匹配,设置过 `allow-unknown-business=true` 或 `business-match-order` 的要处理)。
 
 完整对照表见 [API 草图 §8](doc/design/v4-api-sketch.md#8-从-3x-迁移)。
 
