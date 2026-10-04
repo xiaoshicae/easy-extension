@@ -1,5 +1,6 @@
 package io.github.xiaoshicae.extension.core.session;
 
+import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 import io.github.xiaoshicae.extension.core.trace.ResolveTrace.ResolutionEntry;
 
 import java.util.ArrayList;
@@ -33,11 +34,13 @@ public final class ResolvedChain {
     private final String registryVersion;
     private final List<ResolutionEntry> entries;
     private final List<String> codes;
+    private final ResolveTrace trace;
 
-    private ResolvedChain(String registryVersion, List<ResolutionEntry> entries, List<String> codes) {
+    private ResolvedChain(String registryVersion, List<ResolutionEntry> entries, List<String> codes, ResolveTrace trace) {
         this.registryVersion = registryVersion;
         this.entries = entries;
         this.codes = codes;
+        this.trace = trace;
     }
 
     private static final Comparator<ResolutionEntry> BY_PRIORITY = Comparator.comparingInt(ResolutionEntry::priority);
@@ -79,7 +82,7 @@ public final class ResolvedChain {
             codes.add(entry.code());
         }
         assertCodesAreUnique(codes);
-        return new ResolvedChain(registryVersion, Collections.unmodifiableList(sorted), Collections.unmodifiableList(codes));
+        return new ResolvedChain(registryVersion, Collections.unmodifiableList(sorted), Collections.unmodifiableList(codes), null);
     }
 
     private static void assertCodesAreUnique(List<String> codes) {
@@ -107,6 +110,26 @@ public final class ResolvedChain {
      */
     public String registryVersion() {
         return registryVersion;
+    }
+
+    /**
+     * The same chain, carrying the trace that explains how it was resolved. {@link #equals(Object)} ignores the trace.
+     *
+     * @param trace the trace of the resolution that produced the chain
+     * @since 3.4
+     */
+    public ResolvedChain withTrace(ResolveTrace trace) {
+        return new ResolvedChain(registryVersion, entries, codes, trace);
+    }
+
+    /**
+     * The trace of the resolution that produced this chain (which abilities were skipped and why, how long it took),
+     * or {@code null} if the chain was assembled by hand with {@link #of(String, Collection)}.
+     *
+     * @since 3.4
+     */
+    public ResolveTrace trace() {
+        return trace;
     }
 
     /**

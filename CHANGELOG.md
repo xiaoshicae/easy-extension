@@ -185,6 +185,22 @@ same list with advice on what to check.
   method is registered only if it is an `IAbility` / `IBusiness` / `IExtensionPointGroupDefaultImplementation`; the
   annotation on its class is not enough.
 
+- **A request could be resolved to a business that could not serve yet.** `registerBusiness` added the business to the
+  manager the resolver reads first and wired it to its extension points second. A request that arrived in between
+  (runtime or plugin registration while serving) matched the new business and was answered by a default
+  implementation, without an error. The business is wired first and published last now, everything either step could
+  refuse is checked before the first of them changes anything, and the instance manager registers all extension
+  points of an instance or none. A chain resolved in the instant between the publication and the registry's new version
+  still carries the previous version label, so binding it elsewhere is refused and the chain resolved again; that is
+  by design.
+- **`getLastResolveTrace()` describes the session that is bound.** It was a thread-local record kept by hand next to
+  the session store, and went wrong around it: closing a scoped session over a default one left the default session
+  without a trace; after an inline `runWith` (direct executor, `CallerRunsPolicy`) the thread's own session came back
+  without the skipped abilities and the cost; with a store that follows the request across threads (the documented
+  use of `IScopedSessionManager`) the trace stayed on the thread that initialised it after another thread removed the
+  session, and was not there on the other threads that see the session. The resolved chain carries its trace now
+  (`ResolvedChain#trace()`), and the trace is read from the chain the store holds. A store that keeps no chains keeps the
+  old record.
 - **Starter: a session started on an async or error dispatch outlived the request** (cross-request, in a multi-tenant
   application cross-tenant, routing). The session cleanup filter was mapped to the `REQUEST` dispatch only (a plain
   servlet filter is, unless told otherwise), but the container serves more of a request on its worker threads: the
@@ -260,6 +276,8 @@ same list with advice on what to check.
   of that type if there is exactly one (or one is `@Primary`). The starter also picks up a `BusinessMatchSelector` bean
   on the same terms. With several and no `@Primary` none is used and a WARN says so, instead of failing the startup.
   `IScopedSessionManager` gained `default` methods to bind and read a chain, so existing implementations keep working.
+- `ResolvedChain#withTrace(ResolveTrace)` and `ResolvedChain#trace()`: the trace that explains how a chain was
+  resolved (`equals` ignores it).
 - Starter: `LazyExtensionFactory`, and a constructor of `FirstMatchedExtensionFactoryBean` /
   `AllMatchedExtensionFactoryBean` that takes an `ObjectProvider<IExtensionFactory>` (the one the container uses; the
   old constructors stay).

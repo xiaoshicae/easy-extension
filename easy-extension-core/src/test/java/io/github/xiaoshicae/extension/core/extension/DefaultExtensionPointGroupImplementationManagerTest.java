@@ -36,6 +36,22 @@ public class DefaultExtensionPointGroupImplementationManagerTest {
     }
 
     @Test
+    public void testFailedRegistrationLeavesNothingRegistered() throws Exception {
+        DefaultExtensionPointGroupImplementationManager<Object> manager = new DefaultExtensionPointGroupImplementationManager<>();
+        manager.registerExtensionPointImplementationInstance(new InstanceY());
+
+        // the second extension point of the instance is taken already: the first must not stay registered
+        RegisterException e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceXY("InstanceY")));
+        assertEquals(String.format("extension point [%s] with name [%s] already registered", IFaceY.class.getName(), "InstanceY"), e.getMessage());
+        assertNull(manager.findExtensionPointImplementationInstance(IFace.class, "InstanceY"));
+
+        // and an extension point named twice is refused before the first of them is registered
+        e = assertThrows(RegisterException.class, () -> manager.registerExtensionPointImplementationInstance(new InstanceTwice()));
+        assertEquals(String.format("extension point [%s] with name [%s] already registered", IFace.class.getName(), "InstanceTwice"), e.getMessage());
+        assertNull(manager.findExtensionPointImplementationInstance(IFace.class, "InstanceTwice"));
+    }
+
+    @Test
     public void testGetExtensionPointImplementationInstance() throws Exception {
         QueryException e;
 
@@ -134,5 +150,51 @@ class InstanceX extends BaseInstance implements IFace {
     @Override
     public List<Class<?>> implementExtensionPoints() {
         return List.of(IFace.class);
+    }
+}
+
+interface IFaceY {
+}
+
+class InstanceY extends BaseInstance implements IFaceY {
+    @Override
+    public String code() {
+        return "InstanceY";
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(IFaceY.class);
+    }
+}
+
+/** Implements {@link IFace} and {@link IFaceY}, under the code of an instance that has {@link IFaceY} already. */
+class InstanceXY extends BaseInstance implements IFace, IFaceY {
+    private final String code;
+
+    InstanceXY(String code) {
+        this.code = code;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(IFace.class, IFaceY.class);
+    }
+}
+
+class InstanceTwice extends BaseInstance implements IFace {
+    @Override
+    public String code() {
+        return "InstanceTwice";
+    }
+
+    @Override
+    public List<Class<?>> implementExtensionPoints() {
+        return List.of(IFace.class, IFace.class);
     }
 }

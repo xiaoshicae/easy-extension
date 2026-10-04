@@ -120,7 +120,8 @@ final class ChainResolver<T> {
         }
         ResolvedChain chain = buildChain(scope, defaultScope, entries.values(), registryVersion);
         trace.costMillis(System.currentTimeMillis() - startTime);
-        return new Resolution(chain, trace.build());
+        ResolveTrace built = trace.build();
+        return new Resolution(chain.withTrace(built), built);
     }
 
     private List<IBusiness<T>> findMatchedBusinesses(T param) {

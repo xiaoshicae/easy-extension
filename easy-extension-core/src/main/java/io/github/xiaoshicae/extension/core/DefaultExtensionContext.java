@@ -21,6 +21,7 @@ import io.github.xiaoshicae.extension.core.exception.SessionException;
 import io.github.xiaoshicae.extension.core.exception.SessionParamException;
 import io.github.xiaoshicae.extension.core.extension.DefaultExtensionPointGroupImplementationManager;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
+import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImplementation;
 import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupImplementationManager;
 import io.github.xiaoshicae.extension.core.interceptor.ExtensionInterceptor;
 import io.github.xiaoshicae.extension.core.proxy.IProxy;
@@ -111,6 +112,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      * ThreadLocal storage for the most recent resolve trace.
      */
     private final ThreadLocal<ResolveTrace> lastResolveTrace = new ThreadLocal<>();
+
+    /**
+     * The scope this thread initialized or bound last. The trace that explains the session is read from the chain the
+     * store holds for it ({@link #getLastResolveTrace()}); the thread local above is what a store that keeps no chains
+     * leaves.
+     */
+    private final ThreadLocal<String> lastScope = new ThreadLocal<>();
 
     /**
      * The hot path: finds the implementation to call, wrapped for the registered interceptors if there are any.
@@ -443,10 +451,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         synchronized (registrationLock) {
             requireCodeNotUsedByAnotherKind(EntryType.ABILITY, ability.code());
+            requireNotRegistered(EntryType.ABILITY, ability.code());
+            requireFits(EntryType.ABILITY, ability);
             requireFreeSlots(EntryType.ABILITY, ability.code(), ability.implementExtensionPoints());
             try {
-                abilityManager.registerAbility(ability);
+                // serve first, publish last, as for a business
                 extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability);
+                abilityManager.registerAbility(ability);
             } finally {
                 registryChanged();
             }
@@ -479,26 +490,46 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     }
 
     /**
+     * That the code is not taken by an instance of this kind already, worded as the managers word it (they refuse it
+     * as well, but a registration must not get as far as them: see {@link #registerBusiness(IBusiness)}).
+     */
+    private void requireNotRegistered(EntryType kind, String code) throws RegisterException {
+        if (code != null && isKnown(new ResolutionEntry(code, null, kind))) {
+            // the wording of the managers, which refuse it as well
+            throw new RegisterDuplicateException(kind == EntryType.ABILITY
+                    ? String.format("ability [%s] already registered", code)
+                    : String.format("business with code [%s] already register", code));
+        }
+    }
+
+    /**
+     * That the instance implements what it claims to: the extension points are interfaces and it is an instance of
+     * each. Worded as the business and ability managers word it, which check it as well.
+     */
+    private void requireFits(EntryType kind, IExtensionPointGroupImplementation<T> instance) throws RegisterParamException {
+        for (Class<?> extensionPoint : instance.implementExtensionPoints()) {
+            if (!extensionPoint.isInterface()) {
+                throw new RegisterParamException(String.format("%s [%s] implement extension point class [%s] invalid, class should be an interface type",
+                        kind.label(), instance.code(), extensionPoint.getName()));
+            }
+            if (!extensionPoint.isInstance(instance)) {
+                throw new RegisterParamException(String.format("%s [%s] not implement extension point class [%s]",
+                        kind.label(), instance.code(), extensionPoint.getName()));
+            }
+        }
+    }
+
+    /**
      * What wiring the instance to its extension points will ask for, checked before anything is changed: it has a
      * code, names no extension point twice, and finds its place under each extension point free. Wiring cannot fail
-     * afterwards, which is what keeps a refused registration from leaving half of it behind (the business and
-     * ability managers refuse what is wrong with the instance itself before they store it).
-     * <p>
-     * A code that is registered already is left to the manager of its kind, which says so first.
-     * </p>
+     * afterwards.
      */
     private void requireFreeSlots(EntryType kind, String code, List<Class<?>> extensionPoints) throws RegisterException {
         if (code == null) {
             throw new RegisterParamException("instance code should not be null");
         }
-        if (isKnown(new ResolutionEntry(code, null, kind))) {
-            return;
-        }
         Set<Class<?>> seen = new HashSet<>();
         for (Class<?> extensionPoint : extensionPoints) {
-            if (!extensionPoint.isInterface()) {
-                continue;   // refused, in its own words, by the manager of its kind
-            }
             if (!seen.add(extensionPoint) || isTaken(extensionPoint, code)) {
                 throw new RegisterDuplicateException(String.format(
                         "extension point [%s] with name [%s] already registered", extensionPoint.getName(), code));
@@ -562,10 +593,18 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         synchronized (registrationLock) {
             requireCodeNotUsedByAnotherKind(EntryType.BUSINESS, business.code());
+            requireNotRegistered(EntryType.BUSINESS, business.code());
+            requireFits(EntryType.BUSINESS, business);
             requireFreeSlots(EntryType.BUSINESS, business.code(), business.implementExtensionPoints());
             try {
-                businessManager.registerBusiness(business);
+                // Serve first, publish last: the business is wired to its extension points before it is added to the
+                // manager the resolver reads, so a request is never resolved to a business that cannot serve yet (it
+                // would be answered by a default implementation, without any error). Everything either step could refuse
+                // has been checked above, before the first of them changes anything. Readers do not take the lock.
+                // A chain resolved between the publication and registryChanged() carries the previous registry
+                // version; binding it elsewhere is refused and the chain resolved again, which is harmless.
                 extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business);
+                businessManager.registerBusiness(business);
             } finally {
                 registryChanged();
             }
@@ -723,6 +762,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             throw new SessionException(String.format("scope [%s], %s", scope, e.getMessage()), e);
         }
         session.bindScopedChain(scope, resolution.chain());
+        lastScope.set(scope);
         lastResolveTrace.set(resolution.trace());
 
         if (enableLogger) {
@@ -773,7 +813,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         verifyChainFitsRegistry(chain);
 
         session.bindScopedChain(scope, chain);
-        lastResolveTrace.set(traceOf(scope, chain));
+        lastScope.set(scope);
+        lastResolveTrace.set(traceFor(scope, chain));
 
         if (enableLogger) {
             logger.info("{} session {}bound to a resolved chain: {}", LOG_PREFIX,
@@ -808,8 +849,18 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     }
 
     /**
-     * What a bound chain amounts to as a trace: the chain says what was resolved, not why (which abilities
-     * were skipped and how long it took are not part of it).
+     * The trace of a chain bound to a scope: the one the chain carries, if it was resolved for that scope, else one
+     * made from the chain (a chain bound to a scope other than the one it was resolved for is explained under the
+     * scope it is bound to).
+     */
+    private ResolveTrace traceFor(String scope, ResolvedChain chain) {
+        ResolveTrace carried = chain.trace();
+        return carried != null && Objects.equals(carried.getScope(), scope) ? carried : traceOf(scope, chain);
+    }
+
+    /**
+     * What a bound chain amounts to as a trace when it carries none: the chain says what was resolved, not why
+     * (which abilities were skipped and how long it took are not part of it).
      */
     private ResolveTrace traceOf(String scope, ResolvedChain chain) {
         ResolveTrace.Builder builder = ResolveTrace.builder(scope);
@@ -828,6 +879,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     @Override
     public void removeSession() {
         session.removeAllSession();
+        lastScope.remove();
         lastResolveTrace.remove();
         if (enableLogger) {
             logger.info("{} all session (include scoped session) has been removed", LOG_PREFIX);
@@ -851,11 +903,33 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         if (trace != null && Objects.equals(trace.getScope(), scope)) {
             lastResolveTrace.remove();
         }
+        if (Objects.equals(lastScope.get(), scope)) {
+            lastScope.remove();
+        }
     }
 
+    /**
+     * The trace explains the session that is bound, so it is read from the chain the store holds, which carries it:
+     * it goes when the session goes (on whichever thread that is removed) and is there wherever the session is.
+     */
     @Override
     public ResolveTrace getLastResolveTrace() {
-        return lastResolveTrace.get();
+        try {
+            String scope = lastScope.get();
+            ResolvedChain chain = scope == null ? null : session.getScopedChain(scope);
+            if (chain == null) {
+                // what this thread bound last is gone (or it bound nothing): the default scope is what is left to explain
+                scope = EASY_EXTENSION_DEFAULT_SCOPE;
+                chain = session.getScopedChain(scope);
+            }
+            if (chain == null) {
+                return null;
+            }
+            return traceFor(scope, chain);
+        } catch (UnsupportedOperationException e) {
+            // a session manager that keeps no chains: the record this thread made is all there is
+            return lastResolveTrace.get();
+        }
     }
 
     @Override
