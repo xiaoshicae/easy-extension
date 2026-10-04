@@ -43,6 +43,16 @@ import java.util.function.Supplier;
  * thread back as it was: the session the scope held before is bound again, and only when there was none is the scope
  * removed (the default scope: every scope of the thread, as {@link #run(IExtensionSession, Object, Supplier)} does).
  * </p>
+ *
+ * <h2>Nesting</h2>
+ * <p>
+ * {@link #open(IExtensionSession, Object)}, {@link #openScoped(IExtensionSession, String, Object)} and
+ * {@code run} put the thread back as it was as well, so they nest: service A, wrapped by an aspect that opens a scope,
+ * calls service B, wrapped by the same aspect, and A's session is still there when B returns. Only when the scope held
+ * no session before is it removed. A scope whose session cannot be initialized (no business matched) leaves the thread
+ * without a session for that scope, the one it held before included: code that asked for another identity is not
+ * served as the old one.
+ * </p>
  */
 public final class ExtensionSessionScope implements AutoCloseable {
 
@@ -69,21 +79,24 @@ public final class ExtensionSessionScope implements AutoCloseable {
 
     /**
      * Initialize a session bound to the current thread and return an
-     * {@link AutoCloseable} whose {@link #close()} always calls
-     * {@link IExtensionSession#removeSession()}.
+     * {@link AutoCloseable} whose {@link #close()} puts the thread back as it was: the session the default scope held
+     * before is bound again (the helper nests); if there was none, {@link IExtensionSession#removeSession()} runs.
      */
     public static <T> ExtensionSessionScope open(IExtensionSession<T> session, T param) throws SessionException {
+        ResolvedChain previous = chainOf(session, null);
         session.initSession(param);
-        return new ExtensionSessionScope(session, null, null);
+        return new ExtensionSessionScope(session, null, previous);
     }
 
     /**
-     * Scoped variant of {@link #open(IExtensionSession, Object)}. Closing it removes the session of that scope
-     * only; sessions of other scopes (the default scope included) stay.
+     * Scoped variant of {@link #open(IExtensionSession, Object)}. Closing it binds the session the scope held before
+     * again, or, if there was none, removes the session of that scope; sessions of other scopes (the default scope
+     * included) stay.
      */
     public static <T> ExtensionSessionScope openScoped(IExtensionSession<T> session, String scope, T param) throws SessionException {
+        ResolvedChain previous = chainOf(session, scope);
         session.initSession(scope, param);
-        return new ExtensionSessionScope(session, scope, null);
+        return new ExtensionSessionScope(session, scope, previous);
     }
 
     /**
@@ -114,14 +127,12 @@ public final class ExtensionSessionScope implements AutoCloseable {
 
     /**
      * Run {@code body} inside a freshly-initialized session and return its result.
-     * Cleanup happens in a {@code finally}; exceptions from {@code body} propagate.
+     * Cleanup happens in a {@code finally} and puts the thread back as it was (see {@link #open(IExtensionSession, Object)}),
+     * so a {@code run} inside a {@code run} leaves the outer session bound; exceptions from {@code body} propagate.
      */
     public static <T, R> R run(IExtensionSession<T> session, T param, Supplier<R> body) throws SessionException {
-        session.initSession(param);
-        try {
+        try (ExtensionSessionScope ignored = open(session, param)) {
             return body.get();
-        } finally {
-            session.removeSession();
         }
     }
 
@@ -129,11 +140,8 @@ public final class ExtensionSessionScope implements AutoCloseable {
      * Void-returning variant of {@link #run(IExtensionSession, Object, Supplier)}.
      */
     public static <T> void run(IExtensionSession<T> session, T param, Runnable body) throws SessionException {
-        session.initSession(param);
-        try {
+        try (ExtensionSessionScope ignored = open(session, param)) {
             body.run();
-        } finally {
-            session.removeSession();
         }
     }
 

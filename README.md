@@ -269,6 +269,7 @@ ExtensionInterceptor metrics(MeterRegistry registry) {
 ```
 
 每次对扩展点实现的调用（`@ExtensionInject`、`invoke*`、`getFirstMatchedExtension` 等）都会经过拦截器，按 `@Order` 排序。
+拦截器 Bean 在所有单例创建完成后才登记，所以可以依赖 `IExtensionContext`；Bean 初始化期间（`@PostConstruct`）的调用不会被拦截。
 容器里的 `IScopedSessionManager`（会话存放位置，默认 ThreadLocal）和 `BusinessMatchSelector`（多业务匹配时怎么选）Bean 同样会被自动采用——前提是只有一个（或其中一个标了 `@Primary`）；有多个又没有 `@Primary` 时都不采用，并打印一条 WARN。
 
 ## 配置参考
@@ -309,6 +310,9 @@ easy-extension:
   与 3.3 一样被忽略；类自己声明的扩展点仍必须已注册。
 - **关闭作用域会话只清自己的作用域。** `ExtensionSessionScope.openScoped(...)` 关闭时只移除那个作用域，
   此前会清掉本线程的所有会话。如果在块内另外 `initSession(...)` 了默认作用域，请自己 `removeSession()`。
+- **`ExtensionSessionScope.open` / `openScoped` / `run` 可以嵌套。** 关闭内层时，会把这个作用域此前持有的会话重新绑回去，
+  此前外层的会话被清掉，外层的下一次扩展点调用报 `session not init`（例如被同一个切面包裹的服务 A 调用服务 B）。
+  线程上没有会话时才清掉作用域；线程上此前泄漏的陈旧会话也会被绑回，而不是被下一次 `run` 清理。
 - **注册时就拒绝永远不会成功的配置。** 业务、能力、默认实现不能共用同一个 code（此前链上会静默丢掉其中一个，连同它的优先级）；
   没有优先级的业务或挂载的能力，以及优先级与默认实现相同的业务（例如 `Integer.MAX_VALUE`），现在在注册 / `validateRegistration()` 时就报错
   （此前是每个请求都失败）。这样的应用升级后会在启动时失败，报错里有具体的 code。
@@ -322,6 +326,14 @@ easy-extension:
 - **`@ExtensionInject` 注入的代理，`toString()` / `hashCode()` / `equals()` 按对象本身回答**（形如 `Extension<PriceExtension>@1a2b3c`），
   不再转给当前请求的实现。此前在没有会话时会抛异常（日志、调试器、Lombok 的 `@ToString`、`HashSet` 都会碰到），
   会话里 `proxy.equals(proxy)` 为 `false`，实现类打印持有自己扩展点代理的字段时还会栈溢出。
+- **Session 自动清理过滤器也覆盖异步分发和错误分发。** 此前它只映射 `REQUEST`；异步控制器（返回 `CompletableFuture` / `Callable` /
+  `DeferredResult`）的异步分发会让 Spring MVC 再调一次 `HandlerInterceptor.preHandle`，错误分发（`/error`）也在容器线程上执行，
+  在那里启动的会话没人清理，会留在线程池线程上，被下一个没有自己启动会话的请求沿用（多租户下是跨租户路由）。现在 `REQUEST`、`ASYNC`、`ERROR`
+  都清理（`FORWARD` / `INCLUDE` 不清理，它们在已被覆盖的分发之内）。
+- **`ExtensionInterceptor` Bean 在所有单例创建完成后才登记。** 这样拦截器可以依赖 `IExtensionContext`（例如问当前请求落在哪个业务），
+  此前这会启动失败（禁用循环引用时）或得到一个没有任何扩展点和业务的空上下文（允许循环引用时）。代价：Bean 初始化期间（`@PostConstruct`）
+  发起的扩展点调用不会被拦截。业务、能力、默认实现本身是上下文的组成部分，创建时不能依赖上下文，需要时用 `ObjectProvider<IExtensionContext<?>>`
+  或 `@Lazy` 注入。
 - **扫描到的类，`@Profile` / `@Conditional…` 按应用的环境判断。** 扫描器此前用自己新建的环境（只认系统属性和环境变量，
   不认 `application.yml` 里激活的 profile 和配置），所以 `application.yml` 里激活了 `prod` 时，`@Profile("prod")` 的业务仍被排除、
   `@Profile("!prod")` 的反而被注册，`@ConditionalOnProperty` 也读不到应用里配的属性。现在与应用里的其它组件一致；

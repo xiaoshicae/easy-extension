@@ -53,6 +53,13 @@ same list with advice on what to check.
 - **Closing a scoped scope removes only that scope.** `ExtensionSessionScope.openScoped(...).close()` used to remove
   every session of the thread. A default-scope session initialised inside the block now stays; remove it yourself.
   `removeSession()` overrides are no longer called by a scoped close.
+- **`ExtensionSessionScope.open` / `openScoped` / `run` nest.** Closing one used to remove the session of the thread
+  (or of the scope), so service A wrapped by an aspect that opens a scope, calling service B wrapped by the same aspect,
+  lost its session when B returned and failed on its next extension call with `matched codes is empty, may be session
+  not init`. Closing now binds the session the scope held before, as `restore` / `runWith` do; the scope is removed only
+  if it held none. That includes a stale session that earlier code left behind on a pooled thread: it is bound again
+  instead of being cleaned up by the next `run`. A scope that cannot be initialised (no business matched) still leaves
+  the thread without a session for that scope.
 - **Error messages changed.** `extension point [X] not registered` now ends with `, business [b] implements it` (an
   ability or a default implementation likewise), and a priority that two entries of a chain share is reported as
   `priority [n] is taken by both business [b] and default implementation [d]` (it named neither, and for the default
@@ -178,12 +185,33 @@ same list with advice on what to check.
   method is registered only if it is an `IAbility` / `IBusiness` / `IExtensionPointGroupDefaultImplementation`; the
   annotation on its class is not enough.
 
+- **Starter: a session started on an async or error dispatch outlived the request** (cross-request, in a multi-tenant
+  application cross-tenant, routing). The session cleanup filter was mapped to the `REQUEST` dispatch only (a plain
+  servlet filter is, unless told otherwise), but the container serves more of a request on its worker threads: the
+  async dispatch, for which Spring MVC calls `HandlerInterceptor.preHandle` again (any controller that returns a
+  `CompletableFuture`, `Callable` or `DeferredResult`), and the error dispatch to `/error`. An application that starts
+  the session in an interceptor or a filter had it started there too, and nothing removed it: the next request served by
+  the same thread, if it did not start a session of its own, was routed as the earlier one. The filter is mapped to
+  `REQUEST`, `ASYNC` and `ERROR` now (not `FORWARD` and `INCLUDE`, which run inside a dispatch that is covered).
+- **Starter: an `ExtensionInterceptor` bean could not depend on the extension context.** The interceptors were injected
+  into the same configuration class that defines the context bean and registered inside it. With circular references
+  off (Spring Boot's default) the start failed (`Requested bean is currently in creation`); with them on, it succeeded
+  with an extension context that had **no extension points and no businesses**, and every `initSession` failed with `no
+  business matched`. The interceptor beans are registered once every singleton exists, so an interceptor may ask the
+  context which business the request resolved to, as any bean may. A call made while the beans are still being created (a
+  `@PostConstruct`) is therefore not intercepted. (The same applies to a business, an ability or a default
+  implementation that injects the context itself: the context is built from them, so they must not need it while they
+  are created. Inject `ObjectProvider<IExtensionContext<?>>` or use `@Lazy` there; `@ExtensionInject` is lazy since the
+  fix above.)
+
 ### Changed
 
 - **Build baseline is now JDK 17** (`--release 17`), verified on JDK 17 and 21 against Spring Boot 3.5 and 4.0 in CI.
   Previously the code was compiled for JDK 21 although it does not use any JDK 21 API.
 - **Hot path.** The registries read lock-free (immutable copy-on-write snapshots), an extension lookup no longer
-  creates an exception per miss, and the resolved chain is immutable and computed once per session.
+  creates an exception per miss, and the resolved chain is immutable and computed once per session. With an
+  interceptor registered, a lookup that finds its wrapper cached no longer allocates a lambda or takes a lock on the
+  cache.
   Indicative numbers (plain loop, 4 cores, JDK 21, not JMH) against 3.3.6: falling through three misses to a default
   implementation 2.8 µs → 55 ns; a hit at the head of the chain 80 → 32 ns; `initSession` with 1000 businesses
   9.7 → 3.0 µs, with 100 businesses 1.1 → 0.65 µs; four threads now scale (fall-through 1.1 → 65 M ops/s in total).
@@ -221,7 +249,8 @@ same list with advice on what to check.
 - **Interceptors.** `ExtensionInterceptor` / `ExtensionInvocation` and `registerInterceptor(...)` wrap every call to
   an extension implementation made through the context or an `@ExtensionInject` proxy, in registration order
   (`registerInterceptor(null)` throws `RegisterParamException`). The starter registers `ExtensionInterceptor` beans in
-  `@Order` order.
+  `@Order` order, once every singleton exists: an interceptor bean may depend on the extension context, and a call made
+  while the beans are still being created (a `@PostConstruct`) is not intercepted.
 - `UnknownBusinessPolicy` and `MultiMatchPolicy`, a `DefaultExtensionContext` constructor taking them, and the two
   Spring properties above.
 - `@ExtensionPoint(mandatory = true)`: no default implementation needed; if nothing in the chain implements it the

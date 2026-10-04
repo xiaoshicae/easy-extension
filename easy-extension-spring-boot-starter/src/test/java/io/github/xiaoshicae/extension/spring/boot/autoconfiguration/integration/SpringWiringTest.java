@@ -19,6 +19,7 @@ import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.integration.
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 
@@ -162,6 +163,28 @@ public class SpringWiringTest {
 
             assertEquals("a greets", greet(ec, "a"));
 
+            assertEquals(List.of("first before", "second before", "second after", "first after"), WiringFixtures.EVENTS);
+        }
+    }
+
+    @Test
+    public void testInterceptorBeansAreRegisteredWhenTheContextIsCreatedAfterTheSingletons() throws Exception {
+        // what spring.main.lazy-initialization=true does: nothing is created until it is asked for
+        try (var ctx = new AnnotationConfigApplicationContext()) {
+            ctx.addBeanFactoryPostProcessor(beanFactory -> {
+                for (String name : beanFactory.getBeanDefinitionNames()) {
+                    if (beanFactory.getBeanDefinition(name) instanceof AbstractBeanDefinition definition && definition.getLazyInit() == null) {
+                        definition.setLazyInit(true);
+                    }
+                }
+            });
+            ctx.register(BaseConfig.class, InterceptorConfig.class);
+            ctx.refresh();
+            assertEquals(List.of(), WiringFixtures.EVENTS);
+
+            IExtensionContext<Param> ec = extensionContext(ctx);
+
+            assertEquals("a greets", greet(ec, "a"));
             assertEquals(List.of("first before", "second before", "second after", "first after"), WiringFixtures.EVENTS);
         }
     }

@@ -25,14 +25,17 @@ import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.regist
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 @Configuration
@@ -45,6 +48,10 @@ public class EasyExtensionAutoConfiguration<T> {
     private IScopedSessionManager sessionManager;
     private BusinessMatchSelector<T> businessMatchSelector;
     private List<ExtensionInterceptor> interceptors;
+    private ObjectProvider<ExtensionInterceptor> interceptorBeans;
+    private volatile DefaultExtensionContext<T> createdContext;
+    private volatile boolean singletonsInstantiated;
+    private final AtomicBoolean interceptorBeansRegistered = new AtomicBoolean();
     private List<IBusiness<T>> businesses;
     private List<IAbility<T>> abilities;
     private List<InstanceHolder> instanceHolders;
@@ -65,11 +72,14 @@ public class EasyExtensionAutoConfiguration<T> {
             extensionContext.setBusinessMatchSelector(this.businessMatchSelector);
         }
         if (this.interceptors != null) {
-            // Spring hands the beans over in @Order order
             for (ExtensionInterceptor interceptor : this.interceptors) {
                 extensionContext.registerInterceptor(interceptor);
             }
         }
+        // The interceptor beans are registered once every singleton exists, see registerInterceptorBeansWhenReady():
+        // an interceptor may need the extension context itself, which is still being created here.
+        this.createdContext = extensionContext;
+        registerInterceptorBeansWhenReady();
         ExtensionContextRegisterByAnnHelper<T> helper = new ExtensionContextRegisterByAnnHelper<>(extensionContext);
 
         // if no extension point found, return empty context
@@ -296,11 +306,58 @@ public class EasyExtensionAutoConfiguration<T> {
     }
 
     /**
-     * Interceptors around every call to an extension implementation, in {@code @Order} order.
+     * Interceptors around every call to an extension implementation that are registered when the extension context is
+     * created, for callers that configure the auto-configuration by hand; the container uses
+     * {@link #setInterceptorBeans(ObjectProvider)}.
      */
-    @Autowired(required = false)
     public void setInterceptors(List<ExtensionInterceptor> interceptors) {
         this.interceptors = interceptors;
+    }
+
+    /**
+     * The {@link ExtensionInterceptor} beans, in {@code @Order} order. They are not resolved here: an interceptor that
+     * needs the extension context (to ask which business the request resolved to, for example) would make the
+     * context depend on itself. See {@link #extensionInterceptorRegistration()}.
+     *
+     * @since 3.4
+     */
+    @Autowired(required = false)
+    public void setInterceptorBeans(ObjectProvider<ExtensionInterceptor> interceptorBeans) {
+        this.interceptorBeans = interceptorBeans;
+    }
+
+    /**
+     * Registers the {@link ExtensionInterceptor} beans with the extension context once every singleton exists, so an
+     * interceptor may depend on the extension context like any other bean. A call to an extension point made while the
+     * beans are still being created (a {@code @PostConstruct}) is therefore not intercepted. Where the context is
+     * created later (lazy initialization), the beans are registered when it is.
+     *
+     * @since 3.4
+     */
+    @Bean
+    @Lazy(false)
+    public SmartInitializingSingleton extensionInterceptorRegistration() {
+        return () -> {
+            this.singletonsInstantiated = true;
+            registerInterceptorBeansWhenReady();
+        };
+    }
+
+    private void registerInterceptorBeansWhenReady() {
+        DefaultExtensionContext<T> context = this.createdContext;
+        ObjectProvider<ExtensionInterceptor> beans = this.interceptorBeans;
+        if (context == null || beans == null || !this.singletonsInstantiated
+                || !this.interceptorBeansRegistered.compareAndSet(false, true)) {
+            return;
+        }
+        // in @Order order, the first being the outermost
+        for (ExtensionInterceptor interceptor : beans.orderedStream().toList()) {
+            try {
+                context.registerInterceptor(interceptor);
+            } catch (RegisterException e) {
+                throw new IllegalStateException("could not register interceptor " + interceptor.getClass().getName(), e);
+            }
+        }
     }
 
     @Autowired(required = false)

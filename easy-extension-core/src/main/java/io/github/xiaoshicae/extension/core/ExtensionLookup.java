@@ -188,9 +188,18 @@ final class ExtensionLookup<T> {
         if (current.interceptors().isEmpty()) {
             return implementation;
         }
-        return (E) current.wrappers()
-                .computeIfAbsent(extensionType, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(code, k -> InterceptingProxy.create(extensionType, code, implementation, current.interceptors()));
+        // Read before computing: computeIfAbsent allocates the lambda on every call, and takes the lock of the bin
+        // whenever the key is not the first node in it, which is the steady state here (the wrapper exists).
+        Map<Class<?>, Map<String, Object>> wrappers = current.wrappers();
+        Map<String, Object> byCode = wrappers.get(extensionType);
+        if (byCode == null) {
+            byCode = wrappers.computeIfAbsent(extensionType, k -> new ConcurrentHashMap<>());
+        }
+        Object wrapper = byCode.get(code);
+        if (wrapper == null) {
+            wrapper = byCode.computeIfAbsent(code, k -> InterceptingProxy.create(extensionType, code, implementation, current.interceptors()));
+        }
+        return (E) wrapper;
     }
 
     private List<String> matchedCodes(String scope) throws QueryException {
