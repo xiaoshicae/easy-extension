@@ -64,7 +64,7 @@ final class ChainResolver<T> {
     private final MultiMatchPolicy multiMatchPolicy;
     private final Supplier<BusinessMatchSelector<T>> selector;
     private final boolean enableLogger;
-    private final Set<Integer> warnedCombinations = ConcurrentHashMap.newKeySet();
+    private final Set<String> warnedCombinations = ConcurrentHashMap.newKeySet();
 
     ChainResolver(IBusinessManager<T> businessManager, IAbilityManager<T> abilityManager, DefaultsRegistry<T> defaults,
                   UnknownBusinessPolicy unknownBusinessPolicy, MultiMatchPolicy multiMatchPolicy,
@@ -176,15 +176,12 @@ final class ChainResolver<T> {
      * @param selected the one the selector picked, if any
      */
     private void warnAboutMultiMatch(List<IBusiness<T>> matched, IBusiness<T> selected) {
-        int combination = 1;
-        for (IBusiness<T> business : matched) {
-            combination = 31 * combination + business.code().hashCode();
-        }
-        if (warnedCombinations.contains(combination) || warnedCombinations.size() >= MAX_WARNED_COMBINATIONS) {
+        // the codes themselves, not a hash of them: two combinations whose codes hash alike are still two combinations
+        String codes = String.join(", ", matched.stream().map(IBusiness::code).toList());
+        if (warnedCombinations.contains(codes) || warnedCombinations.size() >= MAX_WARNED_COMBINATIONS) {
             return;
         }
-        if (warnedCombinations.add(combination)) {
-            String codes = String.join(", ", matched.stream().map(IBusiness::code).toList());
+        if (warnedCombinations.add(codes)) {
             logger.warn("{} multiple businesses matched [{}], selected [{}] by registration order. Overlapping business "
                             + "matchers are usually a configuration mistake: fix the matchers, say which one should win "
                             + "(easy-extension.business-match-order or a BusinessMatchSelector), or set "

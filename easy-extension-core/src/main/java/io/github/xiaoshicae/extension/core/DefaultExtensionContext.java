@@ -700,6 +700,9 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             logger.warn("{} session already initialized, this call will override previous session data", LOG_PREFIX);
         }
         session.removeScopedSession(scope);
+        // The scope has no session now, so it has no trace either: should the resolution below fail, the trace of the
+        // request that was resolved before it must not be reported as the current one.
+        forgetTraceOf(scope);
 
         if (enableLogger) {
             if (defaultScope) {
@@ -834,12 +837,19 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     @Override
     public void removeSession(String scope) {
         session.removeScopedSession(scope);
+        forgetTraceOf(scope);
+        if (enableLogger) {
+            logger.info("{} session with scope: [{}] has been removed", LOG_PREFIX, scope);
+        }
+    }
+
+    /**
+     * The last resolve trace explains a session; it goes when that session does.
+     */
+    private void forgetTraceOf(String scope) {
         ResolveTrace trace = lastResolveTrace.get();
         if (trace != null && Objects.equals(trace.getScope(), scope)) {
             lastResolveTrace.remove();
-        }
-        if (enableLogger) {
-            logger.info("{} session with scope: [{}] has been removed", LOG_PREFIX, scope);
         }
     }
 

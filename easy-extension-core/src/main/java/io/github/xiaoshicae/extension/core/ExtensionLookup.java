@@ -88,9 +88,7 @@ final class ExtensionLookup<T> {
             return firstOf(scope, extensionType, matchedCodes);
         } catch (QueryException e) {
             if (defaultScope) throw e;
-            throw new QueryException(String.format(
-                    "get first matched Extension<%s> with scope: [%s] failed",
-                    extensionType.getSimpleName(), scope), e);
+            throw inScope("first", extensionType, scope, e);
         }
     }
 
@@ -113,10 +111,20 @@ final class ExtensionLookup<T> {
             return allOf(scope, extensionType, matchedCodes);
         } catch (QueryException e) {
             if (defaultScope) throw e;
-            throw new QueryException(String.format(
-                    "get all matched Extension<%s> with scope: [%s] failed",
-                    extensionType.getSimpleName(), scope), e);
+            throw inScope("all", extensionType, scope, e);
         }
+    }
+
+    /**
+     * What a lookup in a named scope throws: what the default scope throws (the same type, so that it can be caught
+     * the same way, as {@code IExtensionFactory} documents) and the reason, with the scope in front of it.
+     *
+     * @param which {@code first} or {@code all}
+     */
+    private static QueryException inScope(String which, Class<?> extensionType, String scope, QueryException cause) {
+        String message = String.format("get %s matched Extension<%s> with scope: [%s] failed, %s",
+                which, extensionType.getSimpleName(), scope, cause.getMessage());
+        return cause instanceof QueryNotFoundException ? new QueryNotFoundException(message, cause) : new QueryException(message, cause);
     }
 
     private <E> E firstOf(String scope, Class<E> extensionType, List<String> matchedCodes) throws QueryException {

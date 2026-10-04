@@ -87,6 +87,14 @@ same list with advice on what to check.
   thread, which another scope's `initSession` overwrote.
 - The annotation processor no longer hard-codes `SourceVersion.RELEASE_21`; it follows the compiler
   (`latestSupported()`), so it loads on JDK 17.
+- `getLastResolveTrace()` reported the request that was resolved before when `initSession` failed (`no business
+  matched`) while every lookup said there was no session; it is `null` then, like after `removeSession()`.
+- A lookup in a named scope (`getFirstMatchedExtension(scope, ...)`, `invoke(scope, ...)`) threw a plain
+  `QueryException` saying only "failed", where the default scope throws `QueryNotFoundException` with the reason (for
+  example that a mandatory extension point has no implementation in the chain). It throws the same type with the same
+  reason, and the old text as its prefix; `catch (QueryException)` still works.
+- The warning about several matching businesses is logged once per distinct combination, but remembered the
+  combinations by a hash of their codes, so a second combination with colliding hashes was never reported.
 - A package-private extension point could not be called through an injected proxy, nor through any lookup once an
   interceptor was registered (`UndeclaredThrowableException` caused by `IllegalAccessException`); calling it through the
   context worked. Registered business and ability proxies, and interceptor-wrapped extensions, were not equal to
