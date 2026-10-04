@@ -39,9 +39,12 @@ same list with advice on what to check.
 - **Closing a scoped scope removes only that scope.** `ExtensionSessionScope.openScoped(...).close()` used to remove
   every session of the thread. A default-scope session initialised inside the block now stays; remove it yourself.
   `removeSession()` overrides are no longer called by a scoped close.
-- **Error messages changed.** `doRegister()` without any default implementation: `extension point default implementation
-  not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist` (was `... should not
-  be null`). A default that does not cover an extension point: the message gained a hint about `mandatory = true` and is
+- **Error messages changed.** `extension point [X] not registered` now ends with `, business [b] implements it` (an
+  ability or a default implementation likewise), and a priority that two entries of a chain share is reported as
+  `priority [n] is taken by both business [b] and default implementation [d]` (it named neither, and for the default
+  scope it named an internal scope). `doRegister()` without any default implementation: `extension point default
+  implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist` (was
+  `... should not be null`). A default that does not cover an extension point: the message gained a hint about `mandatory = true` and is
   raised once everything is registered. No default at all and no business matching: `SessionException` (was a
   `NullPointerException`).
 - **`getInstance()` and `getTargetClass()` are reserved on extension points** (they are answered by the framework's
@@ -49,6 +52,12 @@ same list with advice on what to check.
 - **New `default` methods on public interfaces are called by the framework:** `IExtensionRegister#validateRegistration()`,
   `IExtensionSession#removeSession(String)`, the `find…` lookups on the managers. An implementation of those interfaces
   that already has a method with the same signature is now called by it.
+- **Registration refuses what could never work.** A business, an ability and a default implementation can no longer
+  share a code (`RegisterDuplicateException`): a resolved chain holds one entry per code, so one of them used to
+  disappear from every chain, with its priority, without any error. A business, or an ability it mounts, without a
+  priority is refused at registration, and `validateRegistration()` (called by `doRegister()` and the starter) refuses
+  one whose priority is a default implementation's (for example `Integer.MAX_VALUE`): every request for such a
+  business failed. An application that did one of these now fails at startup, and the message says which codes.
 
 ### Fixed
 
@@ -69,6 +78,12 @@ same list with advice on what to check.
   thread, which another scope's `initSession` overwrote.
 - The annotation processor no longer hard-codes `SourceVersion.RELEASE_21`; it follows the compiler
   (`latestSupported()`), so it loads on JDK 17.
+- **A refused `registerBusiness` / `registerAbility` left the instance behind.** It was stored first and wired to its
+  extension points second; when the second step failed (an extension point listed twice, no code, a place already taken
+  under an extension point) the caller got the exception but the instance stayed in the registry, matched requests
+  while answering for none (or only some) of its extension points, could not be registered again, and left the cached
+  registry fingerprint stale. Registration is now serialized and checks everything the second step could refuse before
+  it changes anything.
 
 ### Changed
 

@@ -199,7 +199,7 @@ public class InheritedExtensionPointRegistrationTest {
         RegisterException e = assertThrows(RegisterException.class,
                 () -> context.registerBusiness(AnnProxyConvertUtils.convertAnnBusinessToProxy(new Outsider())));
 
-        assertEquals("extension point [" + Outside.class.getName() + "] not registered", e.getMessage());
+        assertEquals("extension point [" + Outside.class.getName() + "] not registered, business [outsider] implements it", e.getMessage());
     }
 
     @Test

@@ -141,7 +141,8 @@ public class MultiDefaultImplementationTest {
             }
         }
         e = assertThrows(RegisterException.class, () -> context.addExtensionPointDefaultImplementation(new DefaultForUnknown()));
-        assertEquals("extension point [" + NotRegistered.class.getName() + "] not registered", e.getMessage());
+        assertEquals("extension point [" + NotRegistered.class.getName() + "] not registered, default implementation ["
+                + DefaultForUnknown.class.getName() + "] implements it", e.getMessage());
     }
 
     @Test

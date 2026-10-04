@@ -97,7 +97,7 @@ public class DefaultExtContextTest {
         assertEquals("ability should not be null", e.getMessage());
 
         e = assertThrows(RegisterException.class, () -> context.registerAbility(new AbilityL()));
-        assertEquals("extension point [io.github.xiaoshicae.extension.core.ExtD] not registered", e.getMessage());
+        assertEquals("extension point [io.github.xiaoshicae.extension.core.ExtD] not registered, ability [AbilityL] implements it", e.getMessage());
 
         e = assertThrows(RegisterException.class, () -> context.registerAbility(new AbilityM()));
         assertEquals("ability [AbilityM] should implement at least one extension point", e.getMessage());
@@ -126,7 +126,7 @@ public class DefaultExtContextTest {
         assertEquals("business should not be null", e.getMessage());
 
         e = assertThrows(RegisterException.class, () -> context.registerBusiness(new BusinessX()));
-        assertEquals("extension point [io.github.xiaoshicae.extension.core.ExtD] not registered", e.getMessage());
+        assertEquals("extension point [io.github.xiaoshicae.extension.core.ExtD] not registered, business [BusinessX] implements it", e.getMessage());
 
         e = assertThrows(RegisterException.class, () -> context.registerBusiness(new BusinessY()));
         assertEquals("business [BusinessY] used ability [Unknown] not found", e.getMessage());

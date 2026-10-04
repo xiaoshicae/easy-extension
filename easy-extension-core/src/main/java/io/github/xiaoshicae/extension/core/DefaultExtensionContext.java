@@ -126,6 +126,13 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     private final AtomicLong registryModCount = new AtomicLong();
     private volatile CachedRegistryVersion cachedRegistryVersion;
 
+    /**
+     * Serializes registering businesses, abilities and default implementations. What is checked first (the code is
+     * free, the places of the extension points are free) is still true when the registry is changed, and a
+     * registration is not started unless it can be completed: a refused one leaves nothing behind.
+     */
+    private final Object registrationLock = new Object();
+
     public DefaultExtensionContext() {
         this(false, false, List.of());
     }
@@ -242,25 +249,31 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             throw new RegisterParamException("extension point default implementation should not be null");
         }
 
-        defaults.register(instance, () -> {
-            if (!defaults.isEmpty()) {
-                throw new RegisterDuplicateException("extension point default implementation already registered");
-            }
+        synchronized (registrationLock) {
+            try {
+                defaults.register(instance, () -> {
+                    if (!defaults.isEmpty()) {
+                        throw new RegisterDuplicateException("extension point default implementation already registered");
+                    }
 
-            List<Class<?>> mustImplementExtensionPoints = instance.implementExtensionPoints();
-            List<Class<?>> notImplementClasses;
-            synchronized (allExtensionPointClasses) {
-                notImplementClasses = allExtensionPointClasses.stream()
-                        .filter(clazz -> !mustImplementExtensionPoints.contains(clazz))
-                        .toList();
-            }
-            if (!notImplementClasses.isEmpty()) {
-                throw new RegisterParamException(String.format("extension point default implementation should implement all extension point, but in fact, it has not implement [%s]", notImplementClasses.stream().map(Class::getName).collect(Collectors.joining(", "))));
-            }
+                    List<Class<?>> mustImplementExtensionPoints = instance.implementExtensionPoints();
+                    List<Class<?>> notImplementClasses;
+                    synchronized (allExtensionPointClasses) {
+                        notImplementClasses = allExtensionPointClasses.stream()
+                                .filter(clazz -> !mustImplementExtensionPoints.contains(clazz))
+                                .toList();
+                    }
+                    if (!notImplementClasses.isEmpty()) {
+                        throw new RegisterParamException(String.format("extension point default implementation should implement all extension point, but in fact, it has not implement [%s]", notImplementClasses.stream().map(Class::getName).collect(Collectors.joining(", "))));
+                    }
+                    requireUsable(instance);
 
-            extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance);
-        });
-        registryChanged();
+                    extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance);
+                });
+            } finally {
+                registryChanged();
+            }
+        }
 
         if (enableLogger) {
             logger.info("{} register extension point default implementation: [{}]", LOG_PREFIX, simpleNameOf(instance));
@@ -273,28 +286,47 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             throw new RegisterParamException("extension point default implementation should not be null");
         }
 
-        defaults.register(instance, () -> {
-            defaults.checkAdditional(instance);
-            for (Class<?> implExtClass : instance.implementExtensionPoints()) {
-                if (allExtensionPointClasses.contains(implExtClass)) {
-                    continue;
-                }
-                if (instance instanceof IProxy<?>) {
-                    // Found by annotation. Releases before 3.4 did not hold it against a default implementation that
-                    // it implements something nobody registered (an interface of a module that is not scanned).
-                    logger.warn("{} default implementation [{}] implements extension point [{}], which is not registered: "
-                            + "it is left out", LOG_PREFIX, DefaultsRegistry.describe(instance), implExtClass.getName());
-                    continue;
-                }
-                throw new RegisterException(String.format("extension point [%s] not registered", implExtClass.getName()));
+        synchronized (registrationLock) {
+            try {
+                defaults.register(instance, () -> {
+                    requireUsable(instance);
+                    defaults.checkAdditional(instance);
+                    for (Class<?> implExtClass : instance.implementExtensionPoints()) {
+                        if (allExtensionPointClasses.contains(implExtClass)) {
+                            continue;
+                        }
+                        if (instance instanceof IProxy<?>) {
+                            // Found by annotation. Releases before 3.4 did not hold it against a default implementation that
+                            // it implements something nobody registered (an interface of a module that is not scanned).
+                            logger.warn("{} default implementation [{}] implements extension point [{}], which is not registered: "
+                                    + "it is left out", LOG_PREFIX, DefaultsRegistry.describe(instance), implExtClass.getName());
+                            continue;
+                        }
+                        throw new RegisterException(String.format("extension point [%s] not registered, default implementation [%s] implements it",
+                                implExtClass.getName(), DefaultsRegistry.describe(instance)));
+                    }
+                    extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance);
+                });
+            } finally {
+                registryChanged();
             }
-            extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(instance);
-        });
-        registryChanged();
+        }
 
         if (enableLogger) {
             logger.info("{} register extension point default implementation: [{}]", LOG_PREFIX, simpleNameOf(instance));
         }
+    }
+
+    /**
+     * What a default implementation needs on top of what the extension points ask of it: a priority (the chain
+     * orders by it), and a code that no business or ability has.
+     */
+    private void requireUsable(IExtensionPointGroupDefaultImplementation<T> instance) throws RegisterException {
+        if (instance.priority() == null) {
+            throw new RegisterParamException(String.format("extension point default implementation [%s] priority should not be null",
+                    DefaultsRegistry.describe(instance)));
+        }
+        requireCodeNotUsedByAnotherKind(EntryType.DEFAULT, instance.code());
     }
 
     /**
@@ -315,7 +347,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                             LOG_PREFIX, kind, code, implExtClass.getName());
                     continue;
                 }
-                throw new RegisterException(String.format("extension point [%s] not registered", implExtClass.getName()));
+                throw new RegisterException(String.format("extension point [%s] not registered, %s [%s] implements it",
+                        implExtClass.getName(), kind, code));
             }
             if (onlyInherited && enableLogger) {
                 logger.info("{} {} [{}] answers for extension point [{}] through a superclass or a super-interface "
@@ -349,16 +382,55 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         List<Class<?>> withoutDefault = defaults.uncovered(extensionPoints).stream()
                 .filter(clazz -> !DefaultsRegistry.isMandatory(clazz))
                 .toList();
-        if (withoutDefault.isEmpty()) {
+        if (!withoutDefault.isEmpty()) {
+            if (defaults.isEmpty()) {
+                throw new RegisterParamException("extension point default implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist");
+            }
+            throw new RegisterParamException(String.format(
+                    "extension point default implementation should implement all extension point, but in fact, it has not implement [%s]"
+                            + " (an extension point without a sensible default can be marked @ExtensionPoint(mandatory = true))",
+                    withoutDefault.stream().map(Class::getName).collect(Collectors.joining(", "))));
+        }
+        requireNoPriorityClashWithDefaults();
+    }
+
+    /**
+     * A chain holds one entry per priority, and the default implementations are in every chain: a business, or an
+     * ability it mounts, with the priority of one of them could never be resolved, and every request for it would
+     * fail. Checked here, once everything is registered, because registering does not depend on the order.
+     */
+    private void requireNoPriorityClashWithDefaults() throws RegisterException {
+        List<ResolutionEntry> defaultEntries = defaults.entries();
+        if (defaultEntries.isEmpty()) {
             return;
         }
-        if (defaults.isEmpty()) {
-            throw new RegisterParamException("extension point default implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist");
+        for (IBusiness<T> business : businessManager.listAllBusinesses()) {
+            ResolutionEntry clash = entryWithPriority(defaultEntries, business.priority());
+            if (clash != null) {
+                throw new RegisterParamException(String.format("business [%s] has priority [%d], which default implementation [%s] has too",
+                        business.code(), business.priority(), clash.code()));
+            }
+            if (business.usedAbilities() == null) {
+                continue;
+            }
+            for (UsedAbility used : business.usedAbilities()) {
+                clash = entryWithPriority(defaultEntries, used.priority());
+                if (clash != null) {
+                    throw new RegisterParamException(String.format(
+                            "business [%s] mounts ability [%s] with priority [%d], which default implementation [%s] has too",
+                            business.code(), used.code(), used.priority(), clash.code()));
+                }
+            }
         }
-        throw new RegisterParamException(String.format(
-                "extension point default implementation should implement all extension point, but in fact, it has not implement [%s]"
-                        + " (an extension point without a sensible default can be marked @ExtensionPoint(mandatory = true))",
-                withoutDefault.stream().map(Class::getName).collect(Collectors.joining(", "))));
+    }
+
+    private static ResolutionEntry entryWithPriority(List<ResolutionEntry> entries, Integer priority) {
+        for (ResolutionEntry entry : entries) {
+            if (entry.priority().equals(priority)) {
+                return entry;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -369,12 +441,76 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         requireRegistered("ability", ability.code(), ability, ability.implementExtensionPoints());
 
-        abilityManager.registerAbility(ability);
-        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability);
-        registryChanged();
+        synchronized (registrationLock) {
+            requireCodeNotUsedByAnotherKind(EntryType.ABILITY, ability.code());
+            requireFreeSlots(EntryType.ABILITY, ability.code(), ability.implementExtensionPoints());
+            try {
+                abilityManager.registerAbility(ability);
+                extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(ability);
+            } finally {
+                registryChanged();
+            }
+        }
 
         if (enableLogger) {
             logger.info("{} register ability: [{}]", LOG_PREFIX, ability.code());
+        }
+    }
+
+    /**
+     * A resolved chain holds one entry per code, and an extension instance is found by code, so a business, an
+     * ability and a default implementation cannot share one: the chain would silently lose one of them, and its
+     * priority. Default implementations among themselves may share a code (they do, and share a place in the chain).
+     */
+    private void requireCodeNotUsedByAnotherKind(EntryType kind, String code) throws RegisterException {
+        if (code == null) {
+            return;   // refused, in its own words, by requireFreeSlots
+        }
+        for (EntryType other : EntryType.values()) {
+            if (other != kind && isKnown(new ResolutionEntry(code, null, other))) {
+                throw new RegisterDuplicateException(String.format("%s code [%s] is already used by %s %s",
+                        nameOf(kind), code, other == EntryType.ABILITY ? "an" : "a", nameOf(other)));
+            }
+        }
+    }
+
+    private static String nameOf(EntryType kind) {
+        return kind == EntryType.DEFAULT ? "default implementation" : kind.label();
+    }
+
+    /**
+     * What wiring the instance to its extension points will ask for, checked before anything is changed: it has a
+     * code, names no extension point twice, and finds its place under each extension point free. Wiring cannot fail
+     * afterwards, which is what keeps a refused registration from leaving half of it behind (the business and
+     * ability managers refuse what is wrong with the instance itself before they store it).
+     * <p>
+     * A code that is registered already is left to the manager of its kind, which says so first.
+     * </p>
+     */
+    private void requireFreeSlots(EntryType kind, String code, List<Class<?>> extensionPoints) throws RegisterException {
+        if (code == null) {
+            throw new RegisterParamException("instance code should not be null");
+        }
+        if (isKnown(new ResolutionEntry(code, null, kind))) {
+            return;
+        }
+        Set<Class<?>> seen = new HashSet<>();
+        for (Class<?> extensionPoint : extensionPoints) {
+            if (!extensionPoint.isInterface()) {
+                continue;   // refused, in its own words, by the manager of its kind
+            }
+            if (!seen.add(extensionPoint) || isTaken(extensionPoint, code)) {
+                throw new RegisterDuplicateException(String.format(
+                        "extension point [%s] with name [%s] already registered", extensionPoint.getName(), code));
+            }
+        }
+    }
+
+    private boolean isTaken(Class<?> extensionPoint, String code) throws RegisterException {
+        try {
+            return extensionPointGroupImplementationManager.findExtensionPointImplementationInstance(extensionPoint, code) != null;
+        } catch (QueryException e) {
+            throw new RegisterException(e.getMessage());
         }
     }
 
@@ -386,13 +522,15 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
         requireRegistered("business", business.code(), business, business.implementExtensionPoints());
 
+        if (business.priority() == null) {
+            throw new RegisterParamException(String.format("business [%s] priority should not be null", business.code()));
+        }
+
         Set<String> codeSet = new HashSet<>();
         Set<Integer> prioritySet = new HashSet<>();
 
         // Include business's own priority in the set for unified conflict detection
-        if (business.priority() != null) {
-            prioritySet.add(business.priority());
-        }
+        prioritySet.add(business.priority());
 
         if (business.usedAbilities() != null) {
             for (UsedAbility usedAbility : business.usedAbilities()) {
@@ -404,6 +542,10 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
 
                 if (codeSet.contains(usedAbility.code())) {
                     throw new RegisterException(String.format("business [%s] used ability [%s] duplicate", business.code(), usedAbility.code()));
+                }
+
+                if (usedAbility.priority() == null) {
+                    throw new RegisterParamException(String.format("business [%s] used ability [%s] priority should not be null", business.code(), usedAbility.code()));
                 }
 
                 if (prioritySet.contains(usedAbility.priority())) {
@@ -418,9 +560,16 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         // Validate ability requires/excludes constraints
         validateAbilityConstraints(business.code(), codeSet);
 
-        businessManager.registerBusiness(business);
-        extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business);
-        registryChanged();
+        synchronized (registrationLock) {
+            requireCodeNotUsedByAnotherKind(EntryType.BUSINESS, business.code());
+            requireFreeSlots(EntryType.BUSINESS, business.code(), business.implementExtensionPoints());
+            try {
+                businessManager.registerBusiness(business);
+                extensionPointGroupImplementationManager.registerExtensionPointImplementationInstance(business);
+            } finally {
+                registryChanged();
+            }
+        }
 
         if (enableLogger) {
             logger.info("{} register business: [{}]", LOG_PREFIX, business.code());

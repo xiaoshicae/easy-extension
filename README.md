@@ -309,10 +309,14 @@ easy-extension:
   与 3.3 一样被忽略；类自己声明的扩展点仍必须已注册。
 - **关闭作用域会话只清自己的作用域。** `ExtensionSessionScope.openScoped(...)` 关闭时只移除那个作用域，
   此前会清掉本线程的所有会话。如果在块内另外 `initSession(...)` 了默认作用域，请自己 `removeSession()`。
+- **注册时就拒绝永远不会成功的配置。** 业务、能力、默认实现不能共用同一个 code（此前链上会静默丢掉其中一个，连同它的优先级）；
+  没有优先级的业务或挂载的能力，以及优先级与默认实现相同的业务（例如 `Integer.MAX_VALUE`），现在在注册 / `validateRegistration()` 时就报错
+  （此前是每个请求都失败）。这样的应用升级后会在启动时失败，报错里有具体的 code。
 - **几处错误信息变了**：没有任何默认实现时，`doRegister()` 报
   `extension point default implementation not found, please check instance with @ExtensionPointDefaultImplementation annotation if exist`
   （原为 `...should not be null`）；默认实现未覆盖某扩展点的报错末尾多了关于 `mandatory = true` 的提示，并且在能力和业务都登记完之后才抛出；
-  没有任何默认实现又没有业务匹配时，`initSession` 抛 `SessionException`（原为 `NullPointerException`）。
+  没有任何默认实现又没有业务匹配时，`initSession` 抛 `SessionException`（原为 `NullPointerException`）；
+  `extension point [X] not registered` 末尾带上了实现它的业务、能力或默认实现，链上优先级重复的报错会点名双方。
 - **扩展点接口里不要声明 `getInstance()` / `getTargetClass()`**：这两个名字由框架的代理（`IProxy`）占用，
   返回类型不同会在创建代理时报错，返回类型相同则调用到不了你的实现。
 

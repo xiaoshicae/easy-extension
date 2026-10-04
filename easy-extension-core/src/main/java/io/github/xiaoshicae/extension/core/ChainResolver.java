@@ -118,7 +118,7 @@ final class ChainResolver<T> {
             // nothing to resolve to: no business, and no default implementation to fall back on
             throw new SessionException("no business matched");
         }
-        ResolvedChain chain = buildChain(scope, entries.values(), registryVersion);
+        ResolvedChain chain = buildChain(scope, defaultScope, entries.values(), registryVersion);
         trace.costMillis(System.currentTimeMillis() - startTime);
         return new Resolution(chain, trace.build());
     }
@@ -246,17 +246,45 @@ final class ChainResolver<T> {
         }
     }
 
-    private ResolvedChain buildChain(String scope, Collection<ResolutionEntry> entries, String registryVersion) throws SessionException {
+    private ResolvedChain buildChain(String scope, boolean defaultScope, Collection<ResolutionEntry> entries, String registryVersion) throws SessionException {
         for (ResolutionEntry entry : entries) {
             if (entry.priority() == null) {
-                throw new SessionParamException("priority should not be null");
+                throw new SessionParamException(String.format("%spriority of %s should not be null",
+                        scopePrefix(scope, defaultScope), describe(entry)));
             }
         }
         try {
             return ResolvedChain.of(registryVersion, entries);
         } catch (IllegalArgumentException e) {
             // two entries with the same priority (codes were made unique by the map the entries were collected in)
-            throw new SessionParamException(String.format("scope [%s], %s", scope, e.getMessage()));
+            throw new SessionParamException(scopePrefix(scope, defaultScope) + clashBetween(entries, e));
         }
+    }
+
+    /**
+     * Say who shares the priority. Only on the failure path, so it may look at every pair.
+     */
+    private static String clashBetween(Collection<ResolutionEntry> entries, IllegalArgumentException cause) {
+        List<ResolutionEntry> all = new ArrayList<>(entries);
+        for (int i = 0; i < all.size(); i++) {
+            for (int j = i + 1; j < all.size(); j++) {
+                if (all.get(i).priority().equals(all.get(j).priority())) {
+                    return String.format("priority [%d] is taken by both %s and %s",
+                            all.get(i).priority(), describe(all.get(i)), describe(all.get(j)));
+                }
+            }
+        }
+        return cause.getMessage();
+    }
+
+    private static String describe(ResolutionEntry entry) {
+        return (entry.type() == EntryType.DEFAULT ? "default implementation" : entry.type().label()) + " [" + entry.code() + "]";
+    }
+
+    /**
+     * A message about a named scope says which; the default scope is not something the application named.
+     */
+    private static String scopePrefix(String scope, boolean defaultScope) {
+        return defaultScope ? "" : "scope [" + scope + "], ";
     }
 }
