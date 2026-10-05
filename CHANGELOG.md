@@ -6,7 +6,7 @@
 
 ### Added
 - `ExtensionContext<T>` (immutable, builder based), `Resolution` (immutable snapshot), `Binding` (nestable thread binding).
-- `@DefaultImplementation` per extension point; one class may back several points.
+- `@DefaultImplementation` per extension point; one class may back several points. Extension points whose methods all return `void` get a framework-provided no-op default; a lambda `@Bean` (or `builder.defaultImplementationFor`) can serve as default for a single-method extension point. Hence there is no `optional` flag: every extension point always resolves.
 - `@Business(uses = {...})` with `Self.class`; array order is the priority.
 - Extension points derived from the full type hierarchy; build-time validation of the whole assembly.
 - `BusinessResolver` / `BusinessSelector` SPIs; `ExtensionCatalog` read-only metadata.

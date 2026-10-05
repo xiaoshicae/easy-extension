@@ -102,7 +102,18 @@ public interface FreightCalcExtension {
 
 ### 3. 定义默认实现（兜底）
 
-每个扩展点（除非 `@ExtensionPoint(optional = true)`）都需要一个兜底；一个类可以兜底多个扩展点。
+每个扩展点都有兜底，保证永远可调用。三种写法，按需选：
+
+- 只有 `void` 方法的扩展点（钩子类）：**什么都不用写**，框架提供空实现。
+- 单方法扩展点：一个 lambda `@Bean` 即可。
+- 其他：写一个 `@DefaultImplementation` 类（可放在接口内部）；一个类可以兜底多个扩展点，但每个扩展点至多一个兜底。有返回值又没有兜底，启动时会报错，不会静默返回 `null`。
+
+```java
+@Bean @DefaultImplementation
+FreightCalcExtension defaultFreight() { return ctx -> new BigDecimal("10.00"); }
+```
+
+不用 lambda 时：
 
 ```java
 @DefaultImplementation

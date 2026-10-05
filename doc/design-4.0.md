@@ -64,10 +64,10 @@ try (Binding b = ctx.bind(param)) { ... }          // 绑定到当前线程,clos
 
 | 注解 | 属性 |
 |---|---|
-| `@ExtensionPoint` | `scenarios`、`version`(仅展示用)、`optional`(缺省 false:必须有兜底) |
+| `@ExtensionPoint` | `scenarios`、`version`(仅展示用)、— |
 | `@Ability` | `code`(缺省类全名)、`requires`/`excludes`(`Class<?>[]`,**同时挂载**语义,不含先后) |
 | `@Business` | `code`(缺省类全名)、`uses`(`Class<?>[]`:能力类或 `Self.class`) |
-| `@DefaultImplementation` | — |
+| `@DefaultImplementation` | 标在类上,或(Spring)标在 `@Bean` 方法上;编程式用 `builder.defaultImplementationFor(point, impl)`。只有 `void` 方法的扩展点无需声明,框架提供空实现 |
 | `Self` | `uses` 里的位置标记类 |
 
 ### 4.2 运行时(`core`)
@@ -104,13 +104,13 @@ interface Binding extends AutoCloseable { Resolution resolution(); void close();
 - 业务匹配:有 `BusinessResolver` 则按 code;否则遍历业务 `match(param)`。
 - strict(缺省):0 个匹配 → `NO_BUSINESS_MATCHED`;>1 个 → `MULTIPLE_BUSINESSES_MATCHED`。非 strict:选择器选一个,没有则只走兜底。
 - 能力是否生效:业务挂载 **且** `ability.match(param)` 为真;`resolve` 时对所有挂载能力**立即求值**,`Resolution` 是该时刻的快照,**不要跨请求缓存**。
-- `first(point)`:按链顺序找第一个实现了该扩展点的;都没有则用兜底;没有兜底(optional)→ `EXTENSION_NOT_FOUND`。
-- `all(point)`:链中所有实现者按序,最后追加兜底(若有);optional 且全无 → 空列表。
+- `first(point)`:按链顺序找第一个实现了该扩展点的;都没有则用兜底。每个已注册的扩展点都有兜底,因此不会失败(未注册的扩展点 → `EXTENSION_NOT_FOUND`)。
+- `all(point)`:链中所有实现者按序,最后追加兜底。
 - `Self` 缺省在最前;至多出现一次;`uses` 中能力不得重复、必须已注册。
 
 **扩展点推导**:基于**用户类**(Spring 下由 starter 传入 AOP 代理的目标类),遍历父类、接口、接口的父接口,收集被 `@ExtensionPoint` 直接标注的接口。`A extends B` 且都标注:实现 `A` 同时也是 `B` 的实现。Provider 至少实现一个扩展点;类型层次里出现**未注册**的 `@ExtensionPoint` → `RegistrationException`(提示加入扫描范围)。
 
-**构建期校验**(`build()` 一次性):扩展点是 public 接口;每个非 optional 扩展点**恰有一个**兜底(同一扩展点多个兜底 → 报错);code 唯一;`uses`/`requires`/`excludes` 引用存在;requires/excludes 在每个业务的挂载集合上成立;能力/业务有 `Matcher`(业务有 `BusinessResolver` 时除外)。
+**构建期校验**(`build()` 一次性):扩展点是 public 接口;每个扩展点**恰有一个**兜底(同一扩展点多个兜底 → 报错;没有兜底时,只有 `void` 方法的扩展点由框架提供空实现,其余报错);code 唯一;`uses`/`requires`/`excludes` 引用存在;requires/excludes 在每个业务的挂载集合上成立;能力/业务有 `Matcher`(业务有 `BusinessResolver` 时除外)。
 
 **Binding**:每线程一个栈;`close` 恢复上一个绑定,重复 close 幂等;`clear()` 清空整个栈。`proxy(point)` 每次调用读栈顶;无绑定 → `ResolutionException(NO_BINDING)`(信息含线程名)。`toString()` 在无绑定时返回描述串,不抛异常。
 

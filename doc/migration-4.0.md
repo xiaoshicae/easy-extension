@@ -23,7 +23,7 @@ admin、注解处理器、IntelliJ 插件需与 core 同步升级到 4.0.0。
 ## 步骤
 
 1. **升级依赖**到 `4.0.0`(core / starter / admin / annotation-processor 版本一致),IntelliJ 插件升到对应版本。
-2. **默认实现**:把原来"实现所有扩展点"的默认实现类保留,改注解为 `@DefaultImplementation`。可以拆成多个类,每个扩展点至多一个兜底;不需要兜底的扩展点标 `@ExtensionPoint(optional = true)`。
+2. **默认实现**:把原来"实现所有扩展点"的默认实现类保留,改注解为 `@DefaultImplementation`。可以拆成多个类,每个扩展点至多一个兜底。只有 `void` 方法的扩展点不必写兜底(框架提供空实现);单方法扩展点可用 `@Bean @DefaultImplementation` 的 lambda。
 3. **业务/能力**:
    - 删除对 `IBusiness` / `IAbility` 方法的重写,`code` 写进注解;
    - `priority` 与 `"code::n"` 字符串换成 `uses` 数组:原来能力优先级数字小于业务自身的,放在 `Self.class` 之前;大于的放之后;
