@@ -50,7 +50,7 @@ public final class ExtensionSessionScope implements AutoCloseable {
      * Scoped variant of {@link #open(IExtensionSession, Object)}.
      */
     public static <T> ExtensionSessionScope openScoped(IExtensionSession<T> session, String scope, T param) throws SessionException {
-        session.initScopedSession(scope, param);
+        session.initSession(scope, param);
         return new ExtensionSessionScope(session);
     }
 
