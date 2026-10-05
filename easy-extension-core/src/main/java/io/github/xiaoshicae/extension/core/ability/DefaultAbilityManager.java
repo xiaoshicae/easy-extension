@@ -9,14 +9,15 @@ import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultAbilityManager<T> implements IAbilityManager<T> {
-    // Synchronized LinkedHashMap for O(1) lookup and ordered iteration.
-    // Mirrors DefaultBusinessManager so the two managers share one concurrency model.
-    private final Map<String, IAbility<T>> abilities = Collections.synchronizedMap(new LinkedHashMap<>());
+    // Mirrors DefaultBusinessManager so the two managers share one concurrency model:
+    // concurrent map for lookups, immutable snapshot (registration order) for iteration.
+    private final Map<String, IAbility<T>> abilities = new ConcurrentHashMap<>();
+    private volatile List<IAbility<T>> snapshot = List.of();
 
     @Override
     public void registerAbility(IAbility<T> ability) throws RegisterException {
@@ -37,11 +38,18 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
             }
         }
 
-        synchronized (abilities) {
+        if (ability.code() == null) {
+            throw new RegisterParamException("instance code should not be null");
+        }
+
+        synchronized (this) {
             if (abilities.containsKey(ability.code())) {
                 throw new RegisterDuplicateException(String.format("ability [%s] already registered", ability.code()));
             }
             abilities.put(ability.code(), ability);
+            List<IAbility<T>> next = new ArrayList<>(snapshot);
+            next.add(ability);
+            snapshot = Collections.unmodifiableList(next);
         }
     }
 
@@ -61,8 +69,6 @@ public class DefaultAbilityManager<T> implements IAbilityManager<T> {
 
     @Override
     public List<IAbility<T>> listAllAbilities() {
-        synchronized (abilities) {
-            return Collections.unmodifiableList(new ArrayList<>(abilities.values()));
-        }
+        return snapshot;
     }
 }

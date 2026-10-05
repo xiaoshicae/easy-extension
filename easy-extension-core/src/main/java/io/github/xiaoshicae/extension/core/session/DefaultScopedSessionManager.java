@@ -4,6 +4,8 @@ import io.github.xiaoshicae.extension.core.exception.SessionException;
 import io.github.xiaoshicae.extension.core.exception.SessionNotFoundException;
 import io.github.xiaoshicae.extension.core.exception.SessionParamException;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,8 @@ import java.util.TreeMap;
 class ScopedSessionData {
     private final TreeMap<Integer, String> priorityToCodeMap = new TreeMap<>();
     private final Set<String> codeSet = new HashSet<>();
+    // sorted codes, rebuilt on put (init-time only) so every lookup on the request path is allocation-free
+    private List<String> codes = List.of();
 
     public boolean containsPriority(Integer priority) {
         return priorityToCodeMap.containsKey(priority);
@@ -31,10 +35,11 @@ class ScopedSessionData {
     public void put(Integer priority, String code) {
         priorityToCodeMap.put(priority, code);
         codeSet.add(code);
+        codes = Collections.unmodifiableList(new ArrayList<>(priorityToCodeMap.values()));
     }
 
     public List<String> getCodes() {
-        return priorityToCodeMap.values().stream().toList();
+        return codes;
     }
 
     public boolean isEmpty() {

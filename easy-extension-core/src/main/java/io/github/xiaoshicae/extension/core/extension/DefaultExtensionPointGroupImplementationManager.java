@@ -37,4 +37,9 @@ public class DefaultExtensionPointGroupImplementationManager<T> implements IExte
     public <E> E getExtensionPointImplementationInstance(Class<E> extensionPoint, String code) throws QueryException {
         return extensionPointManager.getExtensionPointImplementationInstance(extensionPoint, code);
     }
+
+    @Override
+    public <E> E findExtensionPointImplementationInstance(Class<E> extensionPoint, String code) throws QueryException {
+        return extensionPointManager.findExtensionPointImplementationInstance(extensionPoint, code);
+    }
 }

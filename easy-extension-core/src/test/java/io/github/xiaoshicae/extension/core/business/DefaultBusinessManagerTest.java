@@ -33,6 +33,27 @@ public class DefaultBusinessManagerTest {
     }
 
     @Test
+    public void testRegisterBusinessWithNullCodeAndListAll() throws RegisterException {
+        DefaultBusinessManager<Object> manager = new DefaultBusinessManager<>();
+
+        // null code must stay a RegisterException (not a NullPointerException from the concurrent map)
+        RegisterException e = assertThrows(RegisterException.class, () -> manager.registerBusiness(new Business1() {
+            @Override
+            public String code() {
+                return null;
+            }
+        }));
+        assertEquals("instance code should not be null", e.getMessage());
+
+        manager.registerBusiness(new Business1());
+        List<IBusiness<Object>> all = manager.listAllBusinesses();
+        assertEquals(1, all.size());
+        // null-tolerant, read-only view
+        assertFalse(all.contains(null));
+        assertThrows(UnsupportedOperationException.class, () -> all.add(null));
+    }
+
+    @Test
     public void testGetBusiness() throws QueryException {
         QueryException e;
         DefaultBusinessManager<Object> manager = new DefaultBusinessManager<>();
