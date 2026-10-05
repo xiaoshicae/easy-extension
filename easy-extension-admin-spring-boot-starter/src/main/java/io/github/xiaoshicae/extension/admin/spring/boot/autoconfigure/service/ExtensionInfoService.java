@@ -13,22 +13,15 @@ import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.Class
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.ClassUtils.ClassInfoResult;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.MetadataJsonReader;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.SourceCodeReader;
-import io.github.xiaoshicae.extension.core.IExtensionReader;
-import io.github.xiaoshicae.extension.core.ability.IAbility;
-import io.github.xiaoshicae.extension.core.annotation.Ability;
-import io.github.xiaoshicae.extension.core.annotation.Business;
-import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
-import io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation;
-import io.github.xiaoshicae.extension.core.business.IBusiness;
-import io.github.xiaoshicae.extension.core.extension.IExtensionPointGroupDefaultImplementation;
-import io.github.xiaoshicae.extension.core.proxy.IProxy;
+import io.github.xiaoshicae.extension.core.ExtensionContext;
+import io.github.xiaoshicae.extension.core.catalog.ExtensionCatalog;
+import io.github.xiaoshicae.extension.core.catalog.MountInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,7 +48,7 @@ public class ExtensionInfoService {
     private static final Set<String> PROJECT_ROOT_MARKERS = Set.of(
             "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts");
 
-    private final IExtensionReader<?> reader;
+    private final ExtensionContext<?> context;
     private final SourceCodeReader sourceCodeReader;
     private final MetadataJsonReader metadataReader;
     private final EasyExtensionAdminConfigurationProperties properties;
@@ -69,9 +62,9 @@ public class ExtensionInfoService {
     private static final String KEY_DEFAULT_IMPL = "defaultImpl";
     private final Map<String, Object> resultCache = new ConcurrentHashMap<>();
 
-    public ExtensionInfoService(IExtensionReader<?> reader, SourceCodeReader sourceCodeReader,
+    public ExtensionInfoService(ExtensionContext<?> context, SourceCodeReader sourceCodeReader,
                                MetadataJsonReader metadataReader, EasyExtensionAdminConfigurationProperties properties) {
-        this.reader = reader;
+        this.context = context;
         this.sourceCodeReader = sourceCodeReader;
         this.metadataReader = metadataReader;
         this.properties = properties;
@@ -79,7 +72,7 @@ public class ExtensionInfoService {
 
     /**
      * Automatically invalidate all caches when the application context is refreshed
-     * (e.g., after hot-reload or dynamic re-registration of extension points).
+     * (e.g., after a hot-reload).
      */
     @EventListener(ContextRefreshedEvent.class)
     public void onContextRefreshed() {
@@ -107,20 +100,17 @@ public class ExtensionInfoService {
     }
 
     public MatcherParamInfo getMatcherParamInfo() {
-        return new MatcherParamInfo(resolveClassInfo(reader.getMatcherParamClass()));
+        Class<?> type = catalog().matcherParamType();
+        return new MatcherParamInfo(type == null ? null : resolveClassInfo(type));
     }
 
     public DefaultImplInfo getDefaultImplInfo() {
-        return cached(KEY_DEFAULT_IMPL, () -> {
-            IExtensionPointGroupDefaultImplementation<?> defaultImpl = reader.getExtensionPointDefaultImplementation();
-            Class<?> clazz;
-            if (defaultImpl instanceof IProxy<?> proxy) {
-                clazz = resolveClassWithAnn(proxy.getInstance().getClass(), ExtensionPointDefaultImplementation.class);
-            } else {
-                clazz = resolveClassWithAnn(defaultImpl.getClass(), ExtensionPointDefaultImplementation.class);
-            }
-            return new DefaultImplInfo(resolveClassInfo(clazz));
-        });
+        return cached(KEY_DEFAULT_IMPL, () -> new DefaultImplInfo(catalog().defaultImplementations().stream()
+                .map(d -> resolveClassInfo(d.implementationClass())).toList()));
+    }
+
+    private ExtensionCatalog catalog() {
+        return context.catalog();
     }
 
     public List<ExtensionPointInfo> getAllExtensionPoints() {
@@ -142,7 +132,7 @@ public class ExtensionInfoService {
 
     /**
      * Invalidate all cached data. Called automatically on context refresh,
-     * or can be called manually when extension points are modified at runtime.
+     *.
      */
     public void invalidateCache() {
         classInfoCache.clear();
@@ -152,18 +142,18 @@ public class ExtensionInfoService {
     }
 
     private List<ExtensionPointInfo> computeAllExtensionPoints() {
-        DefaultImplInfo defaultImplInfo = getDefaultImplInfo();
-        String sourceCode = defaultImplInfo.classInfo().sourceCode();
-
+        ExtensionCatalog catalog = catalog();
         List<ExtensionPointInfo> result = new ArrayList<>();
-        for (Class<?> extPointClass : reader.listAllExtensionPoint()) {
-            String defaultImplCode = ClassUtils.transformSourceCodeWithInterface(sourceCode, extPointClass);
-            List<String> scenarios = extractScenarios(extPointClass);
-            int version = extractVersion(extPointClass);
-            ExtensionPointInfo info = new ExtensionPointInfo(resolveClassInfo(extPointClass), defaultImplCode, scenarios, version);
-            result.add(info);
+        for (var point : catalog.extensionPoints()) {
+            Class<?> type = point.type();
+            String defaultImplCode = catalog.defaultImplementations().stream()
+                    .filter(d -> d.extensionPoints().contains(type))
+                    .findFirst()
+                    .map(d -> ClassUtils.transformSourceCodeWithInterface(
+                            resolveClassInfo(d.implementationClass()).sourceCode(), type))
+                    .orElse("");
+            result.add(new ExtensionPointInfo(resolveClassInfo(type), defaultImplCode, point.scenarios(), point.version()));
         }
-
         return sortByConfiguredOrder(result, properties.getExtensionPointOrder());
     }
 
@@ -214,55 +204,33 @@ public class ExtensionInfoService {
         return pos != null ? pos : Integer.MAX_VALUE;
     }
 
-    /**
-     * Extract scenario list from the @ExtensionPoint annotation on the given class.
-     */
-    private List<String> extractScenarios(Class<?> extPointClass) {
-        ExtensionPoint ann = extPointClass.getAnnotation(ExtensionPoint.class);
-        if (ann == null || ann.scenarios() == null || ann.scenarios().length == 0) {
-            return List.of();
-        }
-        return List.of(ann.scenarios());
-    }
-
-    /**
-     * Extract version from the @ExtensionPoint annotation on the given class.
-     */
-    private int extractVersion(Class<?> extPointClass) {
-        ExtensionPoint ann = extPointClass.getAnnotation(ExtensionPoint.class);
-        return ann != null ? ann.version() : 1;
-    }
-
     private List<AbilityInfo> computeAllAbilities() {
-        List<AbilityInfo> result = new ArrayList<>();
-        for (IAbility<?> ability : reader.listAllAbility()) {
-            String code = ability.code();
-            List<String> implExtensionPoints = ability.implementExtensionPoints().stream().map(Class::getName).toList();
-            Class<?> clazz;
-            if (ability instanceof IProxy<?> proxy) {
-                clazz = resolveClassWithAnn(proxy.getInstance().getClass(), Ability.class);
-            } else {
-                clazz = resolveClassWithAnn(ability.getClass(), Ability.class);
-            }
-            result.add(new AbilityInfo(code, implExtensionPoints, resolveClassInfo(clazz)));
-        }
-        return result;
+        return catalog().abilities().stream()
+                .map(a -> new AbilityInfo(a.code(), a.extensionPoints().stream().map(Class::getName).toList(),
+                        resolveClassInfo(a.implementationClass())))
+                .toList();
     }
 
+    /**
+     * {@code priority} is the position in the business' resolution order (0 = highest), so the existing UI
+     * keeps its "smaller wins" reading; the business itself sits where {@code Self} is declared.
+     */
     private List<BusinessInfo> computeAllBusiness() {
         List<BusinessInfo> result = new ArrayList<>();
-        for (IBusiness<?> business : reader.listAllBusiness()) {
-            String code = business.code();
-            Integer priority = business.priority();
-            List<BusinessInfo.UsedAbility> usedAbilities = business.usedAbilities().stream().map(e -> new BusinessInfo.UsedAbility(e.code(), e.priority())).toList();
-            List<String> implementExtensionPoints = business.implementExtensionPoints().stream().map(Class::getName).toList();
-            Class<?> clazz;
-            if (business instanceof IProxy<?> proxy) {
-                clazz = resolveClassWithAnn(proxy.getInstance().getClass(), Business.class);
-            } else {
-                clazz = resolveClassWithAnn(business.getClass(), Business.class);
+        for (var business : catalog().businesses()) {
+            int selfPosition = 0;
+            List<BusinessInfo.UsedAbility> used = new ArrayList<>();
+            List<MountInfo> mounts = business.mounts();
+            for (int i = 0; i < mounts.size(); i++) {
+                if (mounts.get(i).isSelf()) {
+                    selfPosition = i;
+                } else {
+                    used.add(new BusinessInfo.UsedAbility(mounts.get(i).abilityCode(), i));
+                }
             }
-            result.add(new BusinessInfo(code, priority, usedAbilities, implementExtensionPoints, resolveClassInfo(clazz)));
+            result.add(new BusinessInfo(business.code(), selfPosition, used,
+                    business.extensionPoints().stream().map(Class::getName).toList(),
+                    resolveClassInfo(business.implementationClass())));
         }
         return result;
     }
@@ -459,10 +427,5 @@ public class ExtensionInfoService {
         }
 
         return builder.toString().stripTrailing();
-    }
-
-    private Class<?> resolveClassWithAnn(Class<?> clazz, Class<? extends Annotation> annotation) {
-        Class<?> c = ClassUtils.resolveClassWithAnn(clazz, annotation);
-        return c == null ? clazz : c;
     }
 }

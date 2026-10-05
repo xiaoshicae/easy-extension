@@ -1,49 +1,61 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfiguration;
 
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ClassScanner;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean.AllMatchedExtensionFactoryBean;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean.FirstMatchedExtensionFactoryBean;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.beannamegenerator.ExtensionPointBeanNameGenerator;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionComponentScanner;
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionPointScanner;
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.InstanceScanner;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionPointHolder;
+import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.Domain;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 
-import java.util.Map;
-import java.util.TreeMap;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ExtensionComponentScannerTest {
+    private static final String PACKAGE = "io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture";
 
-    private static final String PACKAGE = "io.github.xiaoshicae.extension.spring.boot.autoconfiguration";
+    private final DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
 
-    @Test
-    public void testSinglePassRegistersExactlyWhatTheSpecialisedScannersRegister() {
-        DefaultListableBeanFactory perKind = new DefaultListableBeanFactory();
-        new ExtensionPointScanner(perKind).scan(PACKAGE);
-        new ClassScanner(perKind).scan(PACKAGE);
-        new InstanceScanner(perKind).scan(PACKAGE);
-
-        DefaultListableBeanFactory singlePass = new DefaultListableBeanFactory();
-        new ExtensionComponentScanner(singlePass).scan(PACKAGE);
-
-        Map<String, String> expected = describe(perKind);
-        assertTrue(expected.keySet().stream().anyMatch(name -> name.endsWith("#FirstMatchedExtensionProxy")), "extension points scanned");
-        assertTrue(expected.keySet().stream().anyMatch(name -> name.endsWith("#ClassHolder")), "matcher param scanned");
-        assertTrue(expected.keySet().stream().anyMatch(name -> name.endsWith("#InstanceHolder")), "abilities/businesses/default impl scanned");
-        assertEquals(expected, describe(singlePass));
+    {
+        new ExtensionComponentScanner(beanFactory).scan(PACKAGE);
     }
 
-    /** bean name -> bean class + constructor arguments, which is everything the registration decides. */
-    private static Map<String, String> describe(DefaultListableBeanFactory beanFactory) {
-        Map<String, String> description = new TreeMap<>();
-        for (String name : beanFactory.getBeanDefinitionNames()) {
-            BeanDefinition definition = beanFactory.getBeanDefinition(name);
-            String args = definition.getConstructorArgumentValues().getIndexedArgumentValues().values().stream()
-                    .map(value -> String.valueOf(value.getValue()))
-                    .toList().toString();
-            description.put(name, definition.getBeanClassName() + args);
+    @Test
+    public void testExtensionPointsGetAHolderAndTheTwoInjectableProxies() {
+        for (Class<?> point : new Class<?>[]{Domain.Pay.class, Domain.Ship.class}) {
+            String name = point.getName();
+            BeanDefinition first = beanFactory.getBeanDefinition(ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(name));
+            assertEquals(FirstMatchedExtensionFactoryBean.class.getName(), first.getBeanClassName());
+            assertTrue(first.isPrimary(), "plain by-type injection of the extension point should get the proxy");
+            assertEquals(AllMatchedExtensionFactoryBean.class.getName(),
+                    beanFactory.getBeanDefinition(ExtensionPointBeanNameGenerator.genAllMatchedExtensionBeanName(name)).getBeanClassName());
+            assertEquals(ExtensionPointHolder.class.getName(),
+                    beanFactory.getBeanDefinition(ExtensionPointBeanNameGenerator.genExtensionClassHolderBeanName(name)).getBeanClassName());
         }
-        return description;
+    }
+
+    @Test
+    public void testProvidersAreRegisteredAsOrdinaryBeans() {
+        for (Class<?> provider : new Class<?>[]{Domain.FastShipAbility.class, Domain.ComposedAbility.class, Domain.RetailBusiness.class,
+                Domain.ComposedBusiness.class, Domain.DefaultPay.class, Domain.DefaultShip.class}) {
+            assertEquals(1, beanFactory.getBeanNamesForType(provider, true, false).length, provider.getName());
+        }
+    }
+
+    @Test
+    public void testOnlyExtensionPointsProvidersAndNothingElseIsRegistered() {
+        // an @ExtensionPoint on a class is not an extension point, and plain classes are not providers
+        assertEquals(0, beanFactory.getBeanNamesForType(Domain.NotAnExtensionPoint.class, true, false).length);
+        assertEquals(0, beanFactory.getBeanNamesForType(Domain.OrderService.class, true, false).length);
+        assertFalse(beanFactory.containsBeanDefinition(
+                ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(Domain.NotAnExtensionPoint.class.getName())));
+    }
+
+    @Test
+    public void testScanningTheSamePackageTwiceDoesNotRegisterTwice() {
+        int before = beanFactory.getBeanDefinitionCount();
+        new ExtensionComponentScanner(beanFactory).scan(PACKAGE);
+        assertEquals(before, beanFactory.getBeanDefinitionCount());
     }
 }

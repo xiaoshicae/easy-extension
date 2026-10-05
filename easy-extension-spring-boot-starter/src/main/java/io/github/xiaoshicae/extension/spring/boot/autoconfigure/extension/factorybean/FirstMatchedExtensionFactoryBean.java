@@ -1,21 +1,25 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean;
 
-import io.github.xiaoshicae.extension.core.IExtensionFactory;
-import io.github.xiaoshicae.extension.core.FirstMatchedExtPointProxyFactory;
+import io.github.xiaoshicae.extension.core.ExtensionContext;
+import io.github.xiaoshicae.extension.core.ExtensionProxies;
 import org.springframework.beans.factory.FactoryBean;
 
+/**
+ * The injectable proxy of an extension point: every call goes to the first matching implementation of the
+ * resolution bound to the calling thread.
+ */
 public class FirstMatchedExtensionFactoryBean<T> implements FactoryBean<T> {
     private final Class<T> extensionPointClass;
-    private final FirstMatchedExtPointProxyFactory<T> firstMatchedExtPointProxyFactory;
+    private final ExtensionContext<?> context;
 
-    public FirstMatchedExtensionFactoryBean(Class<T> extensionPointClass, IExtensionFactory extensionFactory) {
+    public FirstMatchedExtensionFactoryBean(Class<T> extensionPointClass, ExtensionContext<?> context) {
         this.extensionPointClass = extensionPointClass;
-        this.firstMatchedExtPointProxyFactory = new FirstMatchedExtPointProxyFactory<>(extensionPointClass, extensionFactory);
+        this.context = context;
     }
 
     @Override
-    public T getObject() throws Exception {
-        return firstMatchedExtPointProxyFactory.getProxy();
+    public T getObject() {
+        return ExtensionProxies.proxy(context, extensionPointClass);
     }
 
     @Override

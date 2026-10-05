@@ -1,61 +1,29 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register;
 
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionScan;
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAnnotationBeanPostProcessor;
-import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAutowireCandidateResolverInstaller;
-import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-
+/**
+ * Handles {@link ExtensionScan}: its packages, and the package of the annotated class, join the scan.
+ */
 public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar {
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
-        AnnotationAttributes scanAttrs = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
-        if (scanAttrs != null) {
-            registerBeanDefinitions(importingClassMetadata, scanAttrs, registry); // scan components with @ExtensionScan
+        AnnotationAttributes attributes = AnnotationAttributes.fromMap(importingClassMetadata.getAnnotationAttributes(ExtensionScan.class.getName()));
+        List<String> packages = new ArrayList<>();
+        if (attributes != null) {
+            packages.addAll(Arrays.asList(attributes.getStringArray("basePackages")));
         }
-        registerExtensionInjectBeanDefinitions(registry); // filed autowired inject
-    }
-
-    void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionRegistry registry) {
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ExtensionScannerConfigurer.class);
-        addPropertyPackages(annoMeta, annoAttrs, builder);
-        registry.registerBeanDefinition(generateBaseBeanName(annoMeta), builder.getBeanDefinition());
-    }
-
-    void addPropertyPackages(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs, BeanDefinitionBuilder builder) {
-        List<String> basePackages = new ArrayList<>(Arrays.stream(annoAttrs.getStringArray("scanPackages")).filter(StringUtils::hasText).toList());
-        // Always include the package of the class annotated with @ExtensionScan
-        basePackages.add(getDefaultBasePackage(annoMeta));
-        builder.addPropertyValue("scanPackages", StringUtils.collectionToCommaDelimitedString(basePackages));
-    }
-
-    void registerExtensionInjectBeanDefinitions(BeanDefinitionRegistry registry) {
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class);
-        registry.registerBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class.getName(), builder.getBeanDefinition());
-
-        // constructor / method parameters annotated with @ExtensionInject are resolved by Spring's own autowiring
-        BeanDefinitionBuilder resolverInstaller = BeanDefinitionBuilder.genericBeanDefinition(ExtensionInjectAutowireCandidateResolverInstaller.class);
-        resolverInstaller.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-        registry.registerBeanDefinition(ExtensionInjectAutowireCandidateResolverInstaller.class.getName(), resolverInstaller.getBeanDefinition());
-    }
-
-    private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata) {
-        return importingClassMetadata.getClassName() + "#" + ExtensionScannerRegistrar.class.getSimpleName();
-    }
-
-    private static String getDefaultBasePackage(AnnotationMetadata importingClassMetadata) {
-        return ClassUtils.getPackageName(importingClassMetadata.getClassName());
+        packages.add(ClassUtils.getPackageName(importingClassMetadata.getClassName()));
+        ExtensionScannerConfigurer.registerScanPackages(registry, packages);
     }
 }

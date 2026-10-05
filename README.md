@@ -58,7 +58,7 @@ public class OrderController {
 }
 ```
 
-> 没有 if-else，没有策略工厂。注入扩展点，直接调用，框架自动按业务身份和优先级选择正确的实现。
+> 没有 if-else，没有策略工厂。注入扩展点，直接调用，框架自动按业务身份选择正确的实现。
 
 ## 核心概念
 
@@ -69,13 +69,13 @@ public class OrderController {
 - **业务 (Business)** — 接入方（如零售、生鲜），挂载需要的能力，也可直接实现扩展点
 - **默认实现 (Default Impl)** — 系统兜底实现，业务和能力均未覆盖时调用，保证扩展点永远可调用
 
-> 运行时解析按优先级：**业务自身实现 → 业务挂载的能力 → 默认实现**
+> 运行时解析顺序由业务的 `uses` 声明决定(数组顺序即优先级,业务自身用 `Self.class` 标记,缺省排最前),最后是各扩展点的默认实现。
 
 ## 工作原理
 
 <img src="/doc/how-it-works.svg" alt="运行流程">
 
-一个请求进来后，框架自动完成：**匹配业务 → 激活能力 → 按优先级排序 → 调用正确的实现**。业务方只需实现自己关心的扩展点，其余自动降级到通用能力或默认实现。
+一个请求进来后，框架自动完成：**匹配业务 → 激活能力 → 按 `uses` 顺序排列 → 调用正确的实现**。业务方只需实现自己关心的扩展点，其余自动降级到通用能力或默认实现。
 
 ## 快速开始
 
@@ -100,7 +100,21 @@ public interface FreightCalcExtension {
 }
 ```
 
-### 3. 定义能力（可复用的通用实现）
+### 3. 定义默认实现（兜底）
+
+每个扩展点（除非 `@ExtensionPoint(optional = true)`）都需要一个兜底；一个类可以兜底多个扩展点。
+
+```java
+@DefaultImplementation
+public class DefaultFreight implements FreightCalcExtension {
+    @Override
+    public BigDecimal calcFreight(OrderContext ctx) {
+        return new BigDecimal("10.00");
+    }
+}
+```
+
+### 4. 定义能力（可复用的通用实现）
 
 ```java
 @Ability(code = "ability.free-shipping")
@@ -117,11 +131,10 @@ public class FreeShippingAbility implements Matcher<OrderMatchParam>, FreightCal
 }
 ```
 
-### 4. 定义业务（挂载能力 + 自定义实现）
+### 5. 定义业务（挂载能力 + 自定义实现）
 
 ```java
-@Business(code = "biz.retail", priority = 100,
-    abilities = {"ability.free-shipping::10"})
+@Business(code = "biz.retail", uses = {FreeShippingAbility.class, Self.class})
 public class RetailBusiness implements Matcher<OrderMatchParam>, FreightCalcExtension {
     @Override
     public boolean match(OrderMatchParam param) {
@@ -135,33 +148,63 @@ public class RetailBusiness implements Matcher<OrderMatchParam>, FreightCalcExte
 }
 ```
 
-> **优先级说明**: `ability.free-shipping::10` 表示包邮能力优先级为 10，RetailBusiness 自身优先级为 100。数字越小越优先，所以包邮能力会覆盖 Business 的运费计算。
+> **优先级说明**: `uses` 数组的顺序就是优先级,越靠前越优先。`Self.class` 代表业务自身,不写时默认排在最前。上例中包邮能力排在 `Self` 之前,所以它会覆盖 RetailBusiness 自己的运费计算。
 
-### 5. 注入即用
+### 6. 告诉框架"这个请求是谁"
 
-和 [怎么解决？](#怎么解决) 中的代码一样，`@ExtensionInject` 注入扩展点，直接调用即可。
+提供一个 `MatcherParamResolver` Bean,starter 会在每个 Web 请求开始时绑定业务身份、结束时自动解绑(异步请求同样处理):
+
+```java
+@Bean
+MatcherParamResolver<OrderMatchParam> matcherParamResolver() {
+    return request -> OrderMatchParam.from(request);
+}
+```
+
+### 7. 注入即用
+
+和 [怎么解决？](#怎么解决) 中的代码一样，`@ExtensionInject` 注入扩展点（字段、构造器参数均可），直接调用即可。
+
+扩展点、能力、业务、默认实现会从 Spring Boot 应用包自动扫描，无需配置；需要额外范围时使用 `@ExtensionScan(basePackages = ...)`。
 
 ## 调用方式
 
-除了 `@ExtensionInject` 注入代理对象，还可以通过 `IExtensionContext` 编程式调用：
+除了 `@ExtensionInject` 注入代理对象，还可以通过 `ExtensionContext` 编程式调用：
 
 ```java
 @Autowired
-private IExtensionContext<OrderMatchParam> context;
+private ExtensionContext<OrderMatchParam> context;
 
-// 调用最高优先级的实现
-String risk = context.invoke(RiskControlExtension.class, e -> e.checkRisk(ctx));
+try (Binding b = context.bind(orderParam)) {          // 绑定到当前线程,close 时恢复
+    // 调用最高优先级的实现
+    String risk = context.invoke(RiskControlExtension.class, e -> e.checkRisk(ctx));
 
-// 调用所有匹配实现，返回列表
-List<String> channels = context.invokeAll(NotifyExtension.class, e -> e.getNotifyChannels(ctx));
+    // 调用所有匹配实现，返回列表
+    List<String> channels = context.invokeAll(NotifyExtension.class, e -> e.getNotifyChannels(ctx));
 
-// 聚合所有匹配实现的结果（如累加优惠金额）
-BigDecimal totalDiscount = context.invokeReduce(
-    PromotionCalcExtension.class,
-    e -> e.calcPromotion(ctx),
-    BigDecimal.ZERO,
-    BigDecimal::add
-);
+    // 聚合所有匹配实现的结果（如累加优惠金额）
+    BigDecimal totalDiscount = context.invokeReduce(
+        PromotionCalcExtension.class,
+        e -> e.calcPromotion(ctx),
+        BigDecimal.ZERO,
+        BigDecimal::add
+    );
+}
+```
+
+不依赖线程绑定时,`context.resolve(param)` 返回不可变的 `Resolution` 快照,线程安全,可以显式传递(包括跨线程、响应式场景)。
+
+## 不使用 Spring
+
+core 只依赖 JDK 与 slf4j:
+
+```java
+ExtensionContext<OrderMatchParam> ctx = ExtensionContext.<OrderMatchParam>builder()
+        .extensionPoint(FreightCalcExtension.class)
+        .defaultImplementation(new DefaultFreight())
+        .ability(new FreeShippingAbility())
+        .business(new RetailBusiness())
+        .build();          // 一次性校验全部装配,失败整体失败;产物不可变
 ```
 
 ## 高级特性
@@ -186,33 +229,55 @@ public interface PaymentExtension {
 
 **能力互斥与依赖**
 ```java
-// 分期需要风控先执行
+// 分期需要风控能力同时挂载
 @Ability(code = "ability.installment",
-    requires = {"ability.risk-control"})
+    requires = {RiskControlAbility.class})
 
 // 包邮和急速达互斥
 @Ability(code = "ability.free-shipping",
-    excludes = {"ability.rapid-delivery"})
+    excludes = {RapidDeliveryAbility.class})
 ```
 
 </td></tr>
 <tr><td>
 
-**作用域会话**
+**同一请求多个身份**
 ```java
-// 同一请求中多个独立匹配上下文
-context.initSession(orderParam);
-context.initScopedSession("after-sale",
-    afterSaleParam);
+// 持有多个 Resolution,按需使用
+Resolution main = context.resolve(orderParam);
+Resolution afterSale = context.resolve(afterSaleParam);
+// 临时切换注入代理看到的身份(可嵌套)
+try (Binding b = context.bind(afterSale)) { ... }
 ```
 
 </td><td>
 
 **解析追踪**
 ```java
-context.initSession(param);
-ResolveTrace trace = context.getLastResolveTrace();
+Resolution r = context.resolve(param);
+ResolveTrace trace = r.trace();
 // 命中业务、各能力匹配状态、解析链、耗时
+var why = r.explain(FreightCalcExtension.class);
+```
+
+</td></tr>
+<tr><td>
+
+**按 code 直达业务**
+```java
+// 业务无需实现 Matcher, O(1) 命中
+@Bean
+BusinessResolver<OrderMatchParam> resolver() {
+    return p -> Optional.ofNullable(p.getBizCode());
+}
+```
+
+</td><td>
+
+**运行期元数据**
+```java
+ExtensionCatalog catalog = context.catalog();
+catalog.businesses();   // 含有序的 mounts
 ```
 
 </td></tr>
@@ -222,8 +287,9 @@ ResolveTrace trace = context.getLastResolveTrace();
 
 ```yaml
 easy-extension:
-  enable-log: true                    # 打印匹配过程日志
-  allow-unknown-business: false       # 无业务匹配时是否报错
+  allow-unknown-business: false       # 无业务匹配时是否报错(true:只走各扩展点的默认实现)
+  enable-session-auto-cleanup: true   # 请求结束兜底清理线程上残留的绑定
+  matcher-param-type:                 # 可选:显式指定 Matcher 参数类型
   business-match-order:               # 多业务匹配时的优先级
     - biz.retail
     - biz.fresh
@@ -261,6 +327,10 @@ easy-extension:
 | **履约系统** | 仓库选择、配送方式、签收规则 | 普通快递 vs 冷链配送 vs 同城急送 |
 | **营销中台** | 优惠计算、券核销、活动规则 | 新人券 vs 会员折扣 vs 满减活动 |
 | **支付系统** | 风控检查、渠道路由、对账规则 | 小额免密 vs 大额人脸识别 vs 企业审批 |
+
+## 升级
+
+从 3.x 升级请阅读 [4.0 迁移指南](doc/migration-4.0.md) 与 [CHANGELOG](CHANGELOG.md);设计说明见 [doc/design-4.0.md](doc/design-4.0.md)。
 
 ## 文档
 

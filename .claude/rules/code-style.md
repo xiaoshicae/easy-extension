@@ -7,7 +7,7 @@
 | 类型 | 规则 | 示例 |
 |---|---|---|
 | 包名 | 小写单词,层级化 | `io.github.xiaoshicae.extension.core.proxy` |
-| 接口 | **`I` 前缀** + PascalCase | `IExtensionPoint`, `IExtensionInvoker` |
+| 接口 | 4.0 起**不加** `I` 前缀,用领域名 | `ExtensionContext`, `BusinessResolver`(3.x 的 `I*` 已删除) |
 | 抽象类 | **`Abstract` 前缀** + PascalCase | `AbstractExtensionPointDefaultImplementation` |
 | 默认实现 | **`Default` 前缀** | `DefaultExtensionContext` |
 | 异常 | **`Exception` 后缀** | `RegisterException`, `QueryException` |
@@ -19,7 +19,8 @@
 
 | 子包 | 职责 |
 |---|---|
-| `core` | 顶层 API(`I*` 接口)、`DefaultExtensionContext` |
+| `core` | 顶层 API(`ExtensionContext`、`Resolution`、`Binding`) |
+| `core/internal` | 实现细节,不承诺兼容,starter/admin 禁止依赖 |
 | `core/extension` | 扩展点契约(`IExtensionPoint*`、`AbstractExtension*`) |
 | `core/ability` | Ability 抽象 |
 | `core/business` | Business 抽象 |

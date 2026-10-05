@@ -1,6 +1,9 @@
 package io.github.xiaoshicae.extension.core.exception;
 
-public class ExtensionException extends Exception {
+/**
+ * Root of all exceptions thrown by the framework. Unchecked.
+ */
+public class ExtensionException extends RuntimeException {
     public ExtensionException(String message) {
         super(message);
     }

@@ -1,47 +1,58 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.web;
 
-import io.github.xiaoshicae.extension.core.IExtensionContext;
+import io.github.xiaoshicae.extension.core.ExtensionContext;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration;
+import jakarta.servlet.DispatcherType;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.EnumSet;
 
 /**
- * Auto-configuration for Easy Extension web support.
- *
- * <p>This configuration is only activated when:
- * <ul>
- *   <li>The application is a servlet-based web application</li>
- *   <li>The property {@code easy-extension.enable-session-auto-cleanup} is not set to {@code false}</li>
- * </ul>
- *
- * <p>It registers a {@link SessionCleanupFilter} that automatically cleans up
- * the extension session after each HTTP request to prevent ThreadLocal memory leaks.</p>
+ * Servlet support: a {@link MatcherParamResolver} bean turns on automatic binding per request, and a safety-net filter
+ * drops any binding left on the request thread.
  */
-@Configuration
+@AutoConfiguration(after = EasyExtensionAutoConfiguration.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(name = "easy-extension.enable-session-auto-cleanup", havingValue = "true", matchIfMissing = true)
+@ConditionalOnBean(ExtensionContext.class)
 public class EasyExtensionWebAutoConfiguration {
 
-    /**
-     * Registers the session cleanup filter with the highest precedence.
-     *
-     * @param extensionContext the extension context to clean up
-     * @return the filter registration bean
-     */
     @Bean
-    public FilterRegistrationBean<SessionCleanupFilter> sessionCleanupFilterRegistration(
-            IExtensionContext<?> extensionContext) {
-
+    @ConditionalOnProperty(name = "easy-extension.enable-session-auto-cleanup", havingValue = "true", matchIfMissing = true)
+    public FilterRegistrationBean<SessionCleanupFilter> sessionCleanupFilterRegistration(ExtensionContext<?> extensionContext) {
         FilterRegistrationBean<SessionCleanupFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new SessionCleanupFilter(extensionContext));
         registration.addUrlPatterns("/*");
+        registration.setDispatcherTypes(EnumSet.of(DispatcherType.REQUEST));
         registration.setName("easyExtensionSessionCleanupFilter");
-        // Set to highest precedence so it wraps around all other filters
-        // This ensures cleanup happens after all request processing is complete (in the finally block)
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(WebMvcConfigurer.class)
+    @ConditionalOnBean(MatcherParamResolver.class)
+    static class SessionInterceptorConfiguration {
+
+        @Bean
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        WebMvcConfigurer extensionSessionInterceptorConfigurer(ExtensionContext context, MatcherParamResolver resolver) {
+            ExtensionSessionInterceptor interceptor = new ExtensionSessionInterceptor(context, resolver);
+            return new WebMvcConfigurer() {
+                @Override
+                public void addInterceptors(InterceptorRegistry registry) {
+                    registry.addInterceptor(interceptor).order(Ordered.HIGHEST_PRECEDENCE);
+                }
+            };
+        }
     }
 }

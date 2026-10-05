@@ -7,7 +7,7 @@ import java.util.Map;
  *
  * @param className            简单类名
  * @param qualifiedName        全限定类名
- * @param annotationType       注解简称 (ExtensionPoint / Ability / Business / ExtensionPointDefaultImplementation)
+ * @param annotationType       注解简称 (ExtensionPoint / Ability / Business / DefaultImplementation)
  * @param sourceCode           完整源文件内容
  * @param javadoc              Javadoc 注释文本 (已去除 markers)
  * @param annotationAttributes 注解属性键值对

@@ -7,7 +7,7 @@ import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.properties
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.service.ExtensionInfoService;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.MetadataJsonReader;
 import io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util.SourceCodeReader;
-import io.github.xiaoshicae.extension.core.IExtensionReader;
+import io.github.xiaoshicae.extension.core.ExtensionContext;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -32,7 +32,7 @@ import java.util.Map;
  * <ul>
  *   <li>The application is a servlet-based web application</li>
  *   <li>The property {@code easy-extension.admin.enable} is not set to {@code false}</li>
- *   <li>An {@link IExtensionReader} bean is available in the context</li>
+ *   <li>An {@link ExtensionContext} bean is available in the context</li>
  * </ul>
  */
 @Configuration
@@ -58,10 +58,10 @@ public class EasyExtensionAdminAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnBean(IExtensionReader.class)
-    public ExtensionInfoService extensionInfoService(IExtensionReader<?> reader, SourceCodeReader sourceCodeReader,
+    @ConditionalOnBean(ExtensionContext.class)
+    public ExtensionInfoService extensionInfoService(ExtensionContext<?> context, SourceCodeReader sourceCodeReader,
                                                      MetadataJsonReader metadataReader, EasyExtensionAdminConfigurationProperties properties) {
-        return new ExtensionInfoService(reader, sourceCodeReader, metadataReader, properties);
+        return new ExtensionInfoService(context, sourceCodeReader, metadataReader, properties);
     }
 
     @Bean

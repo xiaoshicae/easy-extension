@@ -15,7 +15,10 @@ public final class EasyExtensionAnnotations {
             "io.github.xiaoshicae.extension.core.annotation.Business";
 
     public static final String DEFAULT_IMPLEMENTATION =
-            "io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation";
+            "io.github.xiaoshicae.extension.core.annotation.DefaultImplementation";
+
+    public static final String SELF =
+            "io.github.xiaoshicae.extension.core.annotation.Self";
 
     public static final String EXTENSION_INJECT =
             "io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionInject";

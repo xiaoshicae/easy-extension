@@ -46,10 +46,9 @@ public class BusinessLineMarkerProvider extends RelatedItemLineMarkerProvider {
             // 使用的 Ability 类
             PsiAnnotation businessAnn = psiClass.getAnnotation(EasyExtensionAnnotations.BUSINESS);
             if (businessAnn != null) {
-                for (String code : PsiSearchUtil.parseAbilityCodes(businessAnn)) {
-                    PsiClass abilityClass = PsiSearchUtil.findAbilityByCode(psiClass.getProject(), code);
-                    if (abilityClass != null) {
-                        list.add(abilityClass);
+                for (PsiClass used : PsiSearchUtil.parseUses(businessAnn)) {
+                    if (used != null) {
+                        list.add(used);
                     }
                 }
             }

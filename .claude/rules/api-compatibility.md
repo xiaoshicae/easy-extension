@@ -10,7 +10,10 @@
 - `public` 方法、构造器、字段
 - `protected` 方法和字段(可被下游子类化的部分)
 
-约定:`I` 前缀接口(`IExtensionPoint`、`IExtensionInvoker`、`IExtensionReader` 等)是**最稳定的契约**,这些接口的变更要求最严。
+4.0 起:
+- `core.internal` 包(及其中所有类型)**不属于**公共 API,可随意修改,ArchUnit 禁止 starter/admin 依赖它。
+- 最稳定的契约是 `core` 顶层类型(`ExtensionContext`、`Resolution`、`Binding`)、`core.annotation`、`core.spi`、`core.catalog`、`core.definition`、`core.exception`;这些的变更要求最严。
+- 4.x 内保持兼容;3.x → 4.0 的破坏性变更见 `doc/migration-4.0.md`。
 
 ## 必须遵守(违反需 bump major version)
 
@@ -30,7 +33,7 @@
 
 ### 禁止接口加方法(无默认实现)
 
-- ❌ 给已发布的 `I*` 接口添加抽象方法(下游实现立即编译失败)
+- ❌ 给已发布的 SPI / 公共接口(`BusinessResolver`、`BusinessSelector`、`Matcher` 等)添加抽象方法(下游实现立即编译失败)
 - ✅ 可以加 `default` 方法(Java 8+)
 - ✅ 可以加新接口,让旧接口继承新接口
 

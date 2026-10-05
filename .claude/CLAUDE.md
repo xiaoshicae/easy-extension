@@ -8,7 +8,7 @@
 - **JDK**: 21
 - **Spring**: Spring Boot 4.0.5 / Spring 7.0.6
 - **发布**: Maven Central — `io.github.xiaoshicae:easy-extension-*`
-- **当前版本**: 见根 `pom.xml` 的 `<version>` 与 `<easy-extension.version>`(写本文时 3.3.6)
+- **当前版本**: 见根 `pom.xml` 的 `<version>` 与 `<easy-extension.version>`(`release/4.0` 分支正在进行 4.0 重写,版本号待 `/release-prep` 同步;设计见 `doc/design-4.0.md`)
 
 ### 模块拓扑
 
