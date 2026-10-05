@@ -19,6 +19,9 @@
 - `Binding.close()` is idempotent from any thread; the container's error dispatch is never bound; `easy-extension.session-exclude-path-patterns` keeps health checks etc. out of strict-mode matching.
 
 ### Changed
+- `ExtensionContext.proxy/proxyAll` throw `ResolutionException(EXTENSION_NOT_FOUND)` (not `IllegalArgumentException`) for an unregistered extension point.
+- `ExtensionProxies` lives in `core.internal`; use `context.proxy(...)` / `context.proxyAll(...)`.
+- Starter bean names of the per-extension-point infrastructure beans use the fully qualified interface name; do not refer to them by name.
 - `ExtensionContext` is built after all singletons are ready: using `@ExtensionInject` inside abilities/businesses no longer causes a circular dependency.
 - All exceptions are unchecked (`RegistrationException`, `ResolutionException`).
 - Annotation processor metadata.json is version 2.0 (`uses`, `DefaultImplementation`).
