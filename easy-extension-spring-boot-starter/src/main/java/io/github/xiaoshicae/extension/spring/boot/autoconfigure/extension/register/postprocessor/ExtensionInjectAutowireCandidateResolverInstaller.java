@@ -12,7 +12,7 @@ import org.springframework.context.annotation.ContextAnnotationAutowireCandidate
 /**
  * Installs the {@code @ExtensionInject} autowire candidate resolver on the bean factory, replacing Spring's
  * standard resolver. A resolver that is not Spring's standard one (set by some other framework) is left alone.
- * <p>Internal infrastructure registered by {@code @ExtensionScan}; not intended for direct use.</p>
+ * <p>Internal infrastructure registered by the auto-configuration; not intended for direct use.</p>
  */
 public class ExtensionInjectAutowireCandidateResolverInstaller implements BeanFactoryPostProcessor {
     private static final Logger logger = LoggerFactory.getLogger(ExtensionInjectAutowireCandidateResolverInstaller.class);

@@ -13,6 +13,11 @@
 - Starter: zero-config scanning, `MatcherParamResolver` + automatic request binding (async aware), `matcher-param-type` property.
 - ArchUnit rules keeping core Spring-free and `core.internal` private.
 
+### Fixed (since the first 4.0 draft)
+- A business/ability/default that is a JDK dynamic proxy (`spring.aop.proxy-target-class=false`) is accepted.
+- `builder.defaultImplementationFor(point, impl)` only covers the given extension point.
+- `Binding.close()` is idempotent from any thread; the container's error dispatch is never bound; `easy-extension.session-exclude-path-patterns` keeps health checks etc. out of strict-mode matching.
+
 ### Changed
 - `ExtensionContext` is built after all singletons are ready: using `@ExtensionInject` inside abilities/businesses no longer causes a circular dependency.
 - All exceptions are unchecked (`RegistrationException`, `ResolutionException`).

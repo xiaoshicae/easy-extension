@@ -11,5 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 @FunctionalInterface
 public interface MatcherParamResolver<T> {
 
+    /**
+     * The request parameter for this HTTP request, typically built from headers, the path or the authenticated user.
+     */
     T resolve(HttpServletRequest request);
 }

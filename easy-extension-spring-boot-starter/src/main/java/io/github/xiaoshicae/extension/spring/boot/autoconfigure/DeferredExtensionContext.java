@@ -3,7 +3,6 @@ package io.github.xiaoshicae.extension.spring.boot.autoconfigure;
 import io.github.xiaoshicae.extension.core.Binding;
 import io.github.xiaoshicae.extension.core.ExtensionContext;
 import io.github.xiaoshicae.extension.core.ExtensionContextBuilder;
-import io.github.xiaoshicae.extension.core.ExtensionProxies;
 import io.github.xiaoshicae.extension.core.Resolution;
 import io.github.xiaoshicae.extension.core.annotation.Ability;
 import io.github.xiaoshicae.extension.core.annotation.Business;
@@ -32,7 +31,10 @@ import java.util.function.BiConsumer;
  * That is what lets abilities and businesses themselves use {@code @ExtensionInject}: no bean needs the finished
  * context while it is being created.
  * <p>
- * Consequence: the context cannot be used while beans are still being created (constructors, {@code @PostConstruct}).
+ * Consequence: the context cannot be used while beans are still being created (constructors, {@code @PostConstruct},
+ * {@code @Bean} factory methods) nor in another {@code SmartInitializingSingleton}, whose callback may run before this
+ * one. Use it from a {@code ContextRefreshedEvent} listener or {@code ApplicationRunner} instead. The proxies
+ * ({@link #proxy(Class)}, {@code @ExtensionInject}) are bound to this wrapper, so they can be created at any time.
  * </p>
  *
  * @param <T> matcher param type
@@ -138,17 +140,6 @@ public class DeferredExtensionContext<T> implements ExtensionContext<T>, SmartIn
         if (current != null) {
             current.clear();
         }
-    }
-
-    @Override
-    public <E> E proxy(Class<E> point) {
-        // bound to this wrapper, not to the delegate: proxies may be created before the delegate exists
-        return ExtensionProxies.proxy(this, point);
-    }
-
-    @Override
-    public <E> List<E> proxyAll(Class<E> point) {
-        return ExtensionProxies.proxyAll(this, point);
     }
 
     @Override

@@ -13,6 +13,7 @@ package io.github.xiaoshicae.extension.core;
  */
 public interface Binding extends AutoCloseable {
 
+    /** The resolution this binding makes current on its thread. */
     Resolution resolution();
 
     /**

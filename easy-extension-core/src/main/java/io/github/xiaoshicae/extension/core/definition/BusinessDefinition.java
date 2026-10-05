@@ -40,6 +40,7 @@ public final class BusinessDefinition<T> {
         return new BusinessDefinition<>(code, matcher, implementation);
     }
 
+    /** Overrides the class the implemented extension points are read from (default: the object's class). */
     public BusinessDefinition<T> implementationClass(Class<?> implementationClass) {
         this.implementationClass = Objects.requireNonNull(implementationClass, "implementationClass");
         return this;
@@ -61,22 +62,27 @@ public final class BusinessDefinition<T> {
         return this;
     }
 
+    /** The unique code. */
     public String code() {
         return code;
     }
 
+    /** The matcher; may be null for a business routed by a BusinessResolver. */
     public Matcher<T> matcher() {
         return matcher;
     }
 
+    /** The implementation object. */
     public Object implementation() {
         return implementation;
     }
 
+    /** The class the implemented extension points are read from. */
     public Class<?> implementationClass() {
         return implementationClass;
     }
 
+    /** The mounted abilities and the business itself, in resolution order. */
     public List<MountInfo> mounts() {
         return Collections.unmodifiableList(mounts);
     }

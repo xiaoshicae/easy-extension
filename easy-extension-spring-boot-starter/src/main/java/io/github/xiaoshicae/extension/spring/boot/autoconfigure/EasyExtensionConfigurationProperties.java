@@ -4,6 +4,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.List;
 
+/**
+ * Properties under {@code easy-extension.*}.
+ */
 @ConfigurationProperties(prefix = "easy-extension")
 public class EasyExtensionConfigurationProperties {
     /**
@@ -29,6 +32,12 @@ public class EasyExtensionConfigurationProperties {
      * Type of the request parameter. Derived from the Matcher&lt;T&gt; generics of abilities and businesses when not set.
      */
     private Class<?> matcherParamType;
+
+    /**
+     * 不绑定业务身份的请求路径（Ant 风格），例如健康检查。严格模式下，匹配不到业务的请求会直接报错，这些路径不受影响。
+     * Request path patterns (Ant style) that never get a business bound, e.g. health checks. In strict mode a request no business matches fails, these paths are not affected.
+     */
+    private List<String> sessionExcludePathPatterns = List.of();
 
     public boolean isAllowUnknownBusiness() {
         return allowUnknownBusiness;
@@ -60,5 +69,13 @@ public class EasyExtensionConfigurationProperties {
 
     public void setMatcherParamType(Class<?> matcherParamType) {
         this.matcherParamType = matcherParamType;
+    }
+
+    public List<String> getSessionExcludePathPatterns() {
+        return sessionExcludePathPatterns;
+    }
+
+    public void setSessionExcludePathPatterns(List<String> sessionExcludePathPatterns) {
+        this.sessionExcludePathPatterns = sessionExcludePathPatterns == null ? List.of() : List.copyOf(sessionExcludePathPatterns);
     }
 }

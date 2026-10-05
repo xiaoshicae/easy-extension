@@ -57,6 +57,44 @@ public class DefaultImplementationTest {
         assertTrue(e.getMessage().startsWith("extension point [" + Greeting.class.getName() + "] has more than one default implementation"));
     }
 
+    @ExtensionPoint
+    public interface Other {
+        String other();
+    }
+
+    public static class Both implements Greeting, Other {
+        public String greet(String name) {
+            return "both-" + name;
+        }
+
+        public String other() {
+            return "both-other";
+        }
+    }
+
+    @Test
+    public void testDefaultImplementationForOnlyCoversTheGivenPoint() {
+        ExtensionContext<Param> context = ExtensionContext.<Param>builder().strict(false)
+                .extensionPoint(Greeting.class, Other.class)
+                .defaultImplementationFor(Greeting.class, new Both())
+                .defaultImplementationFor(Other.class, () -> "separate-other")
+                .build();
+
+        var resolution = context.resolve(Param.of("x"));
+        assertEquals("both-bob", resolution.first(Greeting.class).greet("bob"));
+        assertEquals("separate-other", resolution.first(Other.class).other());
+    }
+
+    @Test
+    public void testDefaultImplementationForRejectsAnUnregisteredPoint() {
+        RegistrationException e = assertThrows(RegistrationException.class, () -> ExtensionContext.<Param>builder()
+                .extensionPoint(Greeting.class)
+                .defaultImplementationFor(Greeting.class, name -> "a")
+                .defaultImplementationFor(Other.class, () -> "b")
+                .build());
+        assertTrue(e.getMessage().startsWith("extension point [" + Other.class.getName() + "] of default implementation ["), e.getMessage());
+    }
+
     @Test
     public void testNoOpDefaultKeepsDefaultMethods() {
         ExtensionContext<Param> context = ExtensionContext.<Param>builder().strict(false).extensionPoint(Hook.class).build();

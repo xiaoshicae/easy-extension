@@ -47,49 +47,59 @@ public final class ExtensionContextBuilder<T> {
         return this;
     }
 
+    /** Registers an object whose class is annotated with {@code @DefaultImplementation}. */
     public ExtensionContextBuilder<T> defaultImplementation(Object implementation) {
         return defaultImplementation(implementation, requireImplementation(implementation).getClass());
     }
 
+    /** Registers an object together with the annotated class behind it, e.g. the target class of a proxy. */
     public ExtensionContextBuilder<T> defaultImplementation(Object implementation, Class<?> userClass) {
         return defaultImplementation(AnnotationReader.defaultImplementation(implementation, userClass));
     }
 
     /**
-     * Registers an implementation of a single extension point as its default, without an annotated class,
-     * e.g. a lambda for a single-method extension point.
+     * Registers an implementation as the default of this one extension point only, without an annotated class,
+     * e.g. a lambda for a single-method extension point. Other extension points the object happens to implement
+     * are not affected.
      */
     public <E> ExtensionContextBuilder<T> defaultImplementationFor(Class<E> point, E implementation) {
         Objects.requireNonNull(point, "point");
-        return defaultImplementation(DefaultImplementationDefinition.of(requireImplementation(implementation)));
+        return defaultImplementation(DefaultImplementationDefinition.of(requireImplementation(implementation)).forPoints(point));
     }
 
+    /** Registers a default implementation described without annotations. */
     public ExtensionContextBuilder<T> defaultImplementation(DefaultImplementationDefinition definition) {
         defaultImplementations.add(Objects.requireNonNull(definition, "definition"));
         return this;
     }
 
+    /** Registers an object whose class is annotated with {@code @Ability} and implements {@code Matcher}. */
     public ExtensionContextBuilder<T> ability(Object implementation) {
         return ability(implementation, requireImplementation(implementation).getClass());
     }
 
+    /** Registers an object together with the annotated class behind it, e.g. the target class of a proxy. */
     public ExtensionContextBuilder<T> ability(Object implementation, Class<?> userClass) {
         return ability(AnnotationReader.<T>ability(implementation, userClass));
     }
 
+    /** Registers an ability described without annotations. */
     public ExtensionContextBuilder<T> ability(AbilityDefinition<T> definition) {
         abilities.add(Objects.requireNonNull(definition, "definition"));
         return this;
     }
 
+    /** Registers an object whose class is annotated with {@code @Business}. */
     public ExtensionContextBuilder<T> business(Object implementation) {
         return business(implementation, requireImplementation(implementation).getClass());
     }
 
+    /** Registers an object together with the annotated class behind it, e.g. the target class of a proxy. */
     public ExtensionContextBuilder<T> business(Object implementation, Class<?> userClass) {
         return business(AnnotationReader.<T>business(implementation, userClass));
     }
 
+    /** Registers a business described without annotations. */
     public ExtensionContextBuilder<T> business(BusinessDefinition<T> definition) {
         businesses.add(Objects.requireNonNull(definition, "definition"));
         return this;

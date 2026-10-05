@@ -2,7 +2,6 @@ package io.github.xiaoshicae.extension.core.internal;
 
 import io.github.xiaoshicae.extension.core.Binding;
 import io.github.xiaoshicae.extension.core.ExtensionContext;
-import io.github.xiaoshicae.extension.core.ExtensionProxies;
 import io.github.xiaoshicae.extension.core.Resolution;
 import io.github.xiaoshicae.extension.core.catalog.ExtensionCatalog;
 import io.github.xiaoshicae.extension.core.exception.ResolutionException;
@@ -67,13 +66,13 @@ final class DefaultExtensionContext<T> implements ExtensionContext<T> {
 
     @Override
     public <E> E proxy(Class<E> point) {
-        requireInterface(point);
+        requireRegistered(point);
         return ExtensionProxies.proxy(this, point);
     }
 
     @Override
     public <E> List<E> proxyAll(Class<E> point) {
-        requireInterface(point);
+        requireRegistered(point);
         return ExtensionProxies.proxyAll(this, point);
     }
 
@@ -87,9 +86,10 @@ final class DefaultExtensionContext<T> implements ExtensionContext<T> {
         return thread.getName().isEmpty() ? "virtual-" + thread.threadId() : thread.getName();
     }
 
-    private void requireInterface(Class<?> point) {
+    private void requireRegistered(Class<?> point) {
         if (point == null || !registry.points().containsKey(point)) {
-            throw new IllegalArgumentException("extension point [" + (point == null ? null : point.getName()) + "] is not registered");
+            throw new ResolutionException(ResolutionException.Reason.EXTENSION_NOT_FOUND,
+                    "extension point [" + (point == null ? null : point.getName()) + "] is not registered");
         }
     }
 
@@ -97,7 +97,7 @@ final class DefaultExtensionContext<T> implements ExtensionContext<T> {
         private final Resolution resolution;
         private final Deque<DefaultBinding> stack;
         private final Thread owner = Thread.currentThread();
-        private boolean closed;
+        private volatile boolean closed;
 
         DefaultBinding(Resolution resolution, Deque<DefaultBinding> stack) {
             this.resolution = resolution;
@@ -111,13 +111,13 @@ final class DefaultExtensionContext<T> implements ExtensionContext<T> {
 
         @Override
         public void close() {
+            if (closed) {
+                return;
+            }
             if (Thread.currentThread() != owner) {
                 throw new IllegalStateException(String.format(
                         "a Binding must be closed by the thread that opened it [%s], not by [%s]; to continue on another thread, bind the Resolution there",
                         threadLabel(owner), threadLabel(Thread.currentThread())));
-            }
-            if (closed) {
-                return;
             }
             closed = true;
             if (!stack.contains(this)) {

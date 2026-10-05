@@ -10,6 +10,7 @@ import io.github.xiaoshicae.extension.spring.boot.autoconfigure.web.MatcherParam
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.web.SessionCleanupFilter;
 import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.Domain.*;
 import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.DomainConfig;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -98,6 +99,22 @@ public class WebTest {
         });
         assertThrows(IllegalArgumentException.class, () -> failing.preHandle(request("x"), response, new Object()));
         assertNothingBound();
+    }
+
+    @Test
+    public void testTheErrorDispatchIsNeverBound() {
+        ExtensionContext<Param> strict = ExtensionContext.<Param>builder()
+                .extensionPoint(Pay.class, Ship.class)
+                .defaultImplementation(new DefaultPay()).defaultImplementation(new DefaultShip())
+                .ability(new FastShipAbility()).business(new RetailBusiness()).build();
+        ExtensionSessionInterceptor<Param> interceptor = new ExtensionSessionInterceptor<>(strict, resolver);
+        MockHttpServletRequest error = request("nobody");
+        error.setDispatcherType(DispatcherType.ERROR);
+
+        // no business matches "nobody": the request itself fails, but rendering /error must not fail again
+        assertTrue(interceptor.preHandle(error, response, new Object()));
+        interceptor.afterCompletion(error, response, new Object(), null);
+        assertEquals(ResolutionException.Reason.NO_BINDING, assertThrows(ResolutionException.class, strict::current).reason());
     }
 
     @Test

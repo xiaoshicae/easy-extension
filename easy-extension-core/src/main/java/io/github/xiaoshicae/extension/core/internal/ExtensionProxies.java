@@ -1,5 +1,6 @@
-package io.github.xiaoshicae.extension.core;
+package io.github.xiaoshicae.extension.core.internal;
 
+import io.github.xiaoshicae.extension.core.ExtensionContext;
 import io.github.xiaoshicae.extension.core.exception.ResolutionException;
 
 import java.lang.reflect.InvocationHandler;
@@ -7,15 +8,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.AbstractList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.RandomAccess;
+import java.util.ListIterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
 /**
- * The proxies behind {@link ExtensionContext#proxy(Class)} and {@link ExtensionContext#proxyAll(Class)}, for
- * integrations that wrap a context (e.g. one that is only ready after startup) and need proxies bound to the wrapper.
+ * The proxies behind {@link ExtensionContext#proxy(Class)} and {@link ExtensionContext#proxyAll(Class)}.
+ * They are bound to the context they are created from, so a wrapping context gets proxies bound to the wrapper.
  */
 public final class ExtensionProxies {
 
@@ -70,9 +72,10 @@ public final class ExtensionProxies {
     }
 
     /**
-     * Read-only list that re-reads {@code current().all(point)}; every operation works on one consistent snapshot.
+     * Read-only list view of {@code context.all(point)}. Every operation resolves the current binding once and works on
+     * that snapshot; successive calls (e.g. {@code size()} then {@code get(i)}) may see different snapshots.
      */
-    private static final class AllList<E> extends AbstractList<E> implements RandomAccess {
+    private static final class AllList<E> extends AbstractList<E> {
         private final ExtensionContext<?> context;
         private final Class<E> point;
 
@@ -101,8 +104,43 @@ public final class ExtensionProxies {
         }
 
         @Override
+        public ListIterator<E> listIterator(int index) {
+            return snapshot().listIterator(index);
+        }
+
+        @Override
+        public List<E> subList(int fromIndex, int toIndex) {
+            return snapshot().subList(fromIndex, toIndex);
+        }
+
+        @Override
+        public boolean contains(Object o) {
+            return snapshot().contains(o);
+        }
+
+        @Override
+        public boolean containsAll(Collection<?> c) {
+            return snapshot().containsAll(c);
+        }
+
+        @Override
+        public int indexOf(Object o) {
+            return snapshot().indexOf(o);
+        }
+
+        @Override
+        public int lastIndexOf(Object o) {
+            return snapshot().lastIndexOf(o);
+        }
+
+        @Override
         public Object[] toArray() {
             return snapshot().toArray();
+        }
+
+        @Override
+        public <A> A[] toArray(A[] a) {
+            return snapshot().toArray(a);
         }
 
         @Override
@@ -113,6 +151,16 @@ public final class ExtensionProxies {
         @Override
         public void forEach(Consumer<? super E> action) {
             snapshot().forEach(action);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o == this || snapshot().equals(o);
+        }
+
+        @Override
+        public int hashCode() {
+            return snapshot().hashCode();
         }
 
         @Override

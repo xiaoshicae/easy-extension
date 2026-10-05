@@ -113,9 +113,10 @@ public class ProxyTest {
 
     @Test
     public void testOnlyRegisteredExtensionPointsCanBeProxied() {
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> context.proxy(Runnable.class));
+        ResolutionException e = assertThrows(ResolutionException.class, () -> context.proxy(Runnable.class));
+        assertEquals(ResolutionException.Reason.EXTENSION_NOT_FOUND, e.reason());
         assertEquals("extension point [java.lang.Runnable] is not registered", e.getMessage());
-        assertThrows(IllegalArgumentException.class, () -> context.proxyAll(Runnable.class));
+        assertThrows(ResolutionException.class, () -> context.proxyAll(Runnable.class));
     }
 
     @Test
@@ -138,6 +139,23 @@ public class ProxyTest {
         }
         try (Binding ignored = context.bind(Param.of("retail"))) {
             assertEquals(2, all.size());
+        }
+    }
+
+    @Test
+    public void testProxyAllListOperationsWorkOnOneSnapshot() {
+        List<Pay> all = context.proxyAll(Pay.class);
+
+        try (Binding b = context.bind(Param.of("retail"))) {
+            Pay first = all.get(0);
+            assertTrue(all.contains(first));
+            assertEquals(0, all.indexOf(first));
+            assertEquals(all.size() - 1, all.lastIndexOf(all.get(all.size() - 1)));
+            assertEquals(context.current().all(Pay.class), all);
+            assertEquals(context.current().all(Pay.class).hashCode(), all.hashCode());
+            assertEquals(all.size(), all.subList(0, all.size()).size());
+            assertEquals(all.size(), all.toArray().length);
+            assertTrue(all.containsAll(List.of(first)));
         }
     }
 }

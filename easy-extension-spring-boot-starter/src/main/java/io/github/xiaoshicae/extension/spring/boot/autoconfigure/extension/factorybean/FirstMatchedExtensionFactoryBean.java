@@ -1,7 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean;
 
 import io.github.xiaoshicae.extension.core.ExtensionContext;
-import io.github.xiaoshicae.extension.core.ExtensionProxies;
 import org.springframework.beans.factory.FactoryBean;
 
 /**
@@ -19,7 +18,7 @@ public class FirstMatchedExtensionFactoryBean<T> implements FactoryBean<T> {
 
     @Override
     public T getObject() {
-        return ExtensionProxies.proxy(context, extensionPointClass);
+        return context.proxy(extensionPointClass);
     }
 
     @Override

@@ -1,7 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.factorybean;
 
 import io.github.xiaoshicae.extension.core.ExtensionContext;
-import io.github.xiaoshicae.extension.core.ExtensionProxies;
 import org.springframework.beans.factory.FactoryBean;
 
 import java.util.List;
@@ -20,7 +19,7 @@ public class AllMatchedExtensionFactoryBean<T> implements FactoryBean<List<T>> {
 
     @Override
     public List<T> getObject() {
-        return ExtensionProxies.proxyAll(context, extensionPointClass);
+        return context.proxyAll(extensionPointClass);
     }
 
     @Override

@@ -7,14 +7,17 @@ package io.github.xiaoshicae.extension.core.catalog;
  */
 public record MountInfo(String abilityCode) {
 
+    /** The business itself. */
     public static MountInfo self() {
         return new MountInfo(null);
     }
 
+    /** A mounted ability. */
     public static MountInfo ability(String abilityCode) {
         return new MountInfo(abilityCode);
     }
 
+    /** Whether this position is the business itself. */
     public boolean isSelf() {
         return abilityCode == null;
     }
