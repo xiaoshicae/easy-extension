@@ -23,11 +23,13 @@ public class ResolutionException extends ExtensionException {
 
     private final Reason reason;
 
+    /** Creates the exception. */
     public ResolutionException(Reason reason, String message) {
         super(message);
         this.reason = reason;
     }
 
+    /** Why the resolution failed. */
     public Reason reason() {
         return reason;
     }

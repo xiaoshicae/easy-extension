@@ -12,6 +12,7 @@ public final class OrderedCodeBusinessSelector<T> implements BusinessSelector<T>
 
     private final List<String> order;
 
+    /** Selects by the position in {@code order}; codes not listed come after the listed ones, in registration order. */
     public OrderedCodeBusinessSelector(List<String> order) {
         this.order = order == null ? List.of() : List.copyOf(order);
     }

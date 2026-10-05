@@ -113,6 +113,8 @@ public interface FreightCalcExtension {
 FreightCalcExtension defaultFreight() { return ctx -> new BigDecimal("10.00"); }
 ```
 
+不用 Spring 时：`builder.defaultImplementationFor(FreightCalcExtension.class, ctx -> ...)`，只作为这一个扩展点的默认实现。
+
 不用 lambda 时：
 
 ```java
@@ -301,6 +303,7 @@ easy-extension:
   allow-unknown-business: false       # 无业务匹配时是否报错(true:只走各扩展点的默认实现)
   enable-session-auto-cleanup: true   # 请求结束兜底清理线程上残留的绑定
   matcher-param-type:                 # 可选:显式指定 Matcher 参数类型
+  session-exclude-path-patterns:      # 可选:不绑定业务身份的路径(如 /actuator/**),严格模式下避免这些请求报错
   business-match-order:               # 多业务匹配时的优先级
     - biz.retail
     - biz.fresh

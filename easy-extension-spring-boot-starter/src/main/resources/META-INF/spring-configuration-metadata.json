@@ -33,6 +33,13 @@
       "type": "java.lang.Class<?>",
       "description": "显式指定 Matcher 参数类型,覆盖从 Provider 泛型的推导 explicit matcher parameter type, overriding inference from providers' Matcher<T> generics",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties"
+    },
+    {
+      "name": "easy-extension.session-exclude-path-patterns",
+      "type": "java.util.List<java.lang.String>",
+      "description": "不绑定业务身份的请求路径(Ant 风格),例如健康检查 request path patterns (Ant style) that never get a business bound, e.g. health checks",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
+      "defaultValue": []
     }
   ],
   "hints": []

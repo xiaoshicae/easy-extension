@@ -176,4 +176,23 @@ public class BindingTest {
         // a virtual thread has no name: the message says which one it is
         assertTrue(result[1].startsWith("no resolution is bound to thread [virtual-"), result[1]);
     }
+
+    @Test
+    public void testClosingAnAlreadyClosedBindingFromAnotherThreadIsANoOp() throws Exception {
+        Binding binding = context.bind(Param.of("retail"));
+        binding.close();
+
+        Throwable[] failure = new Throwable[1];
+        Thread other = new Thread(() -> {
+            try {
+                binding.close();
+            } catch (Throwable t) {
+                failure[0] = t;
+            }
+        });
+        other.start();
+        other.join();
+
+        assertNull(failure[0]);
+    }
 }

@@ -29,6 +29,7 @@ public final class AbilityDefinition<T> {
         this.implementationClass = implementation.getClass();
     }
 
+    /** Describes {@code implementation} as the ability {@code code}, applicable when {@code matcher} accepts the request. */
     public static <T> AbilityDefinition<T> of(String code, Matcher<T> matcher, Object implementation) {
         if (code == null || code.isBlank()) {
             throw new RegistrationException("ability code should not be blank");
@@ -45,36 +46,44 @@ public final class AbilityDefinition<T> {
         return this;
     }
 
+    /** Codes of abilities that must be mounted together with this one. */
     public AbilityDefinition<T> requires(String... abilityCodes) {
         Collections.addAll(requires, abilityCodes);
         return this;
     }
 
+    /** Codes of abilities that must not be mounted together with this one. */
     public AbilityDefinition<T> excludes(String... abilityCodes) {
         Collections.addAll(excludes, abilityCodes);
         return this;
     }
 
+    /** The unique code. */
     public String code() {
         return code;
     }
 
+    /** The matcher deciding whether the ability applies to a request. */
     public Matcher<T> matcher() {
         return matcher;
     }
 
+    /** The implementation object. */
     public Object implementation() {
         return implementation;
     }
 
+    /** The class the implemented extension points are read from. */
     public Class<?> implementationClass() {
         return implementationClass;
     }
 
+    /** Codes of abilities that must be mounted together with this one. */
     public List<String> requires() {
         return Collections.unmodifiableList(requires);
     }
 
+    /** Codes of abilities that must not be mounted together with this one. */
     public List<String> excludes() {
         return Collections.unmodifiableList(excludes);
     }

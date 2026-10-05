@@ -32,14 +32,18 @@ public interface Resolution {
      */
     <E> List<E> all(Class<E> point);
 
+    /** How this resolution came about: the matched business, the evaluated abilities and the resolution chain. */
     ResolveTrace trace();
 
+    /** Explains, for one extension point, which candidates were considered and which one answers. */
     <E> ExtensionExplanation<E> explain(Class<E> point);
 
+    /** Calls {@code invoker} on the implementation {@link #first(Class)} returns and returns its result. */
     default <E, R> R invoke(Class<E> point, Function<E, R> invoker) {
         return invoker.apply(first(point));
     }
 
+    /** Calls {@code invoker} on every implementation {@link #all(Class)} returns, in order, and collects the results. */
     default <E, R> List<R> invokeAll(Class<E> point, Function<E, R> invoker) {
         List<R> results = new ArrayList<>();
         for (E extension : all(point)) {
@@ -48,6 +52,7 @@ public interface Resolution {
         return results;
     }
 
+    /** Calls {@code invoker} on every implementation of {@link #all(Class)} and folds the results with {@code accumulator}, starting from {@code identity}. */
     default <E, R> R invokeReduce(Class<E> point, Function<E, R> invoker, R identity, BinaryOperator<R> accumulator) {
         R result = identity;
         for (E extension : all(point)) {

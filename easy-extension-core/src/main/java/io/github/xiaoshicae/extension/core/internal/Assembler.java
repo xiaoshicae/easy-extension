@@ -109,7 +109,9 @@ public final class Assembler {
         List<DefaultImplementationInfo> infos = new ArrayList<>();
         for (DefaultImplementationDefinition definition : definitions) {
             String label = "default implementation [" + definition.implementationClass().getName() + "]";
-            Set<Class<?>> implemented = derive(definition.implementationClass(), definition.implementation(), points, label);
+            Set<Class<?>> implemented = definition.points().isEmpty()
+                    ? derive(definition.implementationClass(), definition.implementation(), points, label)
+                    : explicit(definition.points(), definition.implementation(), points, label);
             Registry.DefaultEntry entry = new Registry.DefaultEntry(definition.implementation(), definition.implementationClass(),
                     Collections.unmodifiableSet(implemented));
             for (Class<?> point : implemented) {
@@ -251,13 +253,26 @@ public final class Assembler {
     }
 
     /**
+     * Extension points a default was explicitly restricted to; all must be registered and implemented.
+     */
+    private static Set<Class<?>> explicit(Set<Class<?>> requested, Object implementation,
+                                          Map<Class<?>, ExtensionPointInfo> registered, String label) {
+        for (Class<?> point : requested) {
+            if (!registered.containsKey(point)) {
+                throw new RegistrationException(String.format("extension point [%s] of %s is not registered", point.getName(), label));
+            }
+            if (!point.isInstance(implementation)) {
+                throw new RegistrationException(String.format("%s is not an instance of extension point [%s]", label, point.getName()));
+            }
+        }
+        return new LinkedHashSet<>(requested);
+    }
+
+    /**
      * The extension points an implementation provides, derived from its class hierarchy; all must be registered.
      */
     private static Set<Class<?>> derive(Class<?> userClass, Object implementation, Map<Class<?>, ExtensionPointInfo> registered, String label) {
-        if (!userClass.isInstance(implementation)) {
-            throw new RegistrationException(String.format("%s: the implementation [%s] is not an instance of its class [%s]",
-                    label, implementation.getClass().getName(), userClass.getName()));
-        }
+        // not checked against userClass: a JDK dynamic proxy is not an instance of its target class
         Set<Class<?>> implemented = Introspector.extensionPointsOf(userClass);
         if (implemented.isEmpty()) {
             throw new RegistrationException(label + " does not implement any extension point");

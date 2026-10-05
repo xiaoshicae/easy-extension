@@ -2,7 +2,6 @@ package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.regis
 
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionComponentScanner;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
@@ -39,10 +38,6 @@ public class ExtensionScannerConfigurer implements BeanDefinitionRegistryPostPro
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
-    }
-
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
     }
 
     @Override

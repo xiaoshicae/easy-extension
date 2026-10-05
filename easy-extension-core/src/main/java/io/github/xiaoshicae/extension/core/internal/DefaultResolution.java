@@ -27,32 +27,25 @@ final class DefaultResolution<T> implements Resolution {
 
     @Override
     public <E> E first(Class<E> point) {
-        requireRegistered(point);
+        Registry.DefaultEntry fallback = fallbackOf(point);
         for (ChainItem item : chain) {
             if (item.points().contains(point)) {
                 return point.cast(item.impl());
             }
         }
-        Registry.DefaultEntry fallback = registry.defaults().get(point);
-        if (fallback != null) {
-            return point.cast(fallback.impl());
-        }
-        throw new ResolutionException(Reason.EXTENSION_NOT_FOUND, String.format("Extension<%s> not found", point.getName()));
+        return point.cast(fallback.impl());
     }
 
     @Override
     public <E> List<E> all(Class<E> point) {
-        requireRegistered(point);
+        Registry.DefaultEntry fallback = fallbackOf(point);
         List<E> result = new ArrayList<>();
         for (ChainItem item : chain) {
             if (item.points().contains(point)) {
                 addDistinct(result, point.cast(item.impl()));
             }
         }
-        Registry.DefaultEntry fallback = registry.defaults().get(point);
-        if (fallback != null) {
-            addDistinct(result, point.cast(fallback.impl()));
-        }
+        addDistinct(result, point.cast(fallback.impl()));
         return Collections.unmodifiableList(result);
     }
 
@@ -63,7 +56,7 @@ final class DefaultResolution<T> implements Resolution {
 
     @Override
     public <E> ExtensionExplanation<E> explain(Class<E> point) {
-        requireRegistered(point);
+        Registry.DefaultEntry fallback = fallbackOf(point);
         List<ExtensionExplanation.Candidate> candidates = new ArrayList<>();
         ExtensionExplanation.Candidate selected = null;
         for (ChainItem item : chain) {
@@ -74,14 +67,11 @@ final class DefaultResolution<T> implements Resolution {
                 selected = candidate;
             }
         }
-        Registry.DefaultEntry fallback = registry.defaults().get(point);
-        if (fallback != null) {
-            ExtensionExplanation.Candidate candidate = new ExtensionExplanation.Candidate(fallback.userClass().getName(),
-                    chain.size(), ResolveTrace.EntryType.DEFAULT, fallback.userClass(), true);
-            candidates.add(candidate);
-            if (selected == null) {
-                selected = candidate;
-            }
+        ExtensionExplanation.Candidate fallbackCandidate = new ExtensionExplanation.Candidate(fallback.userClass().getName(),
+                chain.size(), ResolveTrace.EntryType.DEFAULT, fallback.userClass(), true);
+        candidates.add(fallbackCandidate);
+        if (selected == null) {
+            selected = fallbackCandidate;
         }
         return new ExtensionExplanation<>(point, candidates, selected);
     }
@@ -96,10 +86,15 @@ final class DefaultResolution<T> implements Resolution {
         list.add(extension);
     }
 
-    private void requireRegistered(Class<?> point) {
-        if (point == null || !registry.points().containsKey(point)) {
+    /**
+     * The default implementation of a registered extension point; every registered point has one.
+     */
+    private Registry.DefaultEntry fallbackOf(Class<?> point) {
+        Registry.DefaultEntry fallback = point == null ? null : registry.defaults().get(point);
+        if (fallback == null) {
             throw new ResolutionException(Reason.EXTENSION_NOT_FOUND,
                     String.format("extension point [%s] is not registered", point == null ? null : point.getName()));
         }
+        return fallback;
     }
 }

@@ -1,5 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.web;
 
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties;
 import io.github.xiaoshicae.extension.core.ExtensionContext;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration;
 import jakarta.servlet.DispatcherType;
@@ -45,12 +46,14 @@ public class EasyExtensionWebAutoConfiguration {
 
         @Bean
         @SuppressWarnings({"rawtypes", "unchecked"})
-        WebMvcConfigurer extensionSessionInterceptorConfigurer(ExtensionContext context, MatcherParamResolver resolver) {
+        WebMvcConfigurer extensionSessionInterceptorConfigurer(ExtensionContext context, MatcherParamResolver resolver,
+                                                              EasyExtensionConfigurationProperties properties) {
             ExtensionSessionInterceptor interceptor = new ExtensionSessionInterceptor(context, resolver);
             return new WebMvcConfigurer() {
                 @Override
                 public void addInterceptors(InterceptorRegistry registry) {
-                    registry.addInterceptor(interceptor).order(Ordered.HIGHEST_PRECEDENCE);
+                    registry.addInterceptor(interceptor).order(Ordered.HIGHEST_PRECEDENCE)
+                            .excludePathPatterns(properties.getSessionExcludePathPatterns());
                 }
             };
         }

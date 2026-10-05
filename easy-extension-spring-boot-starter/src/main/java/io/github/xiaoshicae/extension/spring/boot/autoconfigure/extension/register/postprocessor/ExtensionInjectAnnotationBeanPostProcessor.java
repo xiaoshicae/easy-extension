@@ -7,7 +7,7 @@ import org.springframework.beans.PropertyValues;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor;
+import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * (including private and inherited ones). Constructor and method parameters are handled by
  * {@link ExtensionInjectAutowireCandidateResolver}.
  */
-public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstantiationAwareBeanPostProcessor, BeanFactoryAware {
+public class ExtensionInjectAnnotationBeanPostProcessor implements InstantiationAwareBeanPostProcessor, BeanFactoryAware {
     private final Map<Class<?>, List<Field>> injectableFieldsCache = new ConcurrentHashMap<>(256);
 
     private BeanFactory beanFactory;
@@ -38,12 +38,8 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
     @Override
     public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
         List<Field> fields = injectableFieldsCache.computeIfAbsent(bean.getClass(), this::findInjectableFields);
-        try {
-            for (Field field : fields) {
-                inject(bean, beanName, field);
-            }
-        } catch (Throwable ex) {
-            throw new BeanCreationException(beanName, "Injection of resource dependencies failed", ex);
+        for (Field field : fields) {
+            inject(bean, beanName, field);
         }
         return pvs;
     }
@@ -80,7 +76,7 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
         } catch (BeansException e) {
             throw new BeanCreationException(String.format(
                     "%s of class [%s] failed to resolve @ExtensionInject dependency for field [%s]: no bean [%s] found. " +
-                    "Ensure the extension point type is registered via @ExtensionScan or registerExtensionPoint().",
+                    "Ensure the extension point interface is in a scanned package (the application package, or add it with @ExtensionScan).",
                     beanName, bean.getClass(), field.getName(), injectBeanName), e);
         }
         try {

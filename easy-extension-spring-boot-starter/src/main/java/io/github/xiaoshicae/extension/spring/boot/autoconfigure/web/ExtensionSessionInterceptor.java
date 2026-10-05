@@ -2,6 +2,7 @@ package io.github.xiaoshicae.extension.spring.boot.autoconfigure.web;
 
 import io.github.xiaoshicae.extension.core.Binding;
 import io.github.xiaoshicae.extension.core.ExtensionContext;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.servlet.AsyncHandlerInterceptor;
@@ -29,6 +30,9 @@ public class ExtensionSessionInterceptor<T> implements AsyncHandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (isErrorDispatch(request)) {
+            return true;
+        }
         Binding binding = context.bind(resolver.resolve(request));
         bindings(request).push(binding);
         return true;
@@ -36,12 +40,21 @@ public class ExtensionSessionInterceptor<T> implements AsyncHandlerInterceptor {
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        closeLatest(request);
+        if (!isErrorDispatch(request)) {
+            closeLatest(request);
+        }
     }
 
     @Override
     public void afterConcurrentHandlingStarted(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        closeLatest(request);
+        if (!isErrorDispatch(request)) {
+            closeLatest(request);
+        }
+    }
+
+    // the container's error page is rendered after the request failed (possibly because no business matched): never bind it
+    private static boolean isErrorDispatch(HttpServletRequest request) {
+        return request.getDispatcherType() == DispatcherType.ERROR;
     }
 
     @SuppressWarnings("unchecked")

@@ -292,15 +292,25 @@ public class RegistrationTest {
     }
 
     @Test
-    public void testImplementationMustBeAnInstanceOfTheUserClass() {
-        @SuppressWarnings("unchecked")
+    public void testJdkProxyOfTheUserClassIsAccepted() {
+        // Spring with proxy-target-class=false hands over a JDK proxy together with the target class
         Object jdkProxy = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[]{Pay.class, Matcher.class},
-                (proxy, method, args) -> method.getName().equals("match") ? Boolean.TRUE : "x");
+                (proxy, method, args) -> method.getName().equals("match") ? Boolean.TRUE : "proxied-pay");
+
+        ExtensionContext<Param> context = Fixtures.base().business(jdkProxy, RetailBusiness.class).build();
+
+        assertEquals(RetailBusiness.class, context.catalog().businesses().get(0).implementationClass());
+        assertEquals("proxied-pay", context.resolve(Param.of("anyone")).first(Pay.class).pay());
+    }
+
+    @Test
+    public void testImplementationMustProvideTheExtensionPointsOfItsUserClass() {
+        Object notAPay = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[]{Matcher.class},
+                (proxy, method, args) -> Boolean.TRUE);
 
         RegistrationException e = assertThrows(RegistrationException.class,
-                () -> Fixtures.base().business(jdkProxy, RetailBusiness.class).build());
-        assertTrue(e.getMessage().startsWith("business [biz.retail]: the implementation ["), e.getMessage());
-        assertTrue(e.getMessage().endsWith("is not an instance of its class [" + RetailBusiness.class.getName() + "]"), e.getMessage());
+                () -> Fixtures.base().business(notAPay, RetailBusiness.class).build());
+        assertEquals("business [biz.retail] is not an instance of extension point [" + Pay.class.getName() + "]", e.getMessage());
     }
 
     @Test

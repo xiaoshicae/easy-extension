@@ -4,25 +4,28 @@ import org.springframework.core.ResolvableType;
 import org.springframework.util.Assert;
 
 import java.util.List;
-import org.springframework.util.ClassUtils;
 
-import java.beans.Introspector;
+/**
+ * Bean names of the infrastructure beans registered per extension point.
+ */
+public final class ExtensionPointBeanNameGenerator {
+    private ExtensionPointBeanNameGenerator() {
+    }
 
-public class ExtensionPointBeanNameGenerator {
-    private static final String extensionBeanNameSuffix = "#FirstMatchedExtensionProxy";
-    private static final String extensionListBeanNameSuffix = "#AllMatchedExtensionProxy";
-    private static final String extensionPointClassHolderBeanNameSuffix = "#ExtensionPointClassHolder";
+    private static final String FIRST_SUFFIX = "#FirstMatchedExtensionProxy";
+    private static final String ALL_SUFFIX = "#AllMatchedExtensionProxy";
+    private static final String HOLDER_SUFFIX = "#ExtensionPointClassHolder";
 
     public static String genFirstMatchedExtensionBeanName(String beanClassName) {
-        return getClassShortName(beanClassName) + extensionBeanNameSuffix;
+        return qualified(beanClassName) + FIRST_SUFFIX;
     }
 
     public static String genAllMatchedExtensionBeanName(String beanClassName) {
-        return getClassShortName(beanClassName) + extensionListBeanNameSuffix;
+        return qualified(beanClassName) + ALL_SUFFIX;
     }
 
     public static String genExtensionClassHolderBeanName(String beanClassName) {
-        return getClassShortName(beanClassName) + extensionPointClassHolderBeanNameSuffix;
+        return qualified(beanClassName) + HOLDER_SUFFIX;
     }
 
     /**
@@ -39,9 +42,9 @@ public class ExtensionPointBeanNameGenerator {
         return genFirstMatchedExtensionBeanName(type.toClass().getName());
     }
 
-    private static String getClassShortName(String beanClassName) {
+    // the full class name, so that same-named extension points of different packages do not collide
+    private static String qualified(String beanClassName) {
         Assert.state(beanClassName != null, "No bean class name set");
-        // Use full class name to avoid collision when different packages have same-named interfaces
         return beanClassName;
     }
 }

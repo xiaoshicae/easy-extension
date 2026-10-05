@@ -41,4 +41,6 @@ admin、注解处理器、IntelliJ 插件需与 core 同步升级到 4.0.0。
 - `Resolution` 在创建时对所有挂载能力立即求值,是该时刻的快照,不要跨请求缓存。
 - `allow-unknown-business=true` 时,未知/无匹配业务只走各扩展点的默认实现。
 - 管理后台 JSON 中的 `priority` 现在是 `uses` 中的位置序号(0 最优先)。
+- 不要按名字引用 starter 为扩展点注册的代理 Bean(`xxx#FirstMatchedExtensionProxy` 等,现在用接口全限定名);用 `@ExtensionInject` 或 `ExtensionContext.proxy(...)`。
+- 对未注册的扩展点调用 `proxy()` 抛 `ResolutionException(EXTENSION_NOT_FOUND)`。
 - 响应式栈不自动绑定,显式传递 `Resolution`。
