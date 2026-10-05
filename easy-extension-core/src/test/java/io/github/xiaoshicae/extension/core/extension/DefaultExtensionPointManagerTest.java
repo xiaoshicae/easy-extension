@@ -69,5 +69,31 @@ public class DefaultExtensionPointManagerTest {
         ExtensionPoint getInstance = manager.getExtensionPointImplementationInstance(ExtensionPoint.class, "name");
         assertEquals(instance, getInstance);
     }
-}
 
+    @Test
+    public void testFindExtensionPointImplementationInstance() throws ExtensionException {
+        DefaultExtensionPointManager manager = new DefaultExtensionPointManager();
+
+        interface ExtensionPoint1 {}
+        interface ExtensionPoint2 {}
+        class ExtensionPointImpl1 implements ExtensionPoint1 {}
+        ExtensionPointImpl1 instance = new ExtensionPointImpl1();
+        manager.registerExtensionPointImplementationInstance(ExtensionPoint1.class, "name", instance);
+
+        // found
+        assertSame(instance, manager.findExtensionPointImplementationInstance(ExtensionPoint1.class, "name"));
+        // not found returns null instead of throwing: unknown name / extension point without any registration
+        assertNull(manager.findExtensionPointImplementationInstance(ExtensionPoint1.class, "other"));
+        assertNull(manager.findExtensionPointImplementationInstance(ExtensionPoint2.class, "name"));
+
+        // parameter errors still throw, with the same messages as the getter
+        QueryException e = assertThrows(QueryException.class, () -> manager.findExtensionPointImplementationInstance(null, "name"));
+        assertEquals("extension point class should not be null", e.getMessage());
+        e = assertThrows(QueryException.class, () -> manager.findExtensionPointImplementationInstance(ExtensionPoint1.class, null));
+        assertEquals("name should not be null", e.getMessage());
+
+        // the getter still reports "not found" with an exception
+        e = assertThrows(QueryException.class, () -> manager.getExtensionPointImplementationInstance(ExtensionPoint1.class, "other"));
+        assertEquals("instance not found by extension point class [ExtensionPoint1] + name [other]", e.getMessage());
+    }
+}

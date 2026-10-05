@@ -9,14 +9,16 @@ import io.github.xiaoshicae.extension.core.exception.RegisterParamException;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class DefaultBusinessManager<T> implements IBusinessManager<T> {
-    // Synchronized LinkedHashMap for O(1) lookup and ordered iteration
-    private final Map<String, IBusiness<T>> businesses = Collections.synchronizedMap(new LinkedHashMap<>());
+    // Registration happens at startup, reads happen on every request: lookups go through a concurrent map,
+    // iteration goes through an immutable snapshot (registration order) that is replaced on each register.
+    private final Map<String, IBusiness<T>> businesses = new ConcurrentHashMap<>();
+    private volatile List<IBusiness<T>> snapshot = List.of();
 
     @Override
     public void registerBusiness(IBusiness<T> business) throws RegisterException {
@@ -33,11 +35,18 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
             }
         }
 
-        synchronized (businesses) {
+        if (business.code() == null) {
+            throw new RegisterParamException("instance code should not be null");
+        }
+
+        synchronized (this) {
             if (businesses.containsKey(business.code())) {
                 throw new RegisterDuplicateException(String.format("business with code [%s] already register", business.code()));
             }
             businesses.put(business.code(), business);
+            List<IBusiness<T>> next = new ArrayList<>(snapshot);
+            next.add(business);
+            snapshot = Collections.unmodifiableList(next);
         }
     }
 
@@ -55,8 +64,6 @@ public class DefaultBusinessManager<T> implements IBusinessManager<T> {
 
     @Override
     public List<IBusiness<T>> listAllBusinesses() {
-        synchronized (businesses) {
-            return Collections.unmodifiableList(new ArrayList<>(businesses.values()));
-        }
+        return snapshot;
     }
 }
