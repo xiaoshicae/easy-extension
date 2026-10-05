@@ -138,25 +138,13 @@ public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstanti
         }
 
         private String buildInjectBeanName(Field field) {
-            Class<?> fieldType = field.getType();
-            if (fieldType == List.class) {
-                Class<?> generic = getGenericFromField(field);
-                if (generic == null) {
-                    throw new BeanCreationException(String.format(
+            String beanName = ExtensionPointBeanNameGenerator.genInjectBeanName(ResolvableType.forField(field));
+            if (beanName == null) {
+                throw new BeanCreationException(String.format(
                         "@ExtensionInject on field [%s] of class [%s] requires a generic type parameter, e.g., List<MyExtension>",
                         field.getName(), field.getDeclaringClass().getName()));
-                }
-                return ExtensionPointBeanNameGenerator.genAllMatchedExtensionBeanName(generic.getName());
             }
-            return ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(fieldType.getName());
-        }
-
-        private Class<?> getGenericFromField(Field field) {
-            ResolvableType resolvableType = ResolvableType.forField(field);
-//            if (!resolvableType.hasGenerics()) {
-//                return null;
-//            }
-            return resolvableType.getGeneric(0).resolve();
+            return beanName;
         }
     }
 

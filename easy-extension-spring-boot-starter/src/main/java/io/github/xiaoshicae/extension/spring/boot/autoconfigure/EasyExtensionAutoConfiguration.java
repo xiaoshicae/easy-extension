@@ -125,15 +125,16 @@ public class EasyExtensionAutoConfiguration<T> {
             }
         }
 
-        // register by bean
+        // register by bean. A class may be annotated AND implement the framework interface; it is then found
+        // by both routes (same bean instance) and must be registered once.
         if (this.extensionPointGroupImplementation != null) {
-            defaultImpls.add(this.extensionPointGroupImplementation);
+            addIfAbsent(defaultImpls, this.extensionPointGroupImplementation);
         }
-        if (this.abilities != null && !this.abilities.isEmpty()) {
-            abilities.addAll(this.abilities);
+        if (this.abilities != null) {
+            this.abilities.forEach(ability -> addIfAbsent(abilities, ability));
         }
-        if (this.businesses != null && !this.businesses.isEmpty()) {
-            businesses.addAll(this.businesses);
+        if (this.businesses != null) {
+            this.businesses.forEach(business -> addIfAbsent(businesses, business));
         }
 
         // check
@@ -156,6 +157,15 @@ public class EasyExtensionAutoConfiguration<T> {
         for (Matcher<T> business : businesses) {
             helper.addBusinesses(business);
         }
+    }
+
+    private static <E> void addIfAbsent(List<? super E> list, E item) {
+        for (Object existing : list) {
+            if (existing == item) {
+                return;
+            }
+        }
+        list.add(item);
     }
 
     @Autowired(required = false)
