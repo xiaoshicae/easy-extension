@@ -55,8 +55,8 @@ public interface IExtensionSession<T> {
      * be selected by {@code getFirstMatchedExtension(extensionPointType)} right now
      * and why. Useful for diagnostics and Admin UI "resolve" views.
      * <p>
-     * Requires that a session has been initialized; otherwise throws
-     * {@link io.github.xiaoshicae.extension.core.exception.SessionException}.
+     * If no session has been initialized for the scope, the explanation has no candidates
+     * and nothing is selected.
      * </p>
      *
      * @param extensionPointType the extension point interface to inspect

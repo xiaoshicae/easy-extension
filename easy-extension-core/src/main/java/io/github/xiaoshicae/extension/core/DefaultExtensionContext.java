@@ -121,6 +121,12 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
      */
     private final ThreadLocal<ResolveTrace> lastResolveTrace = new ThreadLocal<>();
 
+    /**
+     * ThreadLocal storage for the resolve trace of each initialized scope, so that
+     * {@link #explainScoped(String, Class)} works for every scope, not only the last one.
+     */
+    private final ThreadLocal<Map<String, ResolveTrace>> scopedResolveTraces = ThreadLocal.withInitial(HashMap::new);
+
     public DefaultExtensionContext() {
         this(false, false, List.of());
     }
@@ -323,13 +329,18 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         if (scope == null) {
             throw new SessionParamException("scope should not be null");
         }
+        if (extensionPointDefaultImplementation == null) {
+            throw new SessionException("extension point default implementation not registered");
+        }
         long startTime = System.currentTimeMillis();
         boolean defaultScope = EASY_EXTENSION_DEFAULT_SCOPE.equals(scope);
 
         if (defaultScope && session.hasScopedSession(EASY_EXTENSION_DEFAULT_SCOPE) && enableLogger) {
             logger.warn("{} session already initialized, this call will override previous session data", LOG_PREFIX);
         }
+        // a failed init must not leave the previous (stale) session of this scope behind
         session.removeScopedSession(scope);
+        scopedResolveTraces.get().remove(scope);
 
         if (enableLogger) {
             logger.info("{} {} init start", LOG_PREFIX, sessionLabel(scope));
@@ -342,8 +353,15 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             if (defaultScope) throw e;
             throw new SessionException(String.format("scope [%s], %s", scope, e.getMessage()), e);
         }
-        for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
-            session.setScopedMatchedCode(scope, entry.getKey(), entry.getValue());
+        try {
+            for (Map.Entry<String, Integer> entry : codePriorityMap.entrySet()) {
+                session.setScopedMatchedCode(scope, entry.getKey(), entry.getValue());
+            }
+        } catch (SessionException e) {
+            // e.g. priority conflict with the default implementation: never keep a half-written session
+            session.removeScopedSession(scope);
+            scopedResolveTraces.get().remove(scope);
+            throw e;
         }
 
         if (enableLogger) {
@@ -379,7 +397,9 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
         recordDefaultImplementation(codePriorityMap, traceBuilder, scopePrefix);
 
         traceBuilder.costMillis(System.currentTimeMillis() - startTime);
-        lastResolveTrace.set(traceBuilder.build());
+        ResolveTrace trace = traceBuilder.build();
+        lastResolveTrace.set(trace);
+        scopedResolveTraces.get().put(scope, trace);
         return codePriorityMap;
     }
 
@@ -421,7 +441,11 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
                                          Map<String, Integer> codePriorityMap,
                                          ResolveTrace.Builder traceBuilder,
                                          String scopePrefix) throws SessionException {
-        for (UsedAbility usedAbility : matchedBusiness.usedAbilities()) {
+        List<UsedAbility> usedAbilities = matchedBusiness.usedAbilities();
+        if (usedAbilities == null) {
+            return;
+        }
+        for (UsedAbility usedAbility : usedAbilities) {
             IAbility<T> ability;
             try {
                 ability = abilityManager.getAbility(usedAbility.code());
@@ -499,6 +523,7 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
     public void removeSession() {
         session.removeAllSession();
         lastResolveTrace.remove();
+        scopedResolveTraces.remove();
         if (enableLogger) {
             logger.info("{} all session (include scoped session) has been removed", LOG_PREFIX);
         }
@@ -523,8 +548,8 @@ public class DefaultExtensionContext<T> implements IExtensionContext<T> {
             throw new IllegalArgumentException("scope should not be null");
         }
 
-        ResolveTrace trace = lastResolveTrace.get();
-        List<ResolveTrace.ResolutionEntry> chain = trace != null && Objects.equals(trace.getScope(), scope)
+        ResolveTrace trace = scopedResolveTraces.get().get(scope);
+        List<ResolveTrace.ResolutionEntry> chain = trace != null
                 ? trace.getResolutionChain()
                 : List.of();
 
