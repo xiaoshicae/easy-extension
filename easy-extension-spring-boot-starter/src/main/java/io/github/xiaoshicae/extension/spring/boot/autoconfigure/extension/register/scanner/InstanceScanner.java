@@ -21,7 +21,9 @@ public class InstanceScanner extends ClassPathBeanDefinitionScanner {
     public void registerBeanDefinition(BeanDefinitionHolder holder, BeanDefinitionRegistry registry) {
         super.registerBeanDefinition(holder, registry);
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(InstanceHolder.class);
-        builder.addConstructorArgValue(holder.getBeanDefinition());
+        // reference the bean registered above; passing the BeanDefinition itself would make Spring
+        // create a second, separate instance as an inner bean of the holder
+        builder.addConstructorArgReference(holder.getBeanName());
         registry.registerBeanDefinition(holder.getBeanName()+"#InstanceHolder", builder.getBeanDefinition());
     }
 }

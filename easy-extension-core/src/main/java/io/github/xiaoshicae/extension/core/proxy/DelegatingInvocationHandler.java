@@ -1,6 +1,7 @@
 package io.github.xiaoshicae.extension.core.proxy;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashSet;
@@ -33,6 +34,12 @@ class DelegatingInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        return proxyMethods.contains(method) ? method.invoke(proxyTemplate, args) : method.invoke(realInstance, args);
+        Object target = proxyMethods.contains(method) ? proxyTemplate : realInstance;
+        try {
+            return method.invoke(target, args);
+        } catch (InvocationTargetException e) {
+            // surface what the implementation threw, not the reflection wrapper
+            throw e.getCause();
+        }
     }
 }
