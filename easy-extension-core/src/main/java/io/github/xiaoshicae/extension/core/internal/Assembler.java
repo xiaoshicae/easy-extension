@@ -52,10 +52,8 @@ public final class Assembler {
         Map<String, Registry.BusinessEntry<T>> businesses = businesses(businessDefinitions, abilities, points, businessResolver != null);
 
         for (ExtensionPointInfo point : points.values()) {
-            if (!point.optional() && !defaults.containsKey(point.type())) {
-                throw new RegistrationException(String.format(
-                        "extension point [%s] has no default implementation: add a @DefaultImplementation class for it, or mark the extension point optional",
-                        point.type().getName()));
+            if (!defaults.containsKey(point.type())) {
+                defaults.put(point.type(), noOpDefault(point.type()));
             }
         }
 
@@ -76,6 +74,19 @@ public final class Assembler {
         return new DefaultExtensionContext<>(registry);
     }
 
+    /**
+     * The default of an extension point nobody provided one for: possible only when no method needs a return value.
+     */
+    private static Registry.DefaultEntry noOpDefault(Class<?> point) {
+        if (!NoOpDefaults.canBeNoOp(point)) {
+            throw new RegistrationException(String.format(
+                    "extension point [%s] has no default implementation: add a @DefaultImplementation class for it "
+                            + "(only an extension point whose methods all return void gets a no-op default automatically)",
+                    point.getName()));
+        }
+        return new Registry.DefaultEntry(NoOpDefaults.create(point), point, Set.of(point));
+    }
+
     private static Map<Class<?>, ExtensionPointInfo> points(Set<Class<?>> pointTypes) {
         Map<Class<?>, ExtensionPointInfo> points = new LinkedHashMap<>();
         for (Class<?> type : pointTypes) {
@@ -87,7 +98,7 @@ public final class Assembler {
             if (annotation == null) {
                 throw new RegistrationException(String.format("extension point [%s] should be annotated with @ExtensionPoint", type.getName()));
             }
-            points.put(type, new ExtensionPointInfo(type, annotation.version(), List.of(annotation.scenarios()), annotation.optional()));
+            points.put(type, new ExtensionPointInfo(type, annotation.version(), List.of(annotation.scenarios())));
         }
         return points;
     }

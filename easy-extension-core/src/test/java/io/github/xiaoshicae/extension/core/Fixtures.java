@@ -7,6 +7,7 @@ import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
 import io.github.xiaoshicae.extension.core.annotation.Self;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -36,9 +37,10 @@ public final class Fixtures {
         String ship();
     }
 
-    @ExtensionPoint(optional = true)
+    /** A hook: all methods return void, so it needs no default implementation. */
+    @ExtensionPoint
     public interface Audit {
-        String audit();
+        void audit(List<String> trail);
     }
 
     @DefaultImplementation
@@ -91,8 +93,8 @@ public final class Fixtures {
         }
 
         @Override
-        public String audit() {
-            return "ability-risk";
+        public void audit(List<String> trail) {
+            trail.add("ability-risk");
         }
     }
 

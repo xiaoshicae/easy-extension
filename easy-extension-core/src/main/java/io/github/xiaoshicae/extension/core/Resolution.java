@@ -20,15 +20,15 @@ public interface Resolution {
 
     /**
      * The highest-precedence implementation of the extension point: the business or a mounted ability that
-     * implements it, else the default implementation.
+     * implements it, else the default implementation. Never fails for a registered extension point.
      *
-     * @throws io.github.xiaoshicae.extension.core.exception.ResolutionException if there is none
+     * @throws io.github.xiaoshicae.extension.core.exception.ResolutionException if the extension point is not registered
      */
     <E> E first(Class<E> point);
 
     /**
      * All implementations of the extension point in precedence order, the default implementation last.
-     * Empty only for an optional extension point nothing implements.
+     * Never empty: the default implementation is always last.
      */
     <E> List<E> all(Class<E> point);
 

@@ -11,6 +11,8 @@ import java.lang.annotation.Target;
  * <p>
  * The framework resolves, per request, which implementation answers a call: the matched business,
  * the abilities it mounts (in the order of {@link Business#uses()}), then the default implementation.
+ * Every extension point has a default implementation: a {@link DefaultImplementation}, or, when all its methods
+ * return {@code void}, a no-op the framework provides.
  * An extension point is recognized wherever it appears in the type hierarchy of an implementation
  * (superclass, interface, or an interface's parent interface).
  * </p>
@@ -31,13 +33,4 @@ public @interface ExtensionPoint {
      * {@code default} methods.
      */
     int version() default 1;
-
-    /**
-     * Whether the extension point may have no default implementation. Not optional by default: every
-     * extension point must have a {@link DefaultImplementation}, so that calling it never fails.
-     * An optional extension point without any matching implementation throws
-     * {@link io.github.xiaoshicae.extension.core.exception.ResolutionException} on
-     * {@code first(...)} and returns an empty list on {@code all(...)}.
-     */
-    boolean optional() default false;
 }

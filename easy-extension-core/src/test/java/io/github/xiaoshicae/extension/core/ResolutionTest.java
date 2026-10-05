@@ -12,6 +12,7 @@ import io.github.xiaoshicae.extension.core.trace.ExtensionExplanation;
 import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -162,17 +163,19 @@ public class ResolutionTest {
     }
 
     @Test
-    public void testOptionalExtensionPoint() {
+    public void testVoidExtensionPointGetsANoOpDefault() {
         ExtensionContext<Param> context = Fixtures.base().business(new AuditedBusiness()).business(new RetailBusiness()).build();
 
-        Resolution audited = context.resolve(Param.of("audited"));
-        assertEquals("ability-risk", audited.first(Audit.class).audit());
+        List<String> audited = new ArrayList<>();
+        context.resolve(Param.of("audited")).first(Audit.class).audit(audited);
+        assertEquals(List.of("ability-risk"), audited);
 
         Resolution retail = context.resolve(Param.of("retail"));
-        assertTrue(retail.all(Audit.class).isEmpty());
-        ResolutionException e = assertThrows(ResolutionException.class, () -> retail.first(Audit.class));
-        assertEquals(Reason.EXTENSION_NOT_FOUND, e.reason());
-        assertEquals("Extension<" + Audit.class.getName() + "> not found", e.getMessage());
+        List<String> trail = new ArrayList<>();
+        retail.first(Audit.class).audit(trail);
+        assertEquals(List.of(), trail);
+        assertEquals(1, retail.all(Audit.class).size());
+        assertEquals("NoOpDefault<" + Audit.class.getName() + ">", retail.first(Audit.class).toString());
     }
 
     @Test

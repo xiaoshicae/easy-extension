@@ -44,9 +44,10 @@ public class RegistrationTest {
     // ---- default implementations
 
     @Test
-    public void testEveryRequiredExtensionPointNeedsADefaultImplementation() {
+    public void testExtensionPointWithReturnValuesNeedsADefaultImplementation() {
         assertEquals("extension point [" + Ship.class.getName() + "] has no default implementation: "
-                        + "add a @DefaultImplementation class for it, or mark the extension point optional",
+                        + "add a @DefaultImplementation class for it "
+                        + "(only an extension point whose methods all return void gets a no-op default automatically)",
                 buildError(ExtensionContext.<Param>builder().extensionPoint(Pay.class, Ship.class).defaultImplementation(new DefaultPay())));
     }
 

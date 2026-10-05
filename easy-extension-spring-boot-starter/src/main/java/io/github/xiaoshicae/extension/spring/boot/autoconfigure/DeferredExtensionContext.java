@@ -65,7 +65,14 @@ public class DeferredExtensionContext<T> implements ExtensionContext<T>, SmartIn
         for (ExtensionPointHolder holder : beanFactory.getBeansOfType(ExtensionPointHolder.class).values()) {
             builder.extensionPoint(holder.getExtensionPointClass());
         }
-        forEachAnnotated(DefaultImplementation.class, builder::defaultImplementation);
+        forEachAnnotated(DefaultImplementation.class, (bean, userClass) -> {
+            if (userClass.isAnnotationPresent(DefaultImplementation.class)) {
+                builder.defaultImplementation(bean, userClass);
+            } else {
+                // the annotation sits on the @Bean method (e.g. a lambda for a single-method extension point)
+                builder.defaultImplementation(DefaultImplementationDefinition.of(bean));
+            }
+        });
         forEachAnnotated(Ability.class, builder::ability);
         forEachAnnotated(Business.class, builder::business);
         // providers declared without annotations

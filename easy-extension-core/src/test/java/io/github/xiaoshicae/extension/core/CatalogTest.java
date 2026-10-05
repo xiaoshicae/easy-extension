@@ -25,8 +25,6 @@ public class CatalogTest {
                 .business(new RetailBusiness()).business(new FreshBusiness()).build().catalog();
 
         assertEquals(List.of(Pay.class, Ship.class, Audit.class), catalog.extensionPoints().stream().map(ExtensionPointInfo::type).toList());
-        assertFalse(catalog.extensionPoints().get(0).optional());
-        assertTrue(catalog.extensionPoints().get(2).optional());
         assertEquals(1, catalog.extensionPoints().get(0).version());
 
         AbilityInfo installment = catalog.abilities().stream().filter(a -> a.code().equals("ability.installment")).findFirst().orElseThrow();

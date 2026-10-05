@@ -55,6 +55,15 @@ public final class ExtensionContextBuilder<T> {
         return defaultImplementation(AnnotationReader.defaultImplementation(implementation, userClass));
     }
 
+    /**
+     * Registers an implementation of a single extension point as its default, without an annotated class,
+     * e.g. a lambda for a single-method extension point.
+     */
+    public <E> ExtensionContextBuilder<T> defaultImplementationFor(Class<E> point, E implementation) {
+        Objects.requireNonNull(point, "point");
+        return defaultImplementation(DefaultImplementationDefinition.of(requireImplementation(implementation)));
+    }
+
     public ExtensionContextBuilder<T> defaultImplementation(DefaultImplementationDefinition definition) {
         defaultImplementations.add(Objects.requireNonNull(definition, "definition"));
         return this;
