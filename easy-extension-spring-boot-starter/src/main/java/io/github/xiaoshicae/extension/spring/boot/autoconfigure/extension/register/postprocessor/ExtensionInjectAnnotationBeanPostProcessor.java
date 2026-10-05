@@ -7,156 +7,107 @@ import org.springframework.beans.PropertyValues;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.annotation.InjectionMetadata;
 import org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.core.annotation.MergedAnnotation;
-import org.springframework.core.annotation.MergedAnnotations;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ReflectionUtils;
-import org.springframework.util.StringUtils;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Injects the session-aware extension point proxies into {@link ExtensionInject}-annotated fields
+ * (including private and inherited ones). Constructor and method parameters are handled by
+ * {@link ExtensionInjectAutowireCandidateResolver}.
+ */
 public class ExtensionInjectAnnotationBeanPostProcessor implements SmartInstantiationAwareBeanPostProcessor, BeanFactoryAware {
-    private final transient Map<String, InjectionMetadata> injectionMetadataCache = new ConcurrentHashMap<>(256);
-    private final Set<Class<? extends Annotation>> autowiredAnnotationTypes = new LinkedHashSet<>(4);
+    private final Map<Class<?>, List<Field>> injectableFieldsCache = new ConcurrentHashMap<>(256);
 
     private BeanFactory beanFactory;
 
-    public ExtensionInjectAnnotationBeanPostProcessor() {
-        this.autowiredAnnotationTypes.add(ExtensionInject.class);
-    }
-
     @Override
-    public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
         this.beanFactory = beanFactory;
     }
 
     @Override
-    public PropertyValues postProcessProperties(@NonNull PropertyValues pvs, Object bean, @NonNull String beanName) {
-        InjectionMetadata metadata = findResourceMetadata(beanName, bean.getClass(), pvs);
+    public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
+        List<Field> fields = injectableFieldsCache.computeIfAbsent(bean.getClass(), this::findInjectableFields);
         try {
-            metadata.inject(bean, beanName, pvs);
+            for (Field field : fields) {
+                inject(bean, beanName, field);
+            }
         } catch (Throwable ex) {
             throw new BeanCreationException(beanName, "Injection of resource dependencies failed", ex);
         }
         return pvs;
     }
 
-    private InjectionMetadata findResourceMetadata(String beanName, Class<?> clazz, @Nullable PropertyValues pvs) {
-        String cacheKey = (StringUtils.hasLength(beanName) ? beanName : clazz.getName());
-        InjectionMetadata metadata = injectionMetadataCache.get(cacheKey);
-        if (InjectionMetadata.needsRefresh(metadata, clazz)) {
-            synchronized (injectionMetadataCache) {
-                metadata = injectionMetadataCache.get(cacheKey);
-                if (InjectionMetadata.needsRefresh(metadata, clazz)) {
-                    if (metadata != null) {
-                        metadata.clear(pvs);
-                    }
-                    metadata = buildResourceMetadata(clazz);
-                    injectionMetadataCache.put(cacheKey, metadata);
+    /**
+     * Annotated fields of the class and its superclasses, superclass fields first.
+     */
+    private List<Field> findInjectableFields(Class<?> clazz) {
+        if (!AnnotationUtils.isCandidateClass(clazz, ExtensionInject.class)) {
+            return List.of();
+        }
+        List<Field> fields = new ArrayList<>();
+        for (Class<?> current = clazz; current != null && current != Object.class; current = current.getSuperclass()) {
+            List<Field> declared = new ArrayList<>();
+            for (Field field : current.getDeclaredFields()) {
+                if (!field.isAnnotationPresent(ExtensionInject.class)) {
+                    continue;
                 }
-            }
-        }
-        return metadata;
-    }
-
-    private InjectionMetadata buildResourceMetadata(Class<?> clazz) {
-        if (!AnnotationUtils.isCandidateClass(clazz, autowiredAnnotationTypes)) {
-            return InjectionMetadata.EMPTY;
-        }
-
-        final List<InjectionMetadata.InjectedElement> elements = new ArrayList<>();
-        Class<?> targetClass = clazz;
-
-        do {
-            final List<InjectionMetadata.InjectedElement> fieldElements = new ArrayList<>();
-            ReflectionUtils.doWithLocalFields(targetClass, field -> {
-                MergedAnnotation<?> ann = findAutowiredAnnotation(field);
-                if (ann != null) {
-                    if (Modifier.isStatic(field.getModifiers())) {
-                        throw new BeanCreationException("@ExtensionInject annotation is not supported on static fields: " + field);
-                    }
-                    fieldElements.add(new AutowiredFieldElement(field));
+                if (Modifier.isStatic(field.getModifiers())) {
+                    throw new BeanCreationException("@ExtensionInject annotation is not supported on static fields: " + field);
                 }
-            });
-            elements.addAll(0, fieldElements);
-            targetClass = targetClass.getSuperclass();
-        } while (targetClass != null && targetClass != Object.class);
-
-        return InjectionMetadata.forElements(elements, clazz);
+                declared.add(field);
+            }
+            fields.addAll(0, declared);
+        }
+        return List.copyOf(fields);
     }
 
-    private class AutowiredFieldElement extends InjectionMetadata.InjectedElement {
-
-        public AutowiredFieldElement(Field field) {
-            super(field, null);
+    private void inject(Object bean, String beanName, Field field) {
+        String injectBeanName = buildInjectBeanName(field);
+        Object dependency;
+        try {
+            dependency = Objects.requireNonNull(beanFactory).getBean(injectBeanName);
+        } catch (BeansException e) {
+            throw new BeanCreationException(String.format(
+                    "%s of class [%s] failed to resolve @ExtensionInject dependency for field [%s]: no bean [%s] found. " +
+                    "Ensure the extension point type is registered via @ExtensionScan or registerExtensionPoint().",
+                    beanName, bean.getClass(), field.getName(), injectBeanName), e);
         }
-
-        @Override
-        protected void inject(@NonNull Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
-            Field field = (Field) this.member;
-            String injectBeanName = buildInjectBeanName(field);
-            Object dependency;
-            try {
-                dependency = Objects.requireNonNull(beanFactory).getBean(injectBeanName);
-            } catch (BeansException e) {
-                throw new BeanCreationException(String.format(
-                        "%s of class [%s] failed to resolve @ExtensionInject dependency for field [%s]: no bean [%s] found. " +
-                        "Ensure the extension point type is registered via @ExtensionScan or registerExtensionPoint().",
-                        beanName, bean.getClass(), field.getName(), injectBeanName), e);
-            }
-            try {
-                ReflectionUtils.makeAccessible(field);
-            } catch (RuntimeException e) {
-                // e.g. InaccessibleObjectException (JPMS) or SecurityException under a SecurityManager
-                throw new BeanCreationException(String.format(
-                        "%s of class [%s] cannot make field [%s] accessible for @ExtensionInject. " +
-                        "If running under a SecurityManager or JPMS, grant reflective access to the declaring class.",
-                        beanName, bean.getClass(), field.getName()), e);
-            }
-            try {
-                field.set(bean, dependency);
-            } catch (IllegalAccessException e) {
-                throw new BeanCreationException(String.format(
-                        "%s of class [%s] inject dependency of field [%s] failed",
-                        beanName, bean.getClass(), field.getName()), e);
-            }
+        try {
+            ReflectionUtils.makeAccessible(field);
+        } catch (RuntimeException e) {
+            // e.g. InaccessibleObjectException (JPMS) or SecurityException under a SecurityManager
+            throw new BeanCreationException(String.format(
+                    "%s of class [%s] cannot make field [%s] accessible for @ExtensionInject. " +
+                    "If running under a SecurityManager or JPMS, grant reflective access to the declaring class.",
+                    beanName, bean.getClass(), field.getName()), e);
         }
-
-        private String buildInjectBeanName(Field field) {
-            String beanName = ExtensionPointBeanNameGenerator.genInjectBeanName(ResolvableType.forField(field));
-            if (beanName == null) {
-                throw new BeanCreationException(String.format(
-                        "@ExtensionInject on field [%s] of class [%s] requires a generic type parameter, e.g., List<MyExtension>",
-                        field.getName(), field.getDeclaringClass().getName()));
-            }
-            return beanName;
+        try {
+            field.set(bean, dependency);
+        } catch (IllegalAccessException e) {
+            throw new BeanCreationException(String.format(
+                    "%s of class [%s] inject dependency of field [%s] failed",
+                    beanName, bean.getClass(), field.getName()), e);
         }
     }
 
-    @Nullable
-    private MergedAnnotation<?> findAutowiredAnnotation(AccessibleObject ao) {
-        MergedAnnotations annotations = MergedAnnotations.from(ao);
-        for (Class<? extends Annotation> type : autowiredAnnotationTypes) {
-            MergedAnnotation<?> annotation = annotations.get(type);
-            if (annotation.isPresent()) {
-                return annotation;
-            }
+    private String buildInjectBeanName(Field field) {
+        String beanName = ExtensionPointBeanNameGenerator.genInjectBeanName(ResolvableType.forField(field));
+        if (beanName == null) {
+            throw new BeanCreationException(String.format(
+                    "@ExtensionInject on field [%s] of class [%s] requires a generic type parameter, e.g., List<MyExtension>",
+                    field.getName(), field.getDeclaringClass().getName()));
         }
-        return null;
+        return beanName;
     }
 }

@@ -44,18 +44,8 @@ public class ExtensionScannerConfigurer implements BeanDefinitionRegistryPostPro
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
-        // scan @ExtensionPoint
-        ExtensionPointScanner extensionPointScanner = new ExtensionPointScanner(registry);
-        extensionPointScanner.setResourceLoader(getApplicationContext());
-        extensionPointScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
-
-        // scan @MatcherParam
-        ClassScanner classScanner = new ClassScanner(registry);
-        classScanner.setResourceLoader(getApplicationContext());
-        classScanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
-
-        // scan @Ability, @Business, @ExtensionPointDefaultImplementation ...
-        InstanceScanner scanner = new InstanceScanner(registry);
+        // one pass over the packages: @ExtensionPoint, @MatcherParam, @Ability, @Business, @ExtensionPointDefaultImplementation
+        ExtensionComponentScanner scanner = new ExtensionComponentScanner(registry);
         scanner.setResourceLoader(getApplicationContext());
         scanner.scan(StringUtils.tokenizeToStringArray(getScanPackages(), ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
     }

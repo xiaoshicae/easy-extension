@@ -12,6 +12,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +52,56 @@ class ExtensionInjectAnnotationBeanPostProcessorTest {
         @ExtensionInject
         @SuppressWarnings("rawtypes")
         List rawList;
+    }
+
+    static class ParentService {
+        @ExtensionInject
+        private FreightExt parentFreight;
+    }
+
+    static class ChildService extends ParentService {
+        @ExtensionInject
+        private List<FreightExt> childAllFreight;
+
+        // not annotated: must stay untouched
+        FreightExt untouched;
+    }
+
+    static class PlainBean {
+        String name = "plain";
+    }
+
+    @Test
+    void injectsPrivateAndInheritedFieldsAndLeavesOthersAlone() throws Exception {
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        FreightExt single = new FreightExtImpl();
+        List<FreightExt> all = List.of(new FreightExtImpl());
+        bf.registerSingleton(
+                ExtensionPointBeanNameGenerator.genFirstMatchedExtensionBeanName(FreightExt.class.getName()), single);
+        bf.registerSingleton(
+                ExtensionPointBeanNameGenerator.genAllMatchedExtensionBeanName(FreightExt.class.getName()), all);
+
+        ExtensionInjectAnnotationBeanPostProcessor bpp = new ExtensionInjectAnnotationBeanPostProcessor();
+        bpp.setBeanFactory(bf);
+
+        ChildService child = new ChildService();
+        bpp.postProcessProperties(new MutablePropertyValues(), child, "childService");
+        // a second bean of the same class (metadata is cached per class) is injected as well
+        ChildService other = new ChildService();
+        bpp.postProcessProperties(new MutablePropertyValues(), other, "otherChildService");
+        PlainBean plain = new PlainBean();
+        assertNotNull(bpp.postProcessProperties(new MutablePropertyValues(), plain, "plain"));
+
+        for (ChildService bean : List.of(child, other)) {
+            java.lang.reflect.Field parentField = ParentService.class.getDeclaredField("parentFreight");
+            parentField.setAccessible(true);
+            assertSame(single, parentField.get(bean), "private field of the superclass");
+            java.lang.reflect.Field childField = ChildService.class.getDeclaredField("childAllFreight");
+            childField.setAccessible(true);
+            assertSame(all, childField.get(bean), "private list field of the subclass");
+            assertNull(bean.untouched);
+        }
+        assertEquals("plain", plain.name);
     }
 
     @Test
