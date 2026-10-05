@@ -7,11 +7,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a class as a business identity.
+ * Marks a class as a business: an integration party (tenant, merchant, business line) that mounts
+ * abilities and may implement extension points itself.
  * <p>
- * A business represents a specific tenant, merchant, or business line.
- * It can declare which scenarios it handles, which abilities it uses,
- * and implement extension point interfaces for customization.
+ * The class must implement {@link io.github.xiaoshicae.extension.core.interfaces.Matcher} unless the
+ * context uses a {@link io.github.xiaoshicae.extension.core.spi.BusinessResolver}.
  * </p>
  */
 @Target(ElementType.TYPE)
@@ -20,26 +20,18 @@ import java.lang.annotation.Target;
 public @interface Business {
 
     /**
-     * Code of business.
+     * Unique code of the business. Defaults to the fully qualified class name.
      */
-    String code();
+    String code() default "";
 
     /**
-     * Priority of business,
-     * compare with priority of abilities used by business.
+     * Abilities mounted by this business, and the position of the business itself, as a precedence order:
+     * earlier entries win. List {@link Self} to place the business's own implementation; if it is not
+     * listed, the business comes first.
+     * <pre>{@code
+     * uses = { FreeShipping.class }                  // business, then FreeShipping
+     * uses = { FreeShipping.class, Self.class }      // FreeShipping overrides the business
+     * }</pre>
      */
-    int priority() default 0;
-
-    /**
-     * Abilities used by business,
-     * item format:
-     * <p>
-     * <code>
-     * ${abilityCode}[::${priority}], e.g. {"abilityX", "abilityY::10"}
-     * </code>
-     * </p>
-     * Priority of ability used by business is used to
-     * compare with priority of other abilities used by business or business's own priority.
-     */
-    String[] abilities() default {};
+    Class<?>[] uses() default {};
 }

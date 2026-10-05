@@ -3,9 +3,6 @@ package io.github.xiaoshicae.extension.admin.spring.boot.autoconfigure.util;
 import io.github.xiaoshicae.extension.core.annotation.Ability;
 import io.github.xiaoshicae.extension.core.annotation.Business;
 import io.github.xiaoshicae.extension.core.annotation.ExtensionPoint;
-import io.github.xiaoshicae.extension.core.business.IBusiness;
-import io.github.xiaoshicae.extension.core.business.UsedAbility;
-import io.github.xiaoshicae.extension.core.interfaces.Identifier;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,7 +18,7 @@ public class ClassUtilsTest {
         String classInfo = ClassUtils.classInfoToString(TypeInfoTestClass.class);
         String expectedClassInfo = """
                 @ExtensionPoint
-                class TypeInfoTestClass extends SClass implements Identifier {
+                class TypeInfoTestClass extends SClass {
                     private String a;
                                 
                     private Integer b;
@@ -66,10 +63,6 @@ public class ClassUtilsTest {
         assertEquals(clazz, MyBusiness.class);
 
         clazz = ClassUtils.resolveClassWithAnn(MyBusiness1.class, Business.class);
-        assertEquals(clazz, MyBusiness.class);
-
-        IBusiness<Object> b = new MyBusiness1();
-        clazz = ClassUtils.resolveClassWithAnn(b.getClass(), Business.class);
         assertEquals(clazz, MyBusiness.class);
     }
 
@@ -195,7 +188,7 @@ class SClass {
 }
 
 @ExtensionPoint
-class TypeInfoTestClass extends SClass implements Identifier {
+class TypeInfoTestClass extends SClass {
     private String a;
     private Integer b;
     private Double c;
@@ -232,11 +225,6 @@ class TypeInfoTestClass extends SClass implements Identifier {
     protected Object clone() throws CloneNotSupportedException {
         return super.clone();
     }
-
-    @Override
-    public String code() {
-        return "";
-    }
 }
 
 
@@ -255,31 +243,7 @@ class TypeInfoClassPropertyTest {
 class MyBusiness {
 }
 
-class MyBusiness1 extends MyBusiness implements IBusiness<Object> {
-    @Override
-    public List<UsedAbility> usedAbilities() {
-        return List.of();
-    }
-
-    @Override
-    public Integer priority() {
-        return 0;
-    }
-
-    @Override
-    public List<Class<?>> implementExtensionPoints() {
-        return List.of();
-    }
-
-    @Override
-    public String code() {
-        return "";
-    }
-
-    @Override
-    public boolean match(Object param) {
-        return false;
-    }
+class MyBusiness1 extends MyBusiness {
 }
 
 

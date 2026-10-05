@@ -7,54 +7,37 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks an interface as an extension point.
+ * Marks a public interface as an extension point: a contract that businesses and abilities implement.
  * <p>
- * Extension points are contracts that businesses or abilities can implement.
- * The framework resolves the correct implementation at runtime based on
- * business identity, ability activation, and priority.
+ * The framework resolves, per request, which implementation answers a call: the matched business,
+ * the abilities it mounts (in the order of {@link Business#uses()}), then the default implementation.
+ * An extension point is recognized wherever it appears in the type hierarchy of an implementation
+ * (superclass, interface, or an interface's parent interface).
  * </p>
  */
-@Target({ElementType.TYPE})
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface ExtensionPoint {
 
     /**
-     * Applicable scenarios for this extension point.
-     * <p>
-     * Common values: {@code "create_order"}, {@code "payment"}, {@code "fulfillment"}, {@code "after_sale"}.
-     * Empty array means no scenario restriction -- the extension point can be invoked in any context.
-     * </p>
-     * <p>
-     * This is a development-time contract hint. The framework does NOT enforce it at runtime.
-     * </p>
-     *
-     * @return scenario identifiers
+     * Applicable scenarios, e.g. {@code "create_order"}. Documentation only, shown by the admin console;
+     * the framework does not enforce it.
      */
     String[] scenarios() default {};
 
     /**
-     * Version of this extension point interface.
-     * <p>
-     * Used for tracking interface evolution. When adding new methods to an extension point,
-     * increment the version number and provide {@code default} implementations for backward
-     * compatibility.
-     * </p>
-     * <p>Example:</p>
-     * <pre>{@code
-     * @ExtensionPoint(version = 2)
-     * public interface PaymentExtension {
-     *     // v1 method
-     *     String pay(OrderContext ctx);
-     *
-     *     // v2 method - default implementation delegates to v1 for backward compatibility
-     *     default PaymentResult payWithOptions(OrderContext ctx, PaymentOptions options) {
-     *         return new PaymentResult(pay(ctx));
-     *     }
-     * }
-     * }</pre>
-     *
-     * @return version number, starting from 1
+     * Version of this extension point, documentation only. Evolve an extension point by adding
+     * {@code default} methods.
      */
     int version() default 1;
+
+    /**
+     * Whether the extension point may have no default implementation. Not optional by default: every
+     * extension point must have a {@link DefaultImplementation}, so that calling it never fails.
+     * An optional extension point without any matching implementation throws
+     * {@link io.github.xiaoshicae.extension.core.exception.ResolutionException} on
+     * {@code first(...)} and returns an empty list on {@code all(...)}.
+     */
+    boolean optional() default false;
 }

@@ -9,6 +9,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Adds packages to scan for extension points ({@code @ExtensionPoint} interfaces), abilities, businesses and default
+ * implementations. Optional: the auto-configuration package of a Spring Boot application is always scanned; use this
+ * for classes outside of it (e.g. another module), or in a context without auto-configuration.
+ * The package of the annotated class is always included.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
@@ -16,8 +22,7 @@ import java.lang.annotation.Target;
 public @interface ExtensionScan {
 
     /**
-     * Packages to scan for annotated components (extension point, ability, business ...) .
-     * @return packages to scan
+     * Additional packages to scan.
      */
-    String[] scanPackages() default {};
+    String[] basePackages() default {};
 }

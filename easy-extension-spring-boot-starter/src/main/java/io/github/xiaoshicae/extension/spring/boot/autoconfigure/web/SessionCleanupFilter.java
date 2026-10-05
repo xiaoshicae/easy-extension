@@ -1,6 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure.web;
 
-import io.github.xiaoshicae.extension.core.IExtensionContext;
+import io.github.xiaoshicae.extension.core.ExtensionContext;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,17 +10,14 @@ import jakarta.servlet.ServletResponse;
 import java.io.IOException;
 
 /**
- * A servlet filter that automatically cleans up the extension session after each request.
- * This prevents ThreadLocal memory leaks in thread pool environments (e.g., web containers).
- *
- * <p>The filter calls {@link IExtensionContext#removeSession()} in a finally block to ensure
- * cleanup happens even if an exception occurs during request processing.</p>
+ * Safety net for pooled request threads: whatever happens, no binding outlives the request on the thread that served it.
+ * (Bindings are normally closed by whoever opened them; this catches the ones that were not.)
  */
 public class SessionCleanupFilter implements Filter {
 
-    private final IExtensionContext<?> extensionContext;
+    private final ExtensionContext<?> extensionContext;
 
-    public SessionCleanupFilter(IExtensionContext<?> extensionContext) {
+    public SessionCleanupFilter(ExtensionContext<?> extensionContext) {
         this.extensionContext = extensionContext;
     }
 
@@ -30,7 +27,7 @@ public class SessionCleanupFilter implements Filter {
         try {
             chain.doFilter(request, response);
         } finally {
-            extensionContext.removeSession();
+            extensionContext.clear();
         }
     }
 }

@@ -15,16 +15,9 @@
       "defaultValue": false
     },
     {
-      "name": "easy-extension.enable-log",
-      "type": "java.lang.Boolean",
-      "description": "是否启用日志，扩展点匹配过程会打印相应的日志 whether to enable logs, the extension point matching process will print log",
-      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
-      "defaultValue": false
-    },
-    {
       "name": "easy-extension.enable-session-auto-cleanup",
       "type": "java.lang.Boolean",
-      "description": "是否启用Session自动清理过滤器 whether to enable the session auto cleanup filter, which automatically cleans up session data in ThreadLocal after the web request ends to prevent memory leaks",
+      "description": "是否注册兜底清理过滤器:请求结束时清空线程上残留的绑定 whether to register the fallback filter that clears leftover thread bindings after each request",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
       "defaultValue": true
     },
@@ -34,6 +27,12 @@
       "description": "业务匹配优先级顺序（使用业务 code）。当多个业务同时匹配时，按此顺序选择优先级最高的。未列出的按注册顺序排在末尾。",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
       "defaultValue": []
+    },
+    {
+      "name": "easy-extension.matcher-param-type",
+      "type": "java.lang.Class<?>",
+      "description": "显式指定 Matcher 参数类型,覆盖从 Provider 泛型的推导 explicit matcher parameter type, overriding inference from providers' Matcher<T> generics",
+      "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties"
     }
   ],
   "hints": []

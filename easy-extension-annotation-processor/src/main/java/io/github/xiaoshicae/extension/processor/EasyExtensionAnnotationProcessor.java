@@ -41,13 +41,13 @@ import java.util.Set;
         "io.github.xiaoshicae.extension.core.annotation.ExtensionPoint",
         "io.github.xiaoshicae.extension.core.annotation.Ability",
         "io.github.xiaoshicae.extension.core.annotation.Business",
-        "io.github.xiaoshicae.extension.core.annotation.ExtensionPointDefaultImplementation"
+        "io.github.xiaoshicae.extension.core.annotation.DefaultImplementation"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public class EasyExtensionAnnotationProcessor extends AbstractProcessor {
 
     static final String OUTPUT_PATH = "META-INF/easy-extension/metadata.json";
-    static final String METADATA_VERSION = "1.0";
+    static final String METADATA_VERSION = "2.0";
 
     private static final int MAX_WALK_DEPTH = 12;
     private static final String[] SRC_ROOTS = {"src/main/java", "src/main/kotlin", "src"};

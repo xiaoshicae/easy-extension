@@ -6,35 +6,32 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Marks a class as an ability: a reusable implementation of one or more extension points that
+ * businesses mount through {@link Business#uses()}.
+ * <p>
+ * The class must implement {@link io.github.xiaoshicae.extension.core.interfaces.Matcher}; a mounted
+ * ability only takes part in a request when its {@code match} returns {@code true}.
+ * </p>
+ */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Ability {
 
     /**
-     * Code of ability.
+     * Unique code of the ability. Defaults to the fully qualified class name.
      */
-    String code();
+    String code() default "";
 
     /**
-     * Ability codes that this ability requires to be present on the same business.
-     * <p>
-     * During registration, the framework will throw an error if a business mounts this ability
-     * without also mounting all required abilities.
-     * </p>
-     *
-     * @return required ability codes
+     * Abilities that must be mounted together with this one on the same business.
+     * Only presence is checked, not order.
      */
-    String[] requires() default {};
+    Class<?>[] requires() default {};
 
     /**
-     * Ability codes that are mutually exclusive with this ability.
-     * <p>
-     * During registration, the framework will throw an error if a business mounts both
-     * this ability and any of the excluded abilities.
-     * </p>
-     *
-     * @return excluded ability codes
+     * Abilities that must not be mounted together with this one on the same business.
      */
-    String[] excludes() default {};
+    Class<?>[] excludes() default {};
 }

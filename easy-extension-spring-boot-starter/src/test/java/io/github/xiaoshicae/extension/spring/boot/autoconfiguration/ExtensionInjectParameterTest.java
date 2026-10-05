@@ -1,83 +1,75 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfiguration;
 
-import io.github.xiaoshicae.extension.core.IExtensionContext;
-import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.scanfixture.ScanAbility;
-import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.scanfixture.ScanConfig;
-import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.scanfixture.ScanParam;
-import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.scanfixture.ScanPay;
+import io.github.xiaoshicae.extension.core.Binding;
+import io.github.xiaoshicae.extension.core.ExtensionContext;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionInject;
+import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.Domain.Param;
+import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.Domain.Pay;
+import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.Domain.RetailBusiness;
+import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.Domain.Ship;
+import io.github.xiaoshicae.extension.spring.boot.autoconfiguration.fixture.DomainConfig;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.core.env.MapPropertySource;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * {@code @ExtensionInject} is declared for fields and parameters: constructor parameters must receive the
- * same session-aware proxies as fields do (not, for a List, every implementation bean of the type).
+ * {@code @ExtensionInject} is declared for fields and parameters: constructor parameters must receive the same
+ * session-aware proxies as fields do (not, for a List, every implementation bean of the type).
  */
 public class ExtensionInjectParameterTest {
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withConfiguration(AutoConfigurations.of(EasyExtensionAutoConfiguration.class))
+            .withUserConfiguration(DomainConfig.class);
 
     public static class Consumer {
-        final ScanPay single;
-        final List<ScanPay> all;
+        final Ship single;
+        final List<Pay> all;
 
-        public Consumer(@ExtensionInject ScanPay single, @ExtensionInject List<ScanPay> all) {
+        public Consumer(@ExtensionInject Ship single, @ExtensionInject List<Pay> all) {
             this.single = single;
             this.all = all;
         }
     }
 
-    @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public void testConstructorParametersGetSessionAwareProxies() throws Exception {
-        try (AnnotationConfigApplicationContext spring = new AnnotationConfigApplicationContext()) {
-            // the fixture has no business: let sessions fall back to the default implementation
-            spring.getEnvironment().getPropertySources().addFirst(
-                    new MapPropertySource("test", Map.of("easy-extension.allow-unknown-business", "true")));
-            spring.register(ScanConfig.class, Consumer.class);
-            spring.refresh();
+    public static class CollectionConsumer {
+        final Set<Pay> set;
 
-            Consumer consumer = spring.getBean(Consumer.class);
-            assertTrue(Proxy.isProxyClass(consumer.single.getClass()), "single parameter should be the first-matched proxy");
-            assertTrue(Proxy.isProxyClass(consumer.all.getClass()), "list parameter should be the all-matched proxy");
-            assertEquals("AllMatchedProxy[" + ScanPay.class.getName() + "]", consumer.all.toString());
-
-            // only the default implementation is in the session (the ability is not mounted by any business)
-            IExtensionContext extensionContext = spring.getBean(IExtensionContext.class);
-            extensionContext.initSession(new ScanParam("any"));
-            try {
-                assertEquals(1, consumer.all.size());
-                assertEquals("default", consumer.single.pay());
-            } finally {
-                extensionContext.removeSession();
-            }
+        public CollectionConsumer(@ExtensionInject Set<Pay> set) {
+            this.set = set;
         }
     }
 
-    public static class CollectionConsumer {
-        final Set<ScanPay> set;
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testConstructorParametersGetSessionAwareProxies() {
+        runner.withUserConfiguration(Consumer.class).run(context -> {
+            Consumer consumer = context.getBean(Consumer.class);
+            assertTrue(Proxy.isProxyClass(consumer.single.getClass()), "single parameter should be the proxy");
+            assertEquals("ExtensionProxyList[" + Pay.class.getName() + "]", consumer.all.toString(),
+                    "list parameter should be the all-matched view, not the list of every Pay bean");
 
-        public CollectionConsumer(@ExtensionInject Set<ScanPay> set) {
-            this.set = set;
-        }
+            ExtensionContext<Param> extensionContext = context.getBean(ExtensionContext.class);
+            try (Binding ignored = extensionContext.bind(new Param("retail"))) {
+                assertEquals("fast-ship", consumer.single.ship());
+                assertEquals(List.of("retail-pay", "default-pay"), consumer.all.stream().map(Pay::pay).toList());
+            }
+        });
     }
 
     @Test
     public void testUnsupportedParameterTypesKeepPlainSpringInjection() {
         // @ExtensionInject only defines "X" and "List<X>"; on any other type (Set, Collection, ...) parameters
         // used to be injected by Spring by type, and must keep starting up that way
-        try (AnnotationConfigApplicationContext spring = new AnnotationConfigApplicationContext()) {
-            spring.register(ScanConfig.class, CollectionConsumer.class);
-            spring.refresh();
-
-            CollectionConsumer consumer = spring.getBean(CollectionConsumer.class);
-            assertTrue(consumer.set.contains(spring.getBean(ScanAbility.class)));
-        }
+        runner.withUserConfiguration(CollectionConsumer.class).run(context -> {
+            assertNull(context.getStartupFailure());
+            assertTrue(context.getBean(CollectionConsumer.class).set.contains(context.getBean(RetailBusiness.class)));
+        });
     }
 }

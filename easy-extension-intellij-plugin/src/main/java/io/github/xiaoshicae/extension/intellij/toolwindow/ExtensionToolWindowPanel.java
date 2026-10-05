@@ -29,7 +29,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -164,34 +163,12 @@ public class ExtensionToolWindowPanel extends JPanel {
                     continue;
                 }
 
-                List<ResolutionChainItem> chain = new ArrayList<>();
-
-                String bizQName = biz.getQualifiedName();
-                if (bizQName != null && implQNames.contains(bizQName)) {
-                    int priority = parseAnnotationPriority(bizAnn);
-                    chain.add(new ResolutionChainItem(biz, priority, false));
-                }
-
-                List<String> abilityRawValues = PsiSearchUtil.parseAbilityRawValues(bizAnn);
-                for (String raw : abilityRawValues) {
-                    int sep = raw.indexOf("::");
-                    String code = sep > 0 ? raw.substring(0, sep) : raw;
-                    int abilityPriority = sep > 0 ? parsePriorityInt(raw.substring(sep + 2)) : 0;
-
-                    PsiClass abilityClass = PsiSearchUtil.findAbilityByCode(project, code);
-                    if (abilityClass != null) {
-                        String abilityQName = abilityClass.getQualifiedName();
-                        if (abilityQName != null && implQNames.contains(abilityQName)) {
-                            chain.add(new ResolutionChainItem(abilityClass, abilityPriority, true));
-                        }
-                    }
-                }
+                List<PsiSearchUtil.ChainEntry> chain = PsiSearchUtil.resolveBusinessChain(biz, bizAnn, implQNames);
 
                 if (chain.isEmpty()) {
                     continue;
                 }
 
-                chain.sort(Comparator.comparingInt(ResolutionChainItem::priority));
                 businessCount++;
 
                 String bizCode = PsiSearchUtil.getAnnotationStringValue(bizAnn, "code");
@@ -203,12 +180,12 @@ public class ExtensionToolWindowPanel extends JPanel {
                         new NodeData(bizDisplay, biz, NodeType.BUSINESS));
 
                 for (int i = 0; i < chain.size(); i++) {
-                    ResolutionChainItem item = chain.get(i);
+                    PsiSearchUtil.ChainEntry item = chain.get(i);
                     String itemName = Objects.requireNonNullElse(item.psiClass().getName(), "?");
-                    String label = item.isMountedAbility() ? "mounted" : "own impl";
-                    String display = String.format("%d. %s (%s, priority: %d)",
-                            i + 1, itemName, label, item.priority());
-                    NodeType type = item.isMountedAbility() ? NodeType.ABILITY : NodeType.BUSINESS;
+                    String label = item.mountedAbility() ? "mounted" : "own impl";
+                    String display = String.format("%d. %s (%s, position: %d)",
+                            i + 1, itemName, label, item.position());
+                    NodeType type = item.mountedAbility() ? NodeType.ABILITY : NodeType.BUSINESS;
                     bizNode.add(new DefaultMutableTreeNode(new NodeData(display, item.psiClass(), type)));
                 }
 
@@ -224,24 +201,6 @@ public class ExtensionToolWindowPanel extends JPanel {
             String summary = String.format("%s  [%d Business]", epName, businessCount);
             epNode.setUserObject(new NodeData(summary, ep, NodeType.EXTENSION_POINT));
             root.add(epNode);
-        }
-    }
-
-    private record ResolutionChainItem(PsiClass psiClass, int priority, boolean isMountedAbility) {}
-
-    private int parseAnnotationPriority(PsiAnnotation annotation) {
-        var val = annotation.findAttributeValue("priority");
-        if (val == null) {
-            return 0;
-        }
-        return parsePriorityInt(val.getText());
-    }
-
-    private int parsePriorityInt(String text) {
-        try {
-            return Integer.parseInt(text.trim());
-        } catch (NumberFormatException e) {
-            return 0;
         }
     }
 

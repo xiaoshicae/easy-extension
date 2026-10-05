@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * 在 @ExtensionPointDefaultImplementation 类的类名旁显示 gutter icon，点击导航到扩展点接口
+ * 在 @DefaultImplementation 类的类名旁显示 gutter icon，点击导航到扩展点接口
  */
 public class DefaultImplLineMarkerProvider extends RelatedItemLineMarkerProvider {
 

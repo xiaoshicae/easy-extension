@@ -6,6 +6,7 @@ import com.intellij.psi.PsiAnnotation;
 import com.intellij.psi.PsiAnnotationMemberValue;
 import com.intellij.psi.PsiArrayInitializerMemberValue;
 import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiClassObjectAccessExpression;
 import com.intellij.psi.PsiClassType;
 import com.intellij.psi.PsiField;
 import com.intellij.psi.PsiLiteralExpression;
@@ -16,10 +17,12 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.AnnotatedElementsSearch;
 import com.intellij.psi.search.searches.ClassInheritorsSearch;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -55,14 +58,14 @@ public final class PsiSearchUtil {
     }
 
     /**
-     * 查找项目中所有标注了 @ExtensionPointDefaultImplementation 的类
+     * 查找项目中所有标注了 @DefaultImplementation 的类
      */
     public static Collection<PsiClass> findAllDefaultImpls(Project project) {
         return findClassesWithAnnotation(project, EasyExtensionAnnotations.DEFAULT_IMPLEMENTATION);
     }
 
     /**
-     * 查找某个扩展点接口的所有实现类（包含 @Ability、@Business、@ExtensionPointDefaultImplementation）
+     * 查找某个扩展点接口的所有实现类（包含 @Ability、@Business、@DefaultImplementation）
      */
     public static List<PsiClass> findExtensionPointImplementations(PsiClass extensionPointClass) {
         Project project = extensionPointClass.getProject();
@@ -100,23 +103,25 @@ public final class PsiSearchUtil {
     }
 
     /**
-     * 获取某个类实现的所有 @ExtensionPoint 接口（迭代方式，防止栈溢出）
+     * 获取某个类的完整类型层次（父类、接口、接口的父接口）中所有 @ExtensionPoint 接口（迭代方式，防止栈溢出）
      */
     public static List<PsiClass> findImplementedExtensionPoints(PsiClass psiClass) {
         List<PsiClass> result = new ArrayList<>();
         Set<String> visited = new HashSet<>();
-        PsiClass current = psiClass;
-        while (current != null && !"java.lang.Object".equals(current.getQualifiedName())) {
+        Deque<PsiClass> pending = new ArrayDeque<>();
+        pending.push(psiClass);
+        while (!pending.isEmpty()) {
+            PsiClass current = pending.pop();
             String fqn = current.getQualifiedName();
-            if (fqn != null && !visited.add(fqn)) {
-                break;
+            if (fqn == null || "java.lang.Object".equals(fqn) || !visited.add(fqn)) {
+                continue;
             }
-            for (PsiClass iface : current.getInterfaces()) {
-                if (hasAnnotation(iface, EasyExtensionAnnotations.EXTENSION_POINT)) {
-                    result.add(iface);
-                }
+            if (current.isInterface() && hasAnnotation(current, EasyExtensionAnnotations.EXTENSION_POINT)) {
+                result.add(current);
             }
-            current = current.getSuperClass();
+            for (PsiClass sup : current.getSupers()) {
+                pending.push(sup);
+            }
         }
         return result;
     }
@@ -160,74 +165,65 @@ public final class PsiSearchUtil {
     }
 
     /**
-     * 从 @Business 注解的 abilities 属性中解析出能力 code 列表（使用 PSI API 解析）
+     * 业务解析链中的一项。position 是在 {@code uses} 中的位置（0 最优先）。
      */
-    public static List<String> parseAbilityCodes(PsiAnnotation businessAnnotation) {
-        PsiAnnotationMemberValue abilitiesValue = businessAnnotation.findAttributeValue("abilities");
-        if (abilitiesValue == null) {
-            return Collections.emptyList();
-        }
-
-        List<PsiAnnotationMemberValue> elements = new ArrayList<>();
-        if (abilitiesValue instanceof PsiArrayInitializerMemberValue arrayValue) {
-            elements.addAll(Arrays.asList(arrayValue.getInitializers()));
-        } else {
-            elements.add(abilitiesValue);
-        }
-
-        List<String> codes = new ArrayList<>();
-        for (PsiAnnotationMemberValue elem : elements) {
-            String raw = resolveStringValue(elem);
-            if (raw != null && !raw.isEmpty()) {
-                // 去除优先级部分 "code::priority" → "code"
-                int sep = raw.indexOf("::");
-                codes.add(sep > 0 ? raw.substring(0, sep) : raw);
-            }
-        }
-        return codes;
+    public record ChainEntry(PsiClass psiClass, int position, boolean mountedAbility) {
     }
 
     /**
-     * 从 @Business 注解的 abilities 属性中解析出能力 code 和优先级（格式："code::priority"）
+     * 解析 @Business 的 {@code uses}：数组顺序即优先级，{@code Self.class} 表示业务自身；
+     * 未写 Self 时业务自身排在最前。返回值中 null 元素代表业务自身。
      */
-    public static List<String> parseAbilityRawValues(PsiAnnotation businessAnnotation) {
-        PsiAnnotationMemberValue abilitiesValue = businessAnnotation.findAttributeValue("abilities");
-        if (abilitiesValue == null) {
-            return Collections.emptyList();
-        }
-
+    public static List<PsiClass> parseUses(PsiAnnotation businessAnnotation) {
+        List<PsiClass> order = new ArrayList<>();
+        PsiAnnotationMemberValue uses = businessAnnotation.findAttributeValue("uses");
         List<PsiAnnotationMemberValue> elements = new ArrayList<>();
-        if (abilitiesValue instanceof PsiArrayInitializerMemberValue arrayValue) {
-            elements.addAll(Arrays.asList(arrayValue.getInitializers()));
-        } else {
-            elements.add(abilitiesValue);
+        if (uses instanceof PsiArrayInitializerMemberValue array) {
+            elements.addAll(Arrays.asList(array.getInitializers()));
+        } else if (uses != null) {
+            elements.add(uses);
         }
-
-        List<String> rawValues = new ArrayList<>();
-        for (PsiAnnotationMemberValue elem : elements) {
-            String raw = resolveStringValue(elem);
-            if (raw != null && !raw.isEmpty()) {
-                rawValues.add(raw);
+        boolean hasSelf = false;
+        for (PsiAnnotationMemberValue element : elements) {
+            if (!(element instanceof PsiClassObjectAccessExpression access)
+                    || !(access.getOperand().getType() instanceof PsiClassType type)) {
+                continue;
+            }
+            PsiClass resolved = type.resolve();
+            if (resolved == null) {
+                continue;
+            }
+            if (EasyExtensionAnnotations.SELF.equals(resolved.getQualifiedName())) {
+                hasSelf = true;
+                order.add(null);
+            } else {
+                order.add(resolved);
             }
         }
-        return rawValues;
+        if (!hasSelf) {
+            order.add(0, null);
+        }
+        return order;
     }
 
     /**
-     * 根据能力 code 查找对应的 @Ability 类
+     * 业务在某个扩展点上的解析链（只含实现了该扩展点的项），按 {@code uses} 位置排序。
+     *
+     * @param implQNames 该扩展点所有实现类的全限定名
      */
-    public static PsiClass findAbilityByCode(Project project, String abilityCode) {
-        Collection<PsiClass> abilities = findAllAbilities(project);
-        for (PsiClass ability : abilities) {
-            PsiAnnotation ann = ability.getAnnotation(EasyExtensionAnnotations.ABILITY);
-            if (ann != null) {
-                String code = getAnnotationStringValue(ann, "code");
-                if (abilityCode.equals(code)) {
-                    return ability;
-                }
+    public static List<ChainEntry> resolveBusinessChain(PsiClass business, PsiAnnotation businessAnnotation,
+                                                        Set<String> implQNames) {
+        List<ChainEntry> chain = new ArrayList<>();
+        List<PsiClass> order = parseUses(businessAnnotation);
+        for (int i = 0; i < order.size(); i++) {
+            PsiClass item = order.get(i);
+            PsiClass target = item == null ? business : item;
+            String qName = target.getQualifiedName();
+            if (qName != null && implQNames.contains(qName)) {
+                chain.add(new ChainEntry(target, i, item != null));
             }
         }
-        return null;
+        return chain;
     }
 
     /**

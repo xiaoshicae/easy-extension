@@ -108,36 +108,11 @@ public final class ResolutionChainPopup {
                 continue;
             }
 
-            List<ChainItem> chain = new ArrayList<>();
-
-            // Check if Business itself implements this EP
-            String bizQName = biz.getQualifiedName();
-            if (bizQName != null && implQNames.contains(bizQName)) {
-                int priority = parseAnnotationPriority(bizAnn);
-                chain.add(new ChainItem(biz, priority, false));
-            }
-
-            // Check mounted abilities that implement this EP
-            List<String> abilityRawValues = PsiSearchUtil.parseAbilityRawValues(bizAnn);
-            for (String raw : abilityRawValues) {
-                int sep = raw.indexOf("::");
-                String code = sep > 0 ? raw.substring(0, sep) : raw;
-                int abilityPriority = sep > 0 ? parsePriorityInt(raw.substring(sep + 2)) : 0;
-
-                PsiClass abilityClass = PsiSearchUtil.findAbilityByCode(project, code);
-                if (abilityClass != null) {
-                    String abilityQName = abilityClass.getQualifiedName();
-                    if (abilityQName != null && implQNames.contains(abilityQName)) {
-                        chain.add(new ChainItem(abilityClass, abilityPriority, true));
-                    }
-                }
-            }
+            List<PsiSearchUtil.ChainEntry> chain = PsiSearchUtil.resolveBusinessChain(biz, bizAnn, implQNames);
 
             if (chain.isEmpty()) {
                 continue;
             }
-
-            chain.sort(Comparator.comparingInt(ChainItem::priority));
 
             String bizCode = PsiSearchUtil.getAnnotationStringValue(bizAnn, "code");
             String bizName = Objects.requireNonNullElse(biz.getName(), "?");
@@ -149,13 +124,13 @@ public final class ResolutionChainPopup {
                     new NodeData(bizDisplay, biz, NodeType.BUSINESS));
 
             for (int i = 0; i < chain.size(); i++) {
-                ChainItem item = chain.get(i);
-                String itemName = Objects.requireNonNullElse(item.psiClass.getName(), "?");
-                String label = item.isMountedAbility ? "mounted" : "own impl";
-                String display = String.format("%d. %s (%s, priority: %d)",
-                        i + 1, itemName, label, item.priority);
-                NodeType type = item.isMountedAbility ? NodeType.ABILITY : NodeType.BUSINESS_IMPL;
-                bizNode.add(new DefaultMutableTreeNode(new NodeData(display, item.psiClass, type)));
+                PsiSearchUtil.ChainEntry item = chain.get(i);
+                String itemName = Objects.requireNonNullElse(item.psiClass().getName(), "?");
+                String label = item.mountedAbility() ? "mounted" : "own impl";
+                String display = String.format("%d. %s (%s, position: %d)",
+                        i + 1, itemName, label, item.position());
+                NodeType type = item.mountedAbility() ? NodeType.ABILITY : NodeType.BUSINESS_IMPL;
+                bizNode.add(new DefaultMutableTreeNode(new NodeData(display, item.psiClass(), type)));
             }
 
             root.add(bizNode);
@@ -167,25 +142,6 @@ public final class ResolutionChainPopup {
             root.add(new DefaultMutableTreeNode(
                     new NodeData("[Default] " + defName, defaultImpl, NodeType.DEFAULT_IMPL)));
         }
-    }
-
-    private static int parseAnnotationPriority(PsiAnnotation annotation) {
-        var val = annotation.findAttributeValue("priority");
-        if (val == null) {
-            return 0;
-        }
-        return parsePriorityInt(val.getText());
-    }
-
-    private static int parsePriorityInt(String text) {
-        try {
-            return Integer.parseInt(text.trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private record ChainItem(PsiClass psiClass, int priority, boolean isMountedAbility) {
     }
 
     enum NodeType {
