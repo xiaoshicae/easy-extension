@@ -2,6 +2,8 @@ package io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.regis
 
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionScan;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAnnotationBeanPostProcessor;
+import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAutowireCandidateResolverInstaller;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -42,6 +44,11 @@ public class ExtensionScannerRegistrar implements ImportBeanDefinitionRegistrar 
     void registerExtensionInjectBeanDefinitions(BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class);
         registry.registerBeanDefinition(ExtensionInjectAnnotationBeanPostProcessor.class.getName(), builder.getBeanDefinition());
+
+        // constructor / method parameters annotated with @ExtensionInject are resolved by Spring's own autowiring
+        BeanDefinitionBuilder resolverInstaller = BeanDefinitionBuilder.genericBeanDefinition(ExtensionInjectAutowireCandidateResolverInstaller.class);
+        resolverInstaller.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+        registry.registerBeanDefinition(ExtensionInjectAutowireCandidateResolverInstaller.class.getName(), resolverInstaller.getBeanDefinition());
     }
 
     private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata) {
