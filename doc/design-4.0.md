@@ -10,7 +10,7 @@
 | # | 3.x 的问题 | 4.0 的解法 |
 |---|---|---|
 | 1 | 一个对象身兼三职(匹配条件 + 元数据 + 实现),`implementExtensionPoints()` 要手写;扩展点只看**直接接口**,实现来自父类/子接口时**静默回落到默认实现** | 用户只写领域接口;扩展点从**完整类型层次**自动推导;注册期校验 |
-| 2 | 优先级是全局整数 + 字符串 DSL(`"ability.x::10"`),业务与能力共用数轴 | **位置即优先级**:`@Business(uses = {A.class, Self.class})` |
+| 2 | 优先级是全局整数 + 字符串 DSL(`"ability.x::10"`),业务与能力共用数轴 | **位置即优先级**:`@Business(abilities = {A.class, Self.class})` |
 | 3 | 默认实现必须是实现**所有**扩展点的唯一单例 | **按扩展点兜底**,可有多个 `@DefaultImplementation` |
 | 4 | 会话是隐式 ThreadLocal;scope 让 API 变 3 套;能力里用 `@ExtensionInject` 会**依赖环启动失败** | `Resolution` 不可变值对象 + 可嵌套的 `bind`;删除 named scope;context 在所有单例就绪后才构建 |
 | 5 | 62 个 public 顶层类型,含 5 对单实现 manager、3 个代理工厂 | API 与 `internal` 分离,ArchUnit 强制 |
@@ -36,9 +36,9 @@ public class DefaultFreight implements FreightCalc { ... }
 @Ability                                     // code 缺省 = 类全名
 public class FreeShipping implements Matcher<OrderParam>, FreightCalc { ... }
 
-@Business(code = "biz.retail", uses = { FreeShipping.class })   // 数组顺序 = 优先级;业务自身缺省最前
+@Business(code = "biz.retail", abilities = { FreeShipping.class })   // 数组顺序 = 优先级;业务自身缺省最前
 public class RetailBusiness implements Matcher<OrderParam>, FreightCalc { ... }
-//  让能力盖过业务自身:  uses = { FreeShipping.class, Self.class }
+//  让能力盖过业务自身:  abilities = { FreeShipping.class, Self.class }
 
 // Spring:提供一个 Bean 即可自动 bind / close
 @Bean MatcherParamResolver<OrderParam> resolver() { return OrderParam::from; }
@@ -66,9 +66,9 @@ try (Binding b = ctx.bind(param)) { ... }          // 绑定到当前线程,clos
 |---|---|
 | `@ExtensionPoint` | `scenarios`、`version`(仅展示用)、— |
 | `@Ability` | `code`(缺省类全名)、`requires`/`excludes`(`Class<?>[]`,**同时挂载**语义,不含先后) |
-| `@Business` | `code`(缺省类全名)、`uses`(`Class<?>[]`:能力类或 `Self.class`) |
+| `@Business` | `code`(缺省类全名)、`abilities`(`Class<?>[]`:能力类或 `Self.class`) |
 | `@DefaultImplementation` | 标在类上,或(Spring)标在 `@Bean` 方法上;编程式用 `builder.defaultImplementationFor(point, impl)`。只有 `void` 方法的扩展点无需声明,框架提供空实现 |
-| `Self` | `uses` 里的位置标记类 |
+| `Self` | `abilities` 里的位置标记类 |
 
 ### 4.2 运行时(`core`)
 
@@ -100,17 +100,17 @@ interface Binding extends AutoCloseable { Resolution resolution(); void close();
 
 ## 5. 语义规则
 
-**解析链**:`[业务与其挂载的能力,按 uses 位置]` → 每个扩展点的兜底。
+**解析链**:`[业务与其挂载的能力,按 abilities 位置]` → 每个扩展点的兜底。
 - 业务匹配:有 `BusinessResolver` 则按 code;否则遍历业务 `match(param)`。
 - strict(缺省):0 个匹配 → `NO_BUSINESS_MATCHED`;>1 个 → `MULTIPLE_BUSINESSES_MATCHED`。非 strict:选择器选一个,没有则只走兜底。
 - 能力是否生效:业务挂载 **且** `ability.match(param)` 为真;`resolve` 时对所有挂载能力**立即求值**,`Resolution` 是该时刻的快照,**不要跨请求缓存**。
 - `first(point)`:按链顺序找第一个实现了该扩展点的;都没有则用兜底。每个已注册的扩展点都有兜底,因此不会失败(未注册的扩展点 → `EXTENSION_NOT_FOUND`)。
 - `all(point)`:链中所有实现者按序,最后追加兜底。
-- `Self` 缺省在最前;至多出现一次;`uses` 中能力不得重复、必须已注册。
+- `Self` 缺省在最前;至多出现一次;`abilities` 中能力不得重复、必须已注册。
 
-**扩展点推导**:基于**用户类**(Spring 下由 starter 传入 AOP 代理的目标类),遍历父类、接口、接口的父接口,收集被 `@ExtensionPoint` 直接标注的接口。`A extends B` 且都标注:实现 `A` 同时也是 `B` 的实现。Provider 至少实现一个扩展点;类型层次里出现**未注册**的 `@ExtensionPoint` → `RegistrationException`(提示加入扫描范围)。
+**扩展点推导**:基于**用户类**(Spring 下由 starter 传入 AOP 代理的目标类),遍历父类、接口、接口的父接口,收集被 `@ExtensionPoint` 直接标注的接口。`A extends B` 且都标注:实现 `A` 同时也是 `B` 的实现。能力与默认实现至少实现一个扩展点(业务可以一个都不实现,只负责识别请求,所有扩展点落到兜底);类型层次里出现**未注册**的 `@ExtensionPoint` → `RegistrationException`(提示加入扫描范围)。
 
-**构建期校验**(`build()` 一次性):扩展点是 public 接口;每个扩展点**恰有一个**兜底(同一扩展点多个兜底 → 报错;没有兜底时,只有 `void` 方法的扩展点由框架提供空实现,其余报错);code 唯一;`uses`/`requires`/`excludes` 引用存在;requires/excludes 在每个业务的挂载集合上成立;能力/业务有 `Matcher`(业务有 `BusinessResolver` 时除外)。
+**构建期校验**(`build()` 一次性):扩展点是 public 接口;每个扩展点**恰有一个**兜底(同一扩展点多个兜底 → 报错;没有兜底时,只有 `void` 方法的扩展点由框架提供空实现,其余报错);code 唯一;`abilities`/`requires`/`excludes` 引用存在;requires/excludes 在每个业务的挂载集合上成立;能力/业务有 `Matcher`(业务有 `BusinessResolver` 时除外)。
 
 **Binding**:每线程一个栈;`close` 恢复上一个绑定,重复 close 幂等;`clear()` 清空整个栈。`proxy(point)` 每次调用读栈顶;无绑定 → `ResolutionException(NO_BINDING)`(信息含线程名)。`toString()` 在无绑定时返回描述串,不抛异常。
 
@@ -141,7 +141,7 @@ core/internal/     实现细节,不承诺兼容;starter/admin 禁止依赖(ArchU
 
 ## 8. admin / 注解处理器 / IntelliJ 插件
 
-随 4.0.0 同版本发布:admin 改读 `ExtensionCatalog`(`priority` 字段输出位置序号,前端不变);处理器输出 `metadata.json` v2(`uses`/`Self`);插件把三处 `"::"` 解析收敛成一个函数,识别 `uses`/`Self`。
+随 4.0.0 同版本发布:admin 改读 `ExtensionCatalog`(`priority` 字段输出位置序号,前端不变);处理器输出 `metadata.json` v2(`abilities`/`Self`);插件把三处 `"::"` 解析收敛成一个函数,识别 `abilities`/`Self`。
 
 ## 9. 实施阶段
 

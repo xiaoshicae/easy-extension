@@ -68,7 +68,7 @@ public final class Domain {
         }
     }
 
-    @Business(code = "biz.retail", uses = FastShipAbility.class)
+    @Business(code = "biz.retail", abilities = FastShipAbility.class)
     public static class RetailBusiness implements Matcher<Param>, Pay {
         @Override
         public boolean match(Param param) {
@@ -113,7 +113,7 @@ public final class Domain {
         }
     }
 
-    @Business(code = "biz.composed", uses = ComposedAbility.class)
+    @Business(code = "biz.composed", abilities = ComposedAbility.class)
     public static class ComposedBusiness implements Matcher<Param>, Ship {
         @Override
         public boolean match(Param param) {

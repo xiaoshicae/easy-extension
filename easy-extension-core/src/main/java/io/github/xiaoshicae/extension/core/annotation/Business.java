@@ -29,9 +29,9 @@ public @interface Business {
      * earlier entries win. List {@link Self} to place the business's own implementation; if it is not
      * listed, the business comes first.
      * <pre>{@code
-     * uses = { FreeShipping.class }                  // business, then FreeShipping
-     * uses = { FreeShipping.class, Self.class }      // FreeShipping overrides the business
+     * abilities = { FreeShipping.class }                  // business, then FreeShipping
+     * abilities = { FreeShipping.class, Self.class }      // FreeShipping overrides the business
      * }</pre>
      */
-    Class<?>[] uses() default {};
+    Class<?>[] abilities() default {};
 }

@@ -165,23 +165,23 @@ public final class PsiSearchUtil {
     }
 
     /**
-     * 业务解析链中的一项。position 是在 {@code uses} 中的位置（0 最优先）。
+     * 业务解析链中的一项。position 是在 {@code abilities} 中的位置（0 最优先）。
      */
     public record ChainEntry(PsiClass psiClass, int position, boolean mountedAbility) {
     }
 
     /**
-     * 解析 @Business 的 {@code uses}：数组顺序即优先级，{@code Self.class} 表示业务自身；
+     * 解析 @Business 的 {@code abilities}：数组顺序即优先级，{@code Self.class} 表示业务自身；
      * 未写 Self 时业务自身排在最前。返回值中 null 元素代表业务自身。
      */
     public static List<PsiClass> parseUses(PsiAnnotation businessAnnotation) {
         List<PsiClass> order = new ArrayList<>();
-        PsiAnnotationMemberValue uses = businessAnnotation.findAttributeValue("uses");
+        PsiAnnotationMemberValue abilities = businessAnnotation.findAttributeValue("abilities");
         List<PsiAnnotationMemberValue> elements = new ArrayList<>();
-        if (uses instanceof PsiArrayInitializerMemberValue array) {
+        if (abilities instanceof PsiArrayInitializerMemberValue array) {
             elements.addAll(Arrays.asList(array.getInitializers()));
-        } else if (uses != null) {
-            elements.add(uses);
+        } else if (abilities != null) {
+            elements.add(abilities);
         }
         boolean hasSelf = false;
         for (PsiAnnotationMemberValue element : elements) {
@@ -207,7 +207,7 @@ public final class PsiSearchUtil {
     }
 
     /**
-     * 业务在某个扩展点上的解析链（只含实现了该扩展点的项），按 {@code uses} 位置排序。
+     * 业务在某个扩展点上的解析链（只含实现了该扩展点的项），按 {@code abilities} 位置排序。
      *
      * @param implQNames 该扩展点所有实现类的全限定名
      */

@@ -180,7 +180,7 @@ public final class Assembler {
             if (abilities.containsKey(code)) {
                 throw new RegistrationException(String.format("code [%s] is used by both an ability and a business", code));
             }
-            Set<Class<?>> implemented = derive(definition.implementationClass(), definition.implementation(), points, label);
+            Set<Class<?>> implemented = derive(definition.implementationClass(), definition.implementation(), points, label, true);
             List<MountInfo> mounts = mounts(definition, abilities);
             Registry.BusinessEntry<T> entry = new Registry.BusinessEntry<>(code, definition.matcher(), definition.implementation(),
                     definition.implementationClass(), Collections.unmodifiableSet(implemented), mounts);
@@ -199,7 +199,7 @@ public final class Assembler {
         for (MountInfo mount : definition.mounts()) {
             if (mount.isSelf()) {
                 if (hasSelf) {
-                    throw new RegistrationException(String.format("business [%s] places itself (Self) more than once in uses", definition.code()));
+                    throw new RegistrationException(String.format("business [%s] places itself (Self) more than once in abilities", definition.code()));
                 }
                 hasSelf = true;
             } else {
@@ -272,9 +272,18 @@ public final class Assembler {
      * The extension points an implementation provides, derived from its class hierarchy; all must be registered.
      */
     private static Set<Class<?>> derive(Class<?> userClass, Object implementation, Map<Class<?>, ExtensionPointInfo> registered, String label) {
+        return derive(userClass, implementation, registered, label, false);
+    }
+
+    /**
+     * @param mayBeEmpty whether implementing no extension point at all is fine: a business that only identifies a
+     *                   request and lets every extension point fall through to its default
+     */
+    private static Set<Class<?>> derive(Class<?> userClass, Object implementation, Map<Class<?>, ExtensionPointInfo> registered,
+                                        String label, boolean mayBeEmpty) {
         // not checked against userClass: a JDK dynamic proxy is not an instance of its target class
         Set<Class<?>> implemented = Introspector.extensionPointsOf(userClass);
-        if (implemented.isEmpty()) {
+        if (implemented.isEmpty() && !mayBeEmpty) {
             throw new RegistrationException(label + " does not implement any extension point");
         }
         for (Class<?> point : implemented) {
