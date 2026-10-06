@@ -24,7 +24,7 @@
 ```java
 package io.github.xiaoshicae.extension.core;
 
-import io.github.xiaoshicae.extension.core.exception.RegisterException;
+import io.github.xiaoshicae.extension.core.exception.RegistrationException;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,8 +37,8 @@ public class DefaultExtContextTest {
         DefaultExtensionContext<Object> context = new DefaultExtensionContext<>(true, true);
 
         // 2. 异常路径(用 assertThrows + 断言异常 message)
-        RegisterException e = assertThrows(
-            RegisterException.class,
+        RegistrationException e = assertThrows(
+            RegistrationException.class,
             () -> context.registerExtensionPoint(null)
         );
         assertEquals("clazz should not be null", e.getMessage());
@@ -56,11 +56,11 @@ public class DefaultExtContextTest {
 
 ```java
 // ✅ 正确:同时断言异常类型 + message
-RegisterException e = assertThrows(RegisterException.class, () -> ctx.foo(null));
+RegistrationException e = assertThrows(RegistrationException.class, () -> ctx.foo(null));
 assertEquals("clazz should not be null", e.getMessage());
 
 // ❌ 不够:只断言异常类型,message 改了测试还能过
-assertThrows(RegisterException.class, () -> ctx.foo(null));
+assertThrows(RegistrationException.class, () -> ctx.foo(null));
 ```
 
 理由:错误消息是公共 API 的一部分(下游可能 parse / log / display)。
@@ -87,7 +87,7 @@ import static org.mockito.Mockito.*;
 
 @Test
 public void testInvoke() {
-    IExtensionPoint mock = mock(IExtensionPoint.class);
+    BusinessResolver<Param> mock = mock(BusinessResolver.class);
     when(mock.execute(any())).thenReturn("ok");
 
     invoker.invoke(mock, request);

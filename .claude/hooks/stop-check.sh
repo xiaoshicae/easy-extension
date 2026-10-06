@@ -5,7 +5,7 @@
 # 行为:
 #   1. 改动模块 mvn test-compile      — 全量编译验证 (跨模块影响)
 #   2. 改动模块 mvn test              — 增量测试 (本轮改动模块及其反向依赖)
-#   3. (可选) Kotlin 子项目 gradle compileKotlin (仅当 IntelliJ 插件文件被改动)
+#   3. (可选) IntelliJ 插件 gradle compileJava (仅当插件的 .java 文件被改动;下载不到 IntelliJ Platform 时跳过)
 # 任一项失败 → exit 2,Claude 会继续修复
 #
 # 可通过环境变量跳过:
@@ -31,10 +31,10 @@ CHANGED=$( {
 } )
 
 CHANGED_MODULES=$(echo "$CHANGED" | awk -F/ '/\.java$/ && /^easy-extension-/ {print $1}' | sort -u | grep -v '^easy-extension-intellij-plugin$' || true)
-KOTLIN_CHANGED=$(echo "$CHANGED" | grep -E '^easy-extension-intellij-plugin/.*\.kt$' | head -1 || true)
+PLUGIN_CHANGED=$(echo "$CHANGED" | grep -E '^easy-extension-intellij-plugin/.*\.java$' | head -1 || true)
 
-# 没有 Java/Kotlin 改动则直接放行
-[ -z "$CHANGED_MODULES" ] && [ -z "$KOTLIN_CHANGED" ] && exit 0
+# 没有 Java 改动(含插件)则直接放行
+[ -z "$CHANGED_MODULES" ] && [ -z "$PLUGIN_CHANGED" ] && exit 0
 
 FAIL=0
 ERRORS=""
@@ -64,14 +64,19 @@ ${TEST_OUT}
   fi
 fi
 
-# 2. Kotlin (IntelliJ 插件) - Gradle 编译验证
-if [ -n "$KOTLIN_CHANGED" ] && [ -x "$REPO_ROOT/easy-extension-intellij-plugin/gradlew" ]; then
-  if GRADLE_OUT=$(cd "$REPO_ROOT/easy-extension-intellij-plugin" && ./gradlew -q compileKotlin 2>&1); then :; else
-    ERRORS="${ERRORS}[Stop] gradle compileKotlin 失败 (IntelliJ 插件):
+# 2. IntelliJ 插件 (Gradle + Java) - 编译验证
+if [ -n "$PLUGIN_CHANGED" ] && [ -x "$REPO_ROOT/easy-extension-intellij-plugin/gradlew" ]; then
+  if GRADLE_OUT=$(cd "$REPO_ROOT/easy-extension-intellij-plugin" && ./gradlew -q compileJava 2>&1); then :; else
+    # 离线/受限环境下载不到 IntelliJ Platform 插件或依赖时跳过,不当成代码错误
+    if echo "$GRADLE_OUT" | grep -qE 'was not found in any of the following sources|Could not resolve|Could not GET|UnknownHostException'; then
+      echo "[Stop] gradle compileJava 跳过 (IntelliJ 插件):依赖无法下载,请在本地构建验证" >&2
+    else
+      ERRORS="${ERRORS}[Stop] gradle compileJava 失败 (IntelliJ 插件):
 ${GRADLE_OUT}
 
 "
-    FAIL=1
+      FAIL=1
+    fi
   fi
 fi
 
@@ -80,5 +85,5 @@ if [ "$FAIL" -eq 1 ]; then
   exit 2
 fi
 
-echo "[Stop] ✓ compile + test (modules: ${CHANGED_MODULES:-none}${KOTLIN_CHANGED:+ + intellij-plugin})" >&2
+echo "[Stop] ✓ compile + test (modules: ${CHANGED_MODULES:-none}${PLUGIN_CHANGED:+ + intellij-plugin})" >&2
 exit 0

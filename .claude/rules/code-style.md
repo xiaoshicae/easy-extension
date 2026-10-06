@@ -6,12 +6,11 @@
 
 | 类型 | 规则 | 示例 |
 |---|---|---|
-| 包名 | 小写单词,层级化 | `io.github.xiaoshicae.extension.core.proxy` |
+| 包名 | 小写单词,层级化 | `io.github.xiaoshicae.extension.core.spi` |
 | 接口 | 4.0 起**不加** `I` 前缀,用领域名 | `ExtensionContext`, `BusinessResolver`(3.x 的 `I*` 已删除) |
-| 抽象类 | **`Abstract` 前缀** + PascalCase | `AbstractExtensionPointDefaultImplementation` |
-| 默认实现 | **`Default` 前缀** | `DefaultExtensionContext` |
-| 异常 | **`Exception` 后缀** | `RegisterException`, `QueryException` |
-| 工厂类 | **`Factory` 后缀** | `FirstMatchedExtPointProxyFactory` |
+| 内部默认实现 | **`Default` 前缀**,放在 `core.internal` | `DefaultExtensionContext` |
+| 异常 | **`Exception` 后缀**,全部 unchecked | `RegistrationException`, `ResolutionException` |
+| Spring FactoryBean | **`FactoryBean` 后缀** | `FirstMatchedExtensionFactoryBean` |
 | 测试类 | **`Test` 后缀**(单数,**不要** `Tests`) | `DefaultExtContextTest` |
 | 测试方法 | `testXxx()` | `testRegisterExtensionPoint()` |
 
@@ -19,20 +18,17 @@
 
 | 子包 | 职责 |
 |---|---|
-| `core` | 顶层 API(`ExtensionContext`、`Resolution`、`Binding`) |
-| `core/internal` | 实现细节,不承诺兼容,starter/admin 禁止依赖 |
-| `core/extension` | 扩展点契约(`IExtensionPoint*`、`AbstractExtension*`) |
-| `core/ability` | Ability 抽象 |
-| `core/business` | Business 抽象 |
-| `core/proxy` | 代理工厂(`*ProxyFactory`) |
-| `core/annotation` | 注解定义 |
+| `core` | 顶层 API(`ExtensionContext`、`ExtensionContextBuilder`、`Resolution`、`Binding`) |
+| `core/annotation` | 注解:`@ExtensionPoint`、`@Ability`、`@Business`、`@DefaultImplementation`、`Self` |
+| `core/interfaces` | `Matcher` |
+| `core/spi` | 扩展 SPI:`BusinessResolver`、`BusinessSelector` |
+| `core/definition` | 不用注解时的编程式装配描述(`*Definition`) |
+| `core/catalog` | 只读元数据(`ExtensionCatalog` 及 `*Info` record) |
+| `core/trace` | 解析追踪与解释(`ResolveTrace`、`ExtensionExplanation`) |
 | `core/exception` | 自定义异常 |
-| `core/interfaces` | 公共标记接口(如 `Priority`) |
-| `core/session` | 会话管理 |
-| `core/trace` | 调用链跟踪 |
-| `core/util` | 工具类 |
+| `core/internal` | 实现细节,不承诺兼容,starter/admin 禁止依赖(ArchUnit 强制) |
 
-新增类时**先确定包的归属**,不要往 `core/util` 倒。
+新增类时**先确定包的归属**,不要新建通用的 `util` 包倒垃圾。
 
 ## 强制要求
 
@@ -52,11 +48,11 @@ e.printStackTrace();
 
 ### 异常:用项目自定义异常
 
-参考已有:`RegisterException`、`QueryException`、`ExtensionException`。
+参考已有:`ExtensionException`(根)→ `RegistrationException`(构建期)、`ResolutionException`(解析期,带 `Reason`)。参数误用等编程错误可用 JDK 的 `IllegalArgumentException`/`IllegalStateException`。
 
 ```java
 // ✅ 正确
-throw new RegisterException("clazz should not be null");
+throw new RegistrationException("clazz should not be null");
 
 // ❌ 避免
 throw new RuntimeException("...");
@@ -68,12 +64,12 @@ throw new IllegalStateException("...");
 ### 输入校验放在方法入口
 
 ```java
-public <T> void registerExtensionPoint(Class<T> clazz) throws RegisterException {
+private static void checkExtensionPoint(Class<?> clazz) {
     if (clazz == null) {
-        throw new RegisterException("clazz should not be null");
+        throw new RegistrationException("clazz should not be null");
     }
     if (!clazz.isInterface()) {
-        throw new RegisterException("clazz should be an interface type");
+        throw new RegistrationException("clazz should be an interface type");
     }
     // ... 业务逻辑
 }
@@ -115,5 +111,5 @@ public <T> void registerExtensionPoint(Class<T> clazz) throws RegisterException 
 
 - 单文件不超过 500 行(超了说明该拆类了)
 - 单方法不超过 50 行(超了说明该拆方法了)
-- 公共 API(`I*` 接口、`public` 方法)必须有 Javadoc
+- 公共 API(`core` 顶层类型、`public` 方法)必须有 Javadoc
 - import 顺序按 IDEA 默认 / Maven 风格(项目跟随 IDEA 设置即可,不强制 spotless)

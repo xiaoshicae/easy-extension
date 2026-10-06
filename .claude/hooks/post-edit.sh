@@ -1,11 +1,11 @@
 #!/bin/bash
-# PostToolUse hook: 文件改完后的增量质量检查 (Java + 前端 + Kotlin 分发)
+# PostToolUse hook: 文件改完后的增量质量检查 (Java + 前端 + IntelliJ 插件 分发)
 #
 # 触发: Edit / Write / MultiEdit
 # 行为:
 #   .java   → 扫 System.out/printStackTrace + 模块级 mvn compile
 #   .ts/.tsx/.js/.jsx → 前端 prettier 自动格式化
-#   .kt     → 提示 (Gradle 项目编译慢,Stop hook 时统一处理)
+#   插件 .java → 提示 (Gradle 项目编译慢,Stop hook 时统一处理)
 # 任一项失败 → exit 2 + stderr,Claude 会自修
 #
 # 可通过环境变量跳过昂贵步骤:
@@ -32,6 +32,12 @@ FAIL=0
 ERRORS=""
 
 case "$REL_PATH" in
+  # ===== IntelliJ 插件 (Gradle + Java,不在 Maven 构建链) =====
+  easy-extension-intellij-plugin/*.java)
+    echo "[Hook] $REL_PATH — IntelliJ 插件 Java 文件,跳过快速编译 (Gradle 启动慢,Stop hook 时统一处理)" >&2
+    exit 0
+    ;;
+
   # ===== Java =====
   *.java)
     # 必须在 easy-extension-* 模块下
@@ -75,11 +81,6 @@ ${BUILD_OUT}
     if command -v npx >/dev/null 2>&1 && [ -d easy-extension-admin-ui-frontend/node_modules ]; then
       (cd easy-extension-admin-ui-frontend && npx --no-install prettier --write "../$REL_PATH" 2>/dev/null) || true
     fi
-    ;;
-
-  # ===== Kotlin (IntelliJ 插件) =====
-  easy-extension-intellij-plugin/*.kt|easy-extension-intellij-plugin/**/*.kt)
-    echo "[Hook] $REL_PATH — Kotlin/Gradle 文件,跳过快速编译 (Gradle 启动慢,Stop hook 时统一处理)" >&2
     ;;
 
   *)

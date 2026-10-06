@@ -44,10 +44,10 @@ export default {
   'page.businesses.card-btn.used-abilities': 'Conflict',
   'page.businesses.card-modal.none-abilities': 'none abilities',
 
-  'page.businesses.extension-point-info-table.desc': 'If the business and abilities implement the same extension point, there may be conflicts in the execution of the extension point. The system will judge and select the effective implementation based on priority.',
+  'page.businesses.extension-point-info-table.desc': 'If the business and abilities implement the same extension point, there may be conflicts in the execution of the extension point. The system will judge and select the effective implementation in the order declared by the business's abilities.',
   'page.businesses.extension-point-info-table.tip': '✅ indicates that the extension point has been implemented',
   'page.businesses.extension-point-info-table.column.ext-impl': 'ExtImpl',
-  'page.businesses.extension-point-info-table.column.priority': 'Priority',
+  'page.businesses.extension-point-info-table.column.priority': 'Order',
   'page.businesses.extension-point-info-table.column.ext-type': 'Type',
-  'page.businesses.extension-point-info-table.conflict.note': 'The business and abilities have multiple implementations at this extension point, which may lead to conflicts. In case of conflicts, the implementation with the highest priority will be chosen.',
+  'page.businesses.extension-point-info-table.conflict.note': 'The business and abilities have multiple implementations at this extension point, which may lead to conflicts. In case of conflicts, the implementation that comes first in that order will be chosen.',
 };

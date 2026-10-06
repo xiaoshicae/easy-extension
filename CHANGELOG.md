@@ -16,6 +16,8 @@
 ### Fixed (since the first 4.0 draft)
 - A business/ability/default that is a JDK dynamic proxy (`spring.aop.proxy-target-class=false`) is accepted.
 - `builder.defaultImplementationFor(point, impl)` only covers the given extension point.
+- A business may implement no extension point (it only identifies the request and falls through to the defaults).
+- Admin `GlobalExceptionHandler` is scoped to the admin API: it used to rewrite the errors of every controller of the host application.
 - `Binding.close()` is idempotent from any thread; the container's error dispatch is never bound; `easy-extension.session-exclude-path-patterns` keeps health checks etc. out of strict-mode matching.
 
 ### Changed
@@ -31,4 +33,5 @@
 ### Removed
 - `IExtensionContext`, `IExtensionReader`, `IExtensionRegister`, `IAbility`, `IBusiness`, `IProxy`, numeric priorities and the `"code::n"` DSL.
 - Named scopes (`initScopedSession`) and runtime (dynamic) registration.
-- `@ExtensionPointDefaultImplementation`, `easy-extension.enable-log`.
+- `@ExtensionPointDefaultImplementation`, `@MatcherParam`, `easy-extension.enable-log` (use the `Resolver` logger at DEBUG).
+- Java 17 support: 4.0 needs JDK 21.

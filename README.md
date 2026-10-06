@@ -12,7 +12,7 @@
   <a href="https://central.sonatype.com/artifact/io.github.xiaoshicae/easy-extension-core"><img src="https://img.shields.io/maven-central/v/io.github.xiaoshicae/easy-extension-core?color=blue" alt="Maven Central"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License"></a>
   <img src="https://img.shields.io/badge/JDK-21+-orange" alt="JDK 21+">
-  <img src="https://img.shields.io/badge/Spring%20Boot-3.x%20%7C%204.x-brightgreen" alt="Spring Boot">
+  <img src="https://img.shields.io/badge/Spring%20Boot-4.x-brightgreen" alt="Spring Boot">
 </p>
 
 <p align="center">
@@ -304,12 +304,16 @@ easy-extension:
   enable-session-auto-cleanup: true   # 请求结束兜底清理线程上残留的绑定
   matcher-param-type:                 # 可选:显式指定 Matcher 参数类型
   session-exclude-path-patterns:      # 可选:不绑定业务身份的路径(如 /actuator/**),严格模式下避免这些请求报错
-  business-match-order:               # 多业务匹配时的优先级
+  business-match-order:               # 仅 allow-unknown-business=true 且多个业务同时匹配时,按此 code 顺序选一个
     - biz.retail
     - biz.fresh
   admin:
-    enable: true                      # 启用管理后台
+    enable: true                      # 启用管理后台(缺省启用,见下方安全提示)
     path: /easy-extension-admin       # 访问路径
+    auth:
+      basic:
+        username: admin               # 非空才启用内置 Basic 认证
+        password: ${ADMIN_PASSWORD}   # 建议从环境变量注入
     extension-point-order:            # 扩展点展示顺序
       - OrderValidateExtension
       - FreightCalcExtension
@@ -327,9 +331,23 @@ easy-extension:
 </dependency>
 ```
 
-默认访问: `/easy-extension-admin` 
+默认访问: `/easy-extension-admin`
+
+> **安全提示**:管理后台会展示扩展点、能力、业务的**源码**。它缺省启用,且**不配置认证时不做任何校验**。生产环境请配置 `easy-extension.admin.auth.basic`(或注册自己的 `AdminAuthenticationProvider` 接入 Spring Security),或设置 `easy-extension.admin.enable=false` 关闭。 
 
 ![管理后台](/doc/admin-extension.png)
+
+## 日志与排查
+
+不再有 `enable-log` 开关,用日志级别控制:
+
+```yaml
+logging:
+  level:
+    io.github.xiaoshicae.extension.core.internal.Resolver: DEBUG   # 每次请求命中的业务、解析链、被跳过的能力、耗时
+```
+
+启动时 `Assembler` 会输出一行 INFO 汇总(扩展点、默认实现、能力、业务的数量)。要查"某个请求为什么选了这个实现",用 `resolution.trace()` / `resolution.explain(Point.class)`。
 
 ## 适用场景
 
