@@ -80,7 +80,7 @@ mvn -q -pl "$MODULES" -am compile -DskipTests -Dgpg.skip=true
 - ✅ 抽象类用 `Abstract` 前缀
 - ✅ 异常用 `Exception` 后缀
 - ✅ 日志用 SLF4J,不用 `System.out`(hook 已挡住,审查时再扫一遍)
-- ✅ 异常用项目自定义类(`RegisterException` 等),不直接 throw RuntimeException
+- ✅ 异常用项目自定义类(`RegistrationException`/`ResolutionException` 等),不直接 throw RuntimeException
 - ✅ 错误消息小写开头,简短描述事实
 
 参考 `.claude/rules/multi-module.md`:

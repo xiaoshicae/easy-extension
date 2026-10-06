@@ -43,10 +43,10 @@ export default {
   'page.businesses.card-btn.used-abilities': '能力冲突分析',
   'page.businesses.card-modal.none-abilities': '未使用任何能力',
 
-  'page.businesses.extension-point-info-table.desc': '业务和能力如果实现了相同的扩展点，那扩展点执行就有可能出现冲突，系统会根据优先级依次判断并选择生效的实现。',
+  'page.businesses.extension-point-info-table.desc': '业务和能力如果实现了相同的扩展点，那扩展点执行就有可能出现冲突，系统会按业务 abilities 里声明的顺序依次判断并选择生效的实现。',
   'page.businesses.extension-point-info-table.tip': '✅ 表示实现了该扩展点',
   'page.businesses.extension-point-info-table.column.ext-impl': '扩展点实现',
-  'page.businesses.extension-point-info-table.column.priority': '优先级',
+  'page.businesses.extension-point-info-table.column.priority': '顺序',
   'page.businesses.extension-point-info-table.column.ext-type': '类型',
-  'page.businesses.extension-point-info-table.conflict.note': '业务及能力在该扩展点有多个实现，可能存在冲突。发生冲突时，会选择优先级最高的实现。',
+  'page.businesses.extension-point-info-table.conflict.note': '业务及能力在该扩展点有多个实现，可能存在冲突。发生冲突时，会选择顺序最靠前的实现。',
 };

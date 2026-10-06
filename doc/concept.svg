@@ -107,5 +107,5 @@
   <text x="660" y="541" text-anchor="middle" font-size="10" fill="#3b82f6">IPayment</text>
 
   <!-- ============ Footer ============ -->
-  <text x="400" y="592" text-anchor="middle" font-size="11" fill="#64748b">运行时按优先级解析:  <tspan font-weight="600" fill="#92400e">业务自身实现</tspan>   →   <tspan font-weight="600" fill="#166534">业务挂载的能力</tspan>   →   <tspan font-weight="600" fill="#475569">默认实现</tspan></text>
+  <text x="400" y="592" text-anchor="middle" font-size="11" fill="#64748b">运行时按 abilities 顺序解析 (业务自身缺省最前):  <tspan font-weight="600" fill="#92400e">业务自身实现</tspan>   →   <tspan font-weight="600" fill="#166534">业务挂载的能力</tspan>   →   <tspan font-weight="600" fill="#475569">默认实现</tspan></text>
 </svg>

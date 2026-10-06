@@ -6,8 +6,9 @@
     <description><![CDATA[
     <p>IntelliJ IDEA support for the Easy-Extension extension point framework.</p>
     <ul>
-        <li>Gutter icons on @ExtensionPoint interfaces to navigate to all implementations (Ability / Business / Default)</li>
-        <li>Gutter icons on @Ability / @Business classes to navigate to corresponding extension point interfaces</li>
+        <li>Gutter icons on @ExtensionPoint interfaces to navigate to all implementations (Ability / Business / Default); requires Easy-Extension 4.x</li>
+        <li>Gutter icons on @Ability / @Business classes to navigate to corresponding extension point interfaces (and, for a business, to the abilities in its <code>abilities</code> list)</li>
+        <li>Resolution chains follow the order of <code>@Business(abilities = {...})</code>, with <code>Self.class</code> marking the business itself</li>
         <li>Gutter icons on @ExtensionInject fields to navigate to extension point definitions</li>
         <li>Tool Window panel showing the topology of all extension points in the project</li>
     </ul>
@@ -32,7 +33,7 @@
                 language="JAVA"
                 implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.BusinessLineMarkerProvider"/>
 
-        <!-- Gutter Icon: @ExtensionPointDefaultImplementation → navigate to extension point interfaces -->
+        <!-- Gutter Icon: @DefaultImplementation → navigate to extension point interfaces -->
         <codeInsight.lineMarkerProvider
                 language="JAVA"
                 implementationClass="io.github.xiaoshicae.extension.intellij.linemarker.DefaultImplLineMarkerProvider"/>

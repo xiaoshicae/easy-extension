@@ -48,7 +48,7 @@
 - ✅ 新增 `public` 方法 / 类 / 接口(纯增量)
 - ✅ 用 `@Deprecated(since = "x.y.z", forRemoval = true)` 标记淘汰路径,**至少保留一个 minor version 再删**
 - ✅ 修改 `private` / package-private 实现:随便改
-- ✅ 异常类继承层次保持稳定(`RegisterException`、`QueryException` 等)
+- ✅ 异常类继承层次保持稳定(`RegistrationException`、`ResolutionException` 等)
 
 ## 兼容性变更类型与版本影响
 
@@ -71,9 +71,9 @@
 git diff origin/main..HEAD --name-only -- 'easy-extension-core/src/main/java/**/*.java' \
   'easy-extension-*-starter/src/main/java/**/*.java'
 
-# 看 public 接口 / 抽象类的具体改动
-git diff origin/main..HEAD -- 'easy-extension-core/src/main/java/**/I*.java'
-git diff origin/main..HEAD -- 'easy-extension-core/src/main/java/**/Abstract*.java'
+# 看 SPI / 公共接口 / 注解的具体改动
+git diff origin/main..HEAD -- 'easy-extension-core/src/main/java/**/spi/*.java'
+git diff origin/main..HEAD -- 'easy-extension-core/src/main/java/**/annotation/*.java'
 ```
 
 人工审查时关注:
@@ -87,12 +87,12 @@ git diff origin/main..HEAD -- 'easy-extension-core/src/main/java/**/Abstract*.ja
 
 ```java
 /**
- * 注册扩展点。
+ * 注册扩展点;`build()` 时一次性校验。
  *
  * @param clazz 扩展点接口类(必须是接口)
- * @throws RegisterException 如果 clazz 为 null、不是接口、或重复注册
+ * @throws RegistrationException 如果 clazz 为 null、不是接口、或重复注册
  */
-public <T> void registerExtensionPoint(Class<T> clazz) throws RegisterException;
+public ExtensionContextBuilder<T> extensionPoint(Class<?>... types);
 ```
 
 `/release-prep` skill 会扫描 public class/method 缺少 Javadoc 的情况。

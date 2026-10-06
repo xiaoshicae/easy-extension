@@ -3,17 +3,21 @@
 
 declare namespace API {
   type MatcherParamInfo = {
-    classInfo: ClassInfo;
+    // null when the matcher parameter type cannot be derived (no Matcher<T> generics, no configured type)
+    classInfo: ClassInfo | null;
   };
 
   type DefaultImplInfo = {
-    classInfo: ClassInfo;
+    // one class may back several extension points; extension points with a framework-provided no-op default are not listed
+    classInfos: Array<ClassInfo>;
   };
 
   type ExtensionPointInfo = {
     id: string;
     classInfo: ClassInfo;
     defaultImplCode: string;
+    scenarios: Array<string>;
+    version: number;
   };
 
   type AbilityInfo = {
@@ -24,6 +28,7 @@ declare namespace API {
 
   type BusinessInfo = {
     code: string;
+    // position in the business' `abilities` order (0 = highest); the business itself sits where Self is declared
     priority: number;
     usedAbilities?: Array<UsedAbility>;
     implExtensionPoints: Array<string>;
@@ -32,6 +37,7 @@ declare namespace API {
 
   type UsedAbility = {
     abilityCode: string;
+    // position in the business' `abilities` order (0 = highest)
     priority: number;
   };
 

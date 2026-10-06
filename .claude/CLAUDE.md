@@ -19,7 +19,7 @@
 | `easy-extension-spring-boot-starter` | Maven | Spring 集成(依赖 core) |
 | `easy-extension-admin-spring-boot-starter` | Maven | 管理后台(依赖 core + spring-web) |
 | `easy-extension-admin-ui-frontend` | npm / React | 后台前端,作为 webjar 嵌入 admin-starter |
-| `easy-extension-intellij-plugin` | Gradle / Kotlin | IDE 插件,独立发布到 JetBrains Marketplace |
+| `easy-extension-intellij-plugin` | Gradle / Java | IDE 插件(IntelliJ Platform),独立发布到 JetBrains Marketplace |
 
 模块依赖**单向**(starter → core,反向禁止)。详见 `rules/multi-module.md`。
 
@@ -74,7 +74,7 @@ git config core.hooksPath .githooks
 
 | 场景 | agent | 不要让主线程自己做的事 |
 |---|---|---|
-| 改了 `public` / `protected` / `I*` 接口 | `java-api-compat-reviewer` | 兼容性表 |
+| 改了 `public` / `protected` 类型(含 SPI、注解) | `java-api-compat-reviewer` | 兼容性表 |
 | Java 代码改动后的全面增量审查 | `code-reviewer` | 正确性/并发/风格 |
 | `mvn compile` 或 `mvn test` 报错 | `build-error-resolver` | 编译错误定位 |
 
@@ -88,7 +88,7 @@ git config core.hooksPath .githooks
 
 | 规则文件 | 适用场景 |
 |---|---|
-| `rules/api-compatibility.md` | 改 `public` / `protected` / `I*` 接口、注解、异常时 **必读** |
+| `rules/api-compatibility.md` | 改 `public` / `protected` 类型、SPI、注解、异常时 **必读** |
 | `rules/code-style.md` | 写新 Java 代码(命名、日志、异常、Java 21 特性) |
 | `rules/multi-module.md` | 跨模块改动 / 加新依赖 / 新建子模块 |
 | `rules/release.md` | 准备发布到 Maven Central |
@@ -123,7 +123,7 @@ git config core.hooksPath .githooks
 
 ## 子项目独立性
 
-- `easy-extension-intellij-plugin` 用 Gradle / Kotlin,**不进 Maven 构建链**,独立发布。改这个模块时 `stop-check.sh` 会跑 `./gradlew compileKotlin`。
+- `easy-extension-intellij-plugin` 用 Gradle + Java,**不进 Maven 构建链**,独立发布。改这个模块时 `stop-check.sh` 会跑 `./gradlew compileJava`(需要能下载 IntelliJ Platform,离线环境会跳过)。
 - `easy-extension-admin-ui-frontend` 用 npm,构建产物嵌入 `admin-starter`。前端文件改动只触发 `prettier --write`,不强行编译。
 
 ---
