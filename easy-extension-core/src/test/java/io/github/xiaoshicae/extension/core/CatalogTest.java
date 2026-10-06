@@ -42,7 +42,7 @@ public class CatalogTest {
         ExtensionCatalog catalog = Fixtures.base().business(new RetailBusiness()).business(new FreshBusiness()).build().catalog();
 
         BusinessInfo retail = catalog.businesses().get(0);
-        // Self is not listed in uses: the business comes first
+        // Self is not listed in abilities: the business comes first
         assertEquals(List.of(MountInfo.self(), MountInfo.ability("ability.alipay"), MountInfo.ability("ability.fast-ship")), retail.mounts());
         BusinessInfo fresh = catalog.businesses().get(1);
         // Self placed after the ability

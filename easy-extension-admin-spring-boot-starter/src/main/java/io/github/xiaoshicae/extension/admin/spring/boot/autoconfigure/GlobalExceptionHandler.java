@@ -8,7 +8,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice
+/**
+ * Error responses of the admin API only. Scoped to {@link EasyExtensionAdminAPI}: an unscoped advice would also rewrite
+ * the errors of every controller of the host application.
+ */
+@RestControllerAdvice(assignableTypes = EasyExtensionAdminAPI.class)
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 

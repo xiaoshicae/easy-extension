@@ -41,7 +41,7 @@ public class ExtensionInfoServiceTest {
         }
     }
 
-    @Business(code = "biz.retail", uses = {Free.class, Self.class})
+    @Business(code = "biz.retail", abilities = {Free.class, Self.class})
     public static class Retail implements Matcher<String>, Freight {
         public boolean match(String p) {
             return true;

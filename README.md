@@ -69,13 +69,13 @@ public class OrderController {
 - **业务 (Business)** — 接入方（如零售、生鲜），挂载需要的能力，也可直接实现扩展点
 - **默认实现 (Default Impl)** — 系统兜底实现，业务和能力均未覆盖时调用，保证扩展点永远可调用
 
-> 运行时解析顺序由业务的 `uses` 声明决定(数组顺序即优先级,业务自身用 `Self.class` 标记,缺省排最前),最后是各扩展点的默认实现。
+> 运行时解析顺序由业务的 `abilities` 声明决定(数组顺序即优先级,业务自身用 `Self.class` 标记,缺省排最前),最后是各扩展点的默认实现。
 
 ## 工作原理
 
 <img src="/doc/how-it-works.svg" alt="运行流程">
 
-一个请求进来后，框架自动完成：**匹配业务 → 激活能力 → 按 `uses` 顺序排列 → 调用正确的实现**。业务方只需实现自己关心的扩展点，其余自动降级到通用能力或默认实现。
+一个请求进来后，框架自动完成：**匹配业务 → 激活能力 → 按 `abilities` 顺序排列 → 调用正确的实现**。业务方只需实现自己关心的扩展点，其余自动降级到通用能力或默认实现。
 
 ## 快速开始
 
@@ -147,7 +147,7 @@ public class FreeShippingAbility implements Matcher<OrderMatchParam>, FreightCal
 ### 5. 定义业务（挂载能力 + 自定义实现）
 
 ```java
-@Business(code = "biz.retail", uses = {FreeShippingAbility.class, Self.class})
+@Business(code = "biz.retail", abilities = {FreeShippingAbility.class, Self.class})
 public class RetailBusiness implements Matcher<OrderMatchParam>, FreightCalcExtension {
     @Override
     public boolean match(OrderMatchParam param) {
@@ -161,7 +161,7 @@ public class RetailBusiness implements Matcher<OrderMatchParam>, FreightCalcExte
 }
 ```
 
-> **优先级说明**: `uses` 数组的顺序就是优先级,越靠前越优先。`Self.class` 代表业务自身,不写时默认排在最前。上例中包邮能力排在 `Self` 之前,所以它会覆盖 RetailBusiness 自己的运费计算。
+> **优先级说明**: `abilities` 数组的顺序就是优先级,越靠前越优先。`Self.class` 代表业务自身,不写时默认排在最前。上例中包邮能力排在 `Self` 之前,所以它会覆盖 RetailBusiness 自己的运费计算。
 
 ### 6. 告诉框架"这个请求是谁"
 

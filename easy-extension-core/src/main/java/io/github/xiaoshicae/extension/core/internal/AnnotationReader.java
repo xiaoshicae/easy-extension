@@ -45,11 +45,11 @@ public final class AnnotationReader {
         Matcher<T> matcher = implementation instanceof Matcher<?> m ? (Matcher<T>) m : null;
         BusinessDefinition<T> definition = BusinessDefinition.of(codeOf(annotation.code(), userClass), matcher, implementation)
                 .implementationClass(userClass);
-        for (Class<?> use : annotation.uses()) {
+        for (Class<?> use : annotation.abilities()) {
             if (use == Self.class) {
                 definition.self();
             } else {
-                definition.uses(abilityCodeOf(use));
+                definition.ability(abilityCodeOf(use));
             }
         }
         return definition;
@@ -64,7 +64,7 @@ public final class AnnotationReader {
     }
 
     /**
-     * Code of the ability a {@code uses}/{@code requires}/{@code excludes} entry refers to.
+     * Code of the ability a {@code abilities}/{@code requires}/{@code excludes} entry refers to.
      */
     static String abilityCodeOf(Class<?> abilityClass) {
         Ability annotation = abilityClass.getAnnotation(Ability.class);

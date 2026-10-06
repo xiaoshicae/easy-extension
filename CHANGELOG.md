@@ -7,7 +7,7 @@
 ### Added
 - `ExtensionContext<T>` (immutable, builder based), `Resolution` (immutable snapshot), `Binding` (nestable thread binding).
 - `@DefaultImplementation` per extension point; one class may back several points. Extension points whose methods all return `void` get a framework-provided no-op default; a lambda `@Bean` (or `builder.defaultImplementationFor`) can serve as default for a single-method extension point. Hence there is no `optional` flag: every extension point always resolves.
-- `@Business(uses = {...})` with `Self.class`; array order is the priority.
+- `@Business(abilities = {...})` with `Self.class`; array order is the priority (`Self.class` marks where the business itself ranks).
 - Extension points derived from the full type hierarchy; build-time validation of the whole assembly.
 - `BusinessResolver` / `BusinessSelector` SPIs; `ExtensionCatalog` read-only metadata.
 - Starter: zero-config scanning, `MatcherParamResolver` + automatic request binding (async aware), `matcher-param-type` property.
@@ -24,9 +24,9 @@
 - Starter bean names of the per-extension-point infrastructure beans use the fully qualified interface name; do not refer to them by name.
 - `ExtensionContext` is built after all singletons are ready: using `@ExtensionInject` inside abilities/businesses no longer causes a circular dependency.
 - All exceptions are unchecked (`RegistrationException`, `ResolutionException`).
-- Annotation processor metadata.json is version 2.0 (`uses`, `DefaultImplementation`).
-- Admin reads `ExtensionCatalog`; `priority` is the position in `uses`; `/default-implementation` returns a list.
-- IntelliJ plugin understands `uses` / `Self`.
+- Annotation processor metadata.json is version 2.0 (`abilities`, `DefaultImplementation`).
+- Admin reads `ExtensionCatalog`; `priority` is the position in `abilities`; `/default-implementation` returns a list.
+- IntelliJ plugin understands `abilities` / `Self`.
 
 ### Removed
 - `IExtensionContext`, `IExtensionReader`, `IExtensionRegister`, `IAbility`, `IBusiness`, `IProxy`, numeric priorities and the `"code::n"` DSL.

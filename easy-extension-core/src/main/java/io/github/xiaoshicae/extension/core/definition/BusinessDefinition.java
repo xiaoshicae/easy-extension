@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Describes a business without annotations, for programmatic assembly. {@link #uses} and {@link #self} append to the
+ * Describes a business without annotations, for programmatic assembly. {@link #ability} and {@link #self} append to the
  * precedence order; without {@code self()} the business comes first.
  *
  * @param <T> matcher param type
@@ -49,7 +49,7 @@ public final class BusinessDefinition<T> {
     /**
      * Mounts an ability, after everything added so far.
      */
-    public BusinessDefinition<T> uses(String abilityCode) {
+    public BusinessDefinition<T> ability(String abilityCode) {
         mounts.add(MountInfo.ability(abilityCode));
         return this;
     }

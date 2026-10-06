@@ -19,7 +19,7 @@ public record ExtensionExplanation<E>(Class<E> extensionPointType, List<Candidat
     }
 
     /**
-     * @param position                 slot in the business's {@code uses} order; the default implementation follows the chain
+     * @param position                 slot in the business's {@code abilities} order; the default implementation follows the chain
      * @param implementationClass      the user's class behind the candidate
      * @param implementsExtensionPoint whether the candidate implements the queried extension point
      */

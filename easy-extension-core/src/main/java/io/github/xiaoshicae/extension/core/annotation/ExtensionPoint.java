@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  * Marks a public interface as an extension point: a contract that businesses and abilities implement.
  * <p>
  * The framework resolves, per request, which implementation answers a call: the matched business,
- * the abilities it mounts (in the order of {@link Business#uses()}), then the default implementation.
+ * the abilities it mounts (in the order of {@link Business#abilities()}), then the default implementation.
  * Every extension point has a default implementation: a {@link DefaultImplementation}, or, when all its methods
  * return {@code void}, a no-op the framework provides.
  * An extension point is recognized wherever it appears in the type hierarchy of an implementation

@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a class as an ability: a reusable implementation of one or more extension points that
- * businesses mount through {@link Business#uses()}.
+ * businesses mount through {@link Business#abilities()}.
  * <p>
  * The class must implement {@link io.github.xiaoshicae.extension.core.interfaces.Matcher}; a mounted
  * ability only takes part in a request when its {@code match} returns {@code true}.

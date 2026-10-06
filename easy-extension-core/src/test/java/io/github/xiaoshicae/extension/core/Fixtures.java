@@ -125,7 +125,7 @@ public final class Fixtures {
     }
 
     /** Business first (the default), then its abilities. */
-    @Business(code = "biz.retail", uses = {AlipayAbility.class, FastShipAbility.class})
+    @Business(code = "biz.retail", abilities = {AlipayAbility.class, FastShipAbility.class})
     public static class RetailBusiness implements Matcher<Param>, Pay {
         @Override
         public boolean match(Param param) {
@@ -138,7 +138,7 @@ public final class Fixtures {
         }
     }
 
-    @Business(code = "biz.retail.2", uses = AlipayAbility.class)
+    @Business(code = "biz.retail.2", abilities = AlipayAbility.class)
     public static class SecondRetailBusiness implements Matcher<Param>, Pay {
         @Override
         public boolean match(Param param) {
@@ -152,7 +152,7 @@ public final class Fixtures {
     }
 
     /** The ability overrides the business: the business places itself after it. */
-    @Business(code = "biz.fresh", uses = {AlipayAbility.class, Self.class})
+    @Business(code = "biz.fresh", abilities = {AlipayAbility.class, Self.class})
     public static class FreshBusiness implements Matcher<Param>, Pay, Ship {
         @Override
         public boolean match(Param param) {
@@ -170,7 +170,7 @@ public final class Fixtures {
         }
     }
 
-    @Business(code = "biz.audited", uses = RiskAbility.class)
+    @Business(code = "biz.audited", abilities = RiskAbility.class)
     public static class AuditedBusiness implements Matcher<Param>, Pay {
         @Override
         public boolean match(Param param) {

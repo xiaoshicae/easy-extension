@@ -224,7 +224,7 @@ public class ResolutionTest {
         ExtensionContext<Param> context = ExtensionContext.<Param>builder().extensionPoint(Pay.class)
                 .defaultImplementation(DefaultImplementationDefinition.of(shared))
                 .ability(AbilityDefinition.of("ability.shared", shared, shared))
-                .business(BusinessDefinition.<Param>of("biz.simple", param -> true, new RetailBusiness()).uses("ability.shared"))
+                .business(BusinessDefinition.<Param>of("biz.simple", param -> true, new RetailBusiness()).ability("ability.shared"))
                 .build();
 
         assertEquals(List.of("retail-pay", "shared-pay"),

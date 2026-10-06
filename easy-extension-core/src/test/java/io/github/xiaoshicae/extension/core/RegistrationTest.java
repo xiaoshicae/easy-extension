@@ -10,6 +10,7 @@ import io.github.xiaoshicae.extension.core.definition.AbilityDefinition;
 import io.github.xiaoshicae.extension.core.definition.BusinessDefinition;
 import io.github.xiaoshicae.extension.core.exception.RegistrationException;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -140,9 +141,9 @@ public class RegistrationTest {
                 buildError(Fixtures.base().business(BusinessDefinition.<Param>of("ability.alipay", new RetailBusiness(), new RetailBusiness()))));
     }
 
-    // ---- uses
+    // ---- abilities
 
-    @Business(code = "biz.ghost-user", uses = SlowShipAbility.class)
+    @Business(code = "biz.ghost-user", abilities = SlowShipAbility.class)
     public static class UsesUnregisteredAbility implements Matcher<Param>, Pay {
         @Override
         public boolean match(Param param) {
@@ -155,15 +156,15 @@ public class RegistrationTest {
         }
     }
 
-    @Business(code = "biz.double-user", uses = {AlipayAbility.class, AlipayAbility.class})
+    @Business(code = "biz.double-user", abilities = {AlipayAbility.class, AlipayAbility.class})
     public static class UsesAbilityTwice extends UsesUnregisteredAbility {
     }
 
-    @Business(code = "biz.double-self", uses = {Self.class, AlipayAbility.class, Self.class})
+    @Business(code = "biz.double-self", abilities = {Self.class, AlipayAbility.class, Self.class})
     public static class UsesSelfTwice extends UsesUnregisteredAbility {
     }
 
-    @Business(code = "biz.string-user", uses = String.class)
+    @Business(code = "biz.string-user", abilities = String.class)
     public static class UsesANonAbility extends UsesUnregisteredAbility {
     }
 
@@ -173,7 +174,7 @@ public class RegistrationTest {
                 buildError(Fixtures.base().business(new UsesUnregisteredAbility())));
         assertEquals("business [biz.double-user] uses ability [ability.alipay] more than once",
                 buildError(Fixtures.base().business(new UsesAbilityTwice())));
-        assertEquals("business [biz.double-self] places itself (Self) more than once in uses",
+        assertEquals("business [biz.double-self] places itself (Self) more than once in abilities",
                 buildError(Fixtures.base().business(new UsesSelfTwice())));
         assertEquals("[java.lang.String] is referenced as an ability but is not annotated with @Ability",
                 assertThrows(RegistrationException.class, () -> Fixtures.base().business(new UsesANonAbility())).getMessage());
@@ -181,15 +182,15 @@ public class RegistrationTest {
 
     // ---- requires / excludes
 
-    @Business(code = "biz.installment", uses = InstallmentAbility.class)
+    @Business(code = "biz.installment", abilities = InstallmentAbility.class)
     public static class InstallmentWithoutRisk extends UsesUnregisteredAbility {
     }
 
-    @Business(code = "biz.installment-risk", uses = {InstallmentAbility.class, RiskAbility.class})
+    @Business(code = "biz.installment-risk", abilities = {InstallmentAbility.class, RiskAbility.class})
     public static class InstallmentWithRisk extends UsesUnregisteredAbility {
     }
 
-    @Business(code = "biz.slow-fast", uses = {SlowShipAbility.class, FastShipAbility.class})
+    @Business(code = "biz.slow-fast", abilities = {SlowShipAbility.class, FastShipAbility.class})
     public static class SlowAndFast extends UsesUnregisteredAbility {
     }
 
@@ -226,6 +227,24 @@ public class RegistrationTest {
         public boolean match(Param param) {
             return true;
         }
+    }
+
+    @Business(code = "biz.identity-only")
+    public static class IdentityOnlyBusiness implements Matcher<Param> {
+        @Override
+        public boolean match(Param param) {
+            return "identity".equals(param.tenant());
+        }
+    }
+
+    @Test
+    public void testBusinessMayImplementNoExtensionPointAndFallsThroughToTheDefaults() {
+        ExtensionContext<Param> context = Fixtures.base().business(new IdentityOnlyBusiness()).build();
+
+        assertEquals(List.of(), context.catalog().businesses().get(0).extensionPoints());
+        Resolution resolution = context.resolve(Param.of("identity"));
+        assertEquals("default-pay", resolution.first(Pay.class).pay());
+        assertEquals("default-ship", resolution.first(Ship.class).ship());
     }
 
     @Test

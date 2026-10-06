@@ -25,7 +25,7 @@ public record ResolveTrace(String matchedBusinessCode, List<ChainEntry> chain,
     }
 
     /**
-     * @param position index of the slot in the business's {@code uses} order (the business itself included)
+     * @param position index of the slot in the business's {@code abilities} order (the business itself included)
      */
     public record ChainEntry(String code, EntryType type, int position) {
         @Override
