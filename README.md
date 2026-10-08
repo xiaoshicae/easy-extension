@@ -41,7 +41,7 @@ Easy Extension 用**扩展点**替代 if-else:通用流程只依赖接口,不同
 @Service
 public class OrderService {
     @ExtensionInject
-    private FreightCalcExtension freightCalc;                // 注入即用
+    private FreightCalcExtension freightCalc;                // 注入即用(注入动态代理，根据context调用各个business的实现)
 
     public void process(OrderContext ctx) {
         BigDecimal freight = freightCalc.calcFreight(ctx);   // 框架自动路由,没有 if-else
