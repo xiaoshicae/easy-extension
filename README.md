@@ -30,16 +30,23 @@ if ("retail".equals(bizCode)) {
     freight = BigDecimal.ZERO;            // 零售包邮
 } else if ("fresh".equals(bizCode)) {
     freight = calcColdChainFreight();     // 生鲜冷链运费
+} else {
+    freight = DEFAULT;
 } // 促销、风控、支付……每个流程都要重复一遍
 ```
 
 Easy Extension 用**扩展点**替代 if-else:通用流程只依赖接口,不同业务提供各自的实现,框架在运行时按当前请求的业务身份选择正确的那个。
 
 ```java
-@ExtensionInject
-private FreightCalcExtension freightCalc;       // 注入即用
+@Service
+public class OrderService {
+    @ExtensionInject
+    private FreightCalcExtension freightCalc;                // 注入即用(注入动态代理，根据context调用各个business的实现)
 
-BigDecimal freight = freightCalc.calcFreight(ctx);   // 框架自动路由,没有 if-else
+    public void process(OrderContext ctx) {
+        BigDecimal freight = freightCalc.calcFreight(ctx);   // 框架自动路由,没有 if-else
+    }
+}
 ```
 
 ## 快速开始
@@ -52,7 +59,7 @@ BigDecimal freight = freightCalc.calcFreight(ctx);   // 框架自动路由,没�
 <dependency>
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension-spring-boot-starter</artifactId>
-    <version>3.3.6</version>
+    <version>4.0.0</version>
 </dependency>
 ```
 
@@ -242,7 +249,7 @@ logging.level.io.github.xiaoshicae.extension.core.internal.Resolver: DEBUG
 <dependency>
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
-    <version>3.3.6</version>
+    <version>4.0.0</version>
 </dependency>
 ```
 
