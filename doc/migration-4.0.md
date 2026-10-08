@@ -62,7 +62,7 @@ MatcherParamResolver<OrderMatchParam> resolver() {
 }
 ```
 
-完整的迁移范例见示例仓库 [easy-extension-sample](https://github.com/xiaoshicae/easy-extension-sample) 的 4.0 分支。
+完整的迁移范例见示例仓库 [easy-extension-sample](https://github.com/xiaoshicae/easy-extension-sample)(`master` 分支已升级到 4.0)。
 
 ## 行为差异提醒
 
