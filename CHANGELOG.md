@@ -1,5 +1,26 @@
 # Changelog
 
+## 4.1.0 (unreleased)
+
+### Added
+- `ExtensionContext.runWith` / `callWith` (for a param or an existing `Resolution`): bind, run and unbind in one call, for any entry point (RPC, messages, jobs, tests).
+- `ExtensionContext.isBound()`, `wrap(Runnable)` and `executor(Executor)`: hand the binding of the calling thread over to the thread that runs a task.
+- Starter: `ExtensionTaskDecorator`, and `easy-extension.async-propagation=true` to apply it to the task executors Spring Boot configures (`@Async`, `applicationTaskExecutor`); it is combined with the application's own `TaskDecorator` beans.
+- Starter: `easy-extension.session-include-path-patterns` (the existing `session-exclude-path-patterns` applies after it).
+- HTTP binding is visible: an INFO line at startup says what is bound for which paths (or that nothing binds requests because there is no `MatcherParamResolver` bean), and a DEBUG line per request says what was bound.
+- The built-in `Resolution` prints the business and the resolution chain in `toString()`, so `context.current()` can be logged.
+- [doc/binding.md](doc/binding.md): how binding works, every entry point, switching threads, troubleshooting.
+
+### Changed
+- The `NO_BINDING` message says what to do (bind where the call starts, hand the binding over on other threads, the Spring MVC support of the starter). The old tail `, bind one first: try (Binding b = context.bind(param)) { ... }` is gone: match on `ResolutionException#reason() == NO_BINDING`, not on the text.
+- Servlet applications log one more INFO line at startup. Without a `MatcherParamResolver` bean they also get a small bean (`extensionHttpBindingHint`) that only logs that requests are not bound.
+
+### Compatibility notes
+- Binary compatible with 4.0.0. The new `ExtensionContext` methods are `default` methods.
+- Source: a class or interface that implements/extends `ExtensionContext<Resolution>` (an unusual type argument) no longer compiles, because `runWith`/`callWith` become ambiguous; override `runWith(Resolution, Runnable)` and `callWith(Resolution, Supplier)`. Any implementation that already declares a method with one of the new names but another return type fails the same way.
+- Mockito mocks of `ExtensionContext` also stub the new defaults: `runWith` does not run the body, `callWith`/`wrap`/`executor` return `null`, `isBound` is `false`. Tests that use them should build a real context (`ExtensionContext.builder()`) or use `CALLS_REAL_METHODS`.
+- A custom `ExtensionContext` implementation inherits `isBound()`, which relies on `current()` throwing `ResolutionException` with reason `NO_BINDING` when nothing is bound.
+
 ## 4.0.0 (2026-10-08)
 
 **BREAKING CHANGE:** 4.0 is a clean redesign and is not source- or binary-compatible with 3.x. See [doc/migration-4.0.md](doc/migration-4.0.md).

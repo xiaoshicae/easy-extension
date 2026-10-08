@@ -107,7 +107,7 @@ public class RetailBusiness implements Matcher<OrderMatchParam>, FreightCalcExte
 
 ### 5. 告诉框架"这个请求是谁"
 
-提供一个 `MatcherParamResolver` Bean。框架会在每个 Web 请求开始时绑定、结束时解绑(异步请求同样处理):
+业务是**按请求**选出来的,所以要有一个入口告诉框架"当前请求是谁"。Spring MVC 的请求由 starter 代劳:声明一个 `MatcherParamResolver` Bean,starter 会在每个请求开始时(`preHandle`)用它构造匹配参数、选出业务,并**绑定到处理线程**;请求结束时(`afterCompletion`)解绑。之后注入的扩展点读到的就是本请求的业务:
 
 ```java
 @Bean
@@ -115,6 +115,17 @@ MatcherParamResolver<OrderMatchParam> resolver() {
     return request -> OrderMatchParam.from(request);   // 例如从请求头/参数构造
 }
 ```
+
+resolver 返回业务和能力 `match` 用的那个类型。**身份只是一个业务码时更简单**:不用自己的参数类型,业务类也不用实现 `Matcher`(能力仍要实现 `Matcher<String>`),两个一行的 Bean 就够了:
+
+```java
+@Bean MatcherParamResolver<String> resolver()     { return request -> request.getHeader("X-Biz-Code"); }
+@Bean BusinessResolver<String> businessResolver() { return Optional::ofNullable; }   // 业务码直接当 code,见"按 code 直达业务"
+```
+
+**不是每个接口都要走扩展点?** 用 `easy-extension.session-include-path-patterns`(只绑定这些)和 `session-exclude-path-patterns`(这些不绑定)圈定范围。范围外的接口不调用 resolver,也不要求带身份;范围内的接口,没匹配到业务默认会报错,所以不用扩展点的接口(健康检查、普通查询)请排除。启动日志会写明生效的范围(`HTTP binding is on: ...`)。
+
+非 Spring MVC 的入口(RPC、消息、定时任务、线程池)不会自动绑定,自己一行搞定,见[绑定的各种入口](#绑定的各种入口)。
 
 ### 6. 注入使用
 
@@ -164,20 +175,41 @@ public class OrderController {
 
 ## 常用用法
 
+### 绑定的各种入口
+
+绑定属于**当前线程**,在一次调用开始的地方做一次,往下的调用都能读到:
+
+| 入口 | 写法 |
+|---|---|
+| Spring MVC 请求 | 声明 `MatcherParamResolver` Bean,自动绑定 |
+| RPC、消息消费、定时任务、测试 | `context.runWith(param, () -> ...)`,要返回值用 `callWith` |
+| 线程池、`CompletableFuture` | `pool.submit(context.wrap(task))`,或 `context.executor(pool)` |
+| Spring `@Async` | `easy-extension.async-propagation=true` |
+| 响应式 | 显式传递 `Resolution`,用到时 `context.callWith(resolution, ...)` |
+
+```java
+@KafkaListener(topics = "orders")
+public void onOrder(OrderMessage msg) {
+    context.runWith(new OrderMatchParam(msg.getBizCode()), () -> orderService.handle(msg));
+}
+```
+
+框架背后做了什么、各种入口(含 gRPC)的完整写法、怎么看日志和排查 `NO_BINDING`,见 [绑定指南](doc/binding.md)。
+
 ### 编程式调用
 
 ```java
 @Autowired ExtensionContext<OrderMatchParam> context;
 
-try (Binding b = context.bind(orderParam)) {                       // 绑定到当前线程,close 时恢复,可嵌套
+context.runWith(orderParam, () -> {                         // 绑定到当前线程,结束后恢复,可嵌套
     String risk = context.invoke(RiskControlExtension.class, e -> e.check(ctx));            // 第一个实现
     List<String> channels = context.invokeAll(NotifyExtension.class, e -> e.channels(ctx)); // 所有实现
     BigDecimal total = context.invokeReduce(PromotionCalcExtension.class,
             e -> e.calc(ctx), BigDecimal.ZERO, BigDecimal::add);                            // 聚合
-}
+});
 ```
 
-不想依赖线程绑定时,`context.resolve(param)` 返回**不可变快照** `Resolution`,线程安全,可显式传递(跨线程、响应式场景);要在另一个线程里使用,`bind(resolution)`。同一请求需要多个身份时,持有多个 `Resolution`。
+不想依赖线程绑定时,`context.resolve(param)` 返回**不可变快照** `Resolution`,线程安全,可显式传递(跨线程、响应式场景);要在另一个线程里使用,`context.runWith(resolution, ...)`。同一请求需要多个身份时,持有多个 `Resolution`。
 
 ### 不使用 Spring
 
@@ -210,7 +242,7 @@ ExtensionContext<OrderMatchParam> context = ExtensionContext.<OrderMatchParam>bu
 BusinessResolver<OrderMatchParam> resolver() { return p -> Optional.ofNullable(p.getBizCode()); }
 ```
 
-配置后业务可以不实现 `Matcher`。
+配置后业务可以不实现 `Matcher`。身份只是业务码时,`T` 直接用 `String`,见第 5 步。
 
 ### 排查"为什么选了这个实现"
 
@@ -219,7 +251,10 @@ Resolution r = context.resolve(param);
 r.trace();                                   // 命中的业务、解析链、被跳过的能力、耗时
 r.explain(FreightCalcExtension.class);       // 该扩展点的所有候选,以及最终选了谁
 context.catalog();                           // 全部扩展点/能力/业务/默认实现的只读元数据
+context.isBound();                           // 当前线程有没有绑定;context.current() 可以直接打印
 ```
+
+报 `NO_BINDING`(当前线程没有绑定)时,按 [绑定指南](doc/binding.md#6-出问题时怎么查) 里的清单逐条检查。
 
 要看每次请求的匹配过程日志:
 
@@ -233,7 +268,9 @@ logging.level.io.github.xiaoshicae.extension.core.internal.Resolver: DEBUG
 |---|---|---|
 | `easy-extension.allow-unknown-business` | `false` | 无业务匹配时是否放行(放行则走默认实现) |
 | `easy-extension.business-match-order` | 空 | 放行模式下多个业务同时匹配时,按业务 code 的顺序选择 |
-| `easy-extension.session-exclude-path-patterns` | 空 | 不绑定业务身份的路径(Ant 风格),如 `/actuator/**` |
+| `easy-extension.session-include-path-patterns` | 空(全部) | 只对这些路径(Ant 风格)绑定业务身份,如 `/api/**` |
+| `easy-extension.session-exclude-path-patterns` | 空 | 不绑定业务身份的路径(Ant 风格),如 `/actuator/**`,在包含之后排除 |
+| `easy-extension.async-propagation` | `false` | 让 `@Async` / `applicationTaskExecutor` 的任务沿用提交者的业务绑定 |
 | `easy-extension.enable-session-auto-cleanup` | `true` | 请求结束兜底清理线程上残留的绑定 |
 | `easy-extension.matcher-param-type` | 自动推导 | 显式指定匹配参数类型 |
 | `easy-extension.admin.enable` | `true` | 管理后台开关(引入 admin 依赖后) |
