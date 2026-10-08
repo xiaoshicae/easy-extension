@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.0.0 (unreleased)
+## 4.0.0 (2026-10-08)
 
 **BREAKING CHANGE:** 4.0 is a clean redesign and is not source- or binary-compatible with 3.x. See [doc/migration-4.0.md](doc/migration-4.0.md).
 
