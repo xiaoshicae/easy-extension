@@ -26,6 +26,12 @@ final class DefaultResolution<T> implements Resolution {
     }
 
     @Override
+    public String toString() {
+        return "Resolution[business=" + trace.matchedBusinessCode() + ", chain=" + trace.chain()
+                + ", skippedAbilities=" + trace.skippedAbilities().stream().map(ResolveTrace.SkippedAbility::code).toList() + "]";
+    }
+
+    @Override
     public <E> E first(Class<E> point) {
         Registry.DefaultEntry fallback = fallbackOf(point);
         for (ChainItem item : chain) {

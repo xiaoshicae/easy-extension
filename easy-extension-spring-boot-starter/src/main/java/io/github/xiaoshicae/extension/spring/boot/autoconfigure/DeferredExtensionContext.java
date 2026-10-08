@@ -134,6 +134,13 @@ public class DeferredExtensionContext<T> implements ExtensionContext<T>, SmartIn
     }
 
     @Override
+    public boolean isBound() {
+        // nothing can be bound before the context is ready
+        ExtensionContext<T> current = delegate;
+        return current != null && current.isBound();
+    }
+
+    @Override
     public void clear() {
         // safety-net cleanup must work, and do nothing, before the context is ready
         ExtensionContext<T> current = delegate;

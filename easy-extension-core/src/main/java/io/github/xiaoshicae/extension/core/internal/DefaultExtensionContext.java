@@ -53,10 +53,19 @@ final class DefaultExtensionContext<T> implements ExtensionContext<T> {
         Deque<DefaultBinding> stack = bindings.get();
         if (stack == null || stack.isEmpty()) {
             throw new ResolutionException(ResolutionException.Reason.NO_BINDING, String.format(
-                    "no resolution is bound to thread [%s], bind one first: try (Binding b = context.bind(param)) { ... }",
+                    "no resolution is bound to thread [%s]: bind one where the call starts, e.g. context.runWith(param, () -> ...) "
+                            + "or try (Binding b = context.bind(param)) { ... }; on another thread, hand the binding over with "
+                            + "context.wrap(runnable) / context.executor(executor); the Spring Boot starter binds Spring MVC "
+                            + "requests by itself once a MatcherParamResolver bean exists",
                     threadLabel(Thread.currentThread())));
         }
         return stack.peek().resolution();
+    }
+
+    @Override
+    public boolean isBound() {
+        Deque<DefaultBinding> stack = bindings.get();
+        return stack != null && !stack.isEmpty();
     }
 
     @Override

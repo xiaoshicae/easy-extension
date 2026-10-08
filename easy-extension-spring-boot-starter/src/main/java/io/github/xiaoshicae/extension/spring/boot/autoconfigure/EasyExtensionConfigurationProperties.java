@@ -39,6 +39,18 @@ public class EasyExtensionConfigurationProperties {
      */
     private List<String> sessionExcludePathPatterns = List.of();
 
+    /**
+     * 只对这些请求路径（Ant 风格）绑定业务身份，缺省为全部路径（/**）。与 session-exclude-path-patterns 同时配置时，先包含再排除。
+     * Request path patterns (Ant style) the business is bound for; all paths (/**) when empty. Combined with session-exclude-path-patterns: included first, then excluded.
+     */
+    private List<String> sessionIncludePathPatterns = List.of();
+
+    /**
+     * 是否把请求线程上的绑定传递给 Spring 管理的异步任务线程池（@Async、applicationTaskExecutor），任务沿用提交时的业务身份。缺省关闭。
+     * Whether the binding of the submitting thread follows tasks onto Spring-managed task executors (@Async, applicationTaskExecutor). Off by default.
+     */
+    private boolean asyncPropagation = false;
+
     public boolean isAllowUnknownBusiness() {
         return allowUnknownBusiness;
     }
@@ -77,5 +89,21 @@ public class EasyExtensionConfigurationProperties {
 
     public void setSessionExcludePathPatterns(List<String> sessionExcludePathPatterns) {
         this.sessionExcludePathPatterns = sessionExcludePathPatterns == null ? List.of() : List.copyOf(sessionExcludePathPatterns);
+    }
+
+    public List<String> getSessionIncludePathPatterns() {
+        return sessionIncludePathPatterns;
+    }
+
+    public void setSessionIncludePathPatterns(List<String> sessionIncludePathPatterns) {
+        this.sessionIncludePathPatterns = sessionIncludePathPatterns == null ? List.of() : List.copyOf(sessionIncludePathPatterns);
+    }
+
+    public boolean isAsyncPropagation() {
+        return asyncPropagation;
+    }
+
+    public void setAsyncPropagation(boolean asyncPropagation) {
+        this.asyncPropagation = asyncPropagation;
     }
 }

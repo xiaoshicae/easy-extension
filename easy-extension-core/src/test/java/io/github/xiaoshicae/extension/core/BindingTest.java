@@ -23,8 +23,11 @@ public class BindingTest {
     public void testNothingBoundByDefault() {
         ResolutionException e = assertThrows(ResolutionException.class, () -> context.first(Pay.class));
         assertEquals(Reason.NO_BINDING, e.reason());
-        assertEquals("no resolution is bound to thread [" + Thread.currentThread().getName()
-                + "], bind one first: try (Binding b = context.bind(param)) { ... }", e.getMessage());
+        assertTrue(e.getMessage().startsWith("no resolution is bound to thread [" + Thread.currentThread().getName() + "]: bind one where the call starts"),
+                e.getMessage());
+        // the message says what to do, for the entry point and for other threads
+        assertTrue(e.getMessage().contains("context.runWith(param, () -> ...)"), e.getMessage());
+        assertTrue(e.getMessage().contains("context.wrap(runnable)"), e.getMessage());
     }
 
     @Test
