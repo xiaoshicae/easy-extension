@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>io.github.xiaoshicae.easy-extension-intellij</id>
     <name>Easy Extension</name>
-    <vendor email="xiaoshicae@gmail.com" url="https://github.com/xiaoshicae/easy-extension">xiaoshicae</vendor>
+    <vendor email="snk_zhuang@126.com" url="https://github.com/xiaoshicae/easy-extension">xiaoshicae</vendor>
 
     <description><![CDATA[
     <p>IntelliJ IDEA support for the Easy-Extension extension point framework.</p>
@@ -13,6 +13,15 @@
         <li>Tool Window panel showing the topology of all extension points in the project</li>
     </ul>
     ]]></description>
+
+    <change-notes><![CDATA[
+    <h3>2.0.0</h3>
+    <ul>
+        <li>Supports Easy-Extension 4.x: <code>@Business(abilities = {...})</code> as an ordered list of ability classes, with <code>Self.class</code> marking the business itself</li>
+        <li>Navigation for <code>@DefaultImplementation</code> (one default implementation per extension point)</li>
+        <li>Requires Easy-Extension 4.x; 3.x annotations (<code>"code::n"</code> strings, <code>@ExtensionPointDefaultImplementation</code>) are not recognized</li>
+    </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.java</depends>
