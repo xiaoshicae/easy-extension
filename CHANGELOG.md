@@ -1,9 +1,12 @@
 # Changelog
 
-## 4.1.1 (unreleased)
+## 4.1.1 (2026-10-09)
 
 ### Fixed
 - Admin UI: the extension point links on the business and ability pages opened `.../latest/extension-points?keyword=...`, which the server answers with 404. The UI uses hash routing, so the links now go to `.../latest/index.html#/extension-points?keyword=...`. Broken since the switch to hash routing in 3.0.1.
+
+### Changed
+- Build: the parent POM no longer declares the obsolete OSSRH `distributionManagement` (oss.sonatype.org); publishing goes through the Sonatype Central Portal. No effect on consumers.
 
 ## 4.1.0 (2026-10-09)
 
