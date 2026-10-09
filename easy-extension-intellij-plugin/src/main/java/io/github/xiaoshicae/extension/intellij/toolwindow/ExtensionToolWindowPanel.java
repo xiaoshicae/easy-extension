@@ -6,8 +6,8 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.pom.Navigatable;
 import com.intellij.psi.PsiAnnotation;
 import com.intellij.psi.PsiClass;
@@ -104,7 +104,7 @@ public class ExtensionToolWindowPanel extends JPanel {
      */
     public void refresh() {
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            DefaultMutableTreeNode newRoot = ReadAction.compute(() -> {
+            DefaultMutableTreeNode newRoot = ApplicationManager.getApplication().runReadAction((Computable<DefaultMutableTreeNode>) () -> {
                 DefaultMutableTreeNode root = new DefaultMutableTreeNode("Easy Extension");
                 buildTree(root);
                 return root;
