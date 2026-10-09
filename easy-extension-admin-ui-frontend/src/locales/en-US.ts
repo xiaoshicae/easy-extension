@@ -44,7 +44,7 @@ export default {
   'page.businesses.card-btn.used-abilities': 'Conflict',
   'page.businesses.card-modal.none-abilities': 'none abilities',
 
-  'page.businesses.extension-point-info-table.desc': 'If the business and abilities implement the same extension point, there may be conflicts in the execution of the extension point. The system will judge and select the effective implementation in the order declared by the business's abilities.',
+  'page.businesses.extension-point-info-table.desc': 'If the business and abilities implement the same extension point, there may be conflicts in the execution of the extension point. The system will judge and select the effective implementation in the order declared by the business\'s abilities.',
   'page.businesses.extension-point-info-table.tip': '✅ indicates that the extension point has been implemented',
   'page.businesses.extension-point-info-table.column.ext-impl': 'ExtImpl',
   'page.businesses.extension-point-info-table.column.priority': 'Order',
