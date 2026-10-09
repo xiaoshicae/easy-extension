@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.1.0 (unreleased)
+## 4.1.0 (2026-10-09)
 
 ### Added
 - `ExtensionContext.runWith` / `callWith` (for a param or an existing `Resolution`): bind, run and unbind in one call, for any entry point (RPC, messages, jobs, tests).
