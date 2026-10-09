@@ -1,7 +1,8 @@
 package io.github.xiaoshicae.extension.intellij.popup;
 
-import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.pom.Navigatable;
@@ -35,7 +36,7 @@ public final class ResolutionChainPopup {
     public static void show(PsiClass extensionPointClass, MouseEvent mouseEvent) {
         Project project = extensionPointClass.getProject();
 
-        DefaultMutableTreeNode root = ReadAction.compute(() -> {
+        DefaultMutableTreeNode root = ApplicationManager.getApplication().runReadAction((Computable<DefaultMutableTreeNode>) () -> {
             DefaultMutableTreeNode r = new DefaultMutableTreeNode("root");
             buildResolutionTree(r, extensionPointClass, project);
             return r;
