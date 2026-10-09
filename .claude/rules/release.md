@@ -149,7 +149,7 @@ mvn -B clean deploy -Prelease
 说明:
 
 - 插件默认不会自动发布(没配 `autoPublish`),所以第 4 步需要你在 Portal 里手动点 Publish;确认无误前随时可以 Drop。
-- 根 pom 的 `distributionManagement` 仍指向旧的 `oss.sonatype.org`(OSSRH 已下线),使用 `central-publishing-maven-plugin` 时不会走它,可在后续清理中删除。
+- `deploy` 阶段只运行 `central-publishing-maven-plugin` 的 `publish`(它以 extension 方式接管),不会执行 `maven-deploy-plugin`,所以根 pom 不需要 `distributionManagement`。
 - 同一个版本一旦 Publish **不可撤回、不可覆盖**,有问题只能发补丁版本(见"紧急回滚")。
 - 一次 `deploy` 会上传 4 个 Maven 模块(core / annotation-processor / spring-boot-starter / admin-spring-boot-starter)。admin 必须与 core 同版本发布。
 

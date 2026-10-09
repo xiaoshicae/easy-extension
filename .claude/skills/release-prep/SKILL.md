@@ -50,33 +50,42 @@ grep -m1 '"version"' easy-extension-admin-ui-frontend/package.json
 
 ### 2. 如果传入了新版本号 — 升级
 
-如果用户传了 `<新版本号>`,自动改:
+如果用户传了 `<新版本号>`,在 `main` 之上新建 `release/<新版本号>` 分支后自动改。
+
+**只改带版本号的那 9 处**,逐行替换并断言,不要做全文 `sed`:
+
+- pom 里的 `xmlns` / `schemaLocation` 含 `POM/4.0.0`,`<modelVersion>4.0.0</modelVersion>` 也是 `4.0.0`,全文替换会误伤;
+- `sed '0,/re/…'` 是 GNU 语法,macOS 自带的 BSD sed 不支持;
+- `doc/` 下描述历史版本的文字(例如 `design-4.0.md`、`migration-4.0.md` 里的 `4.0.0`)不是"当前版本",不改。
 
 ```bash
 NEW_VER="<新版本号>"
-
-# 1. root pom.xml <version>
-sed -i.bak "0,/<version>${ROOT_VER}</s/<version>${ROOT_VER}</<version>${NEW_VER}</" pom.xml
-
-# 2. <easy-extension.version>
-sed -i.bak "s|<easy-extension.version>${ROOT_VER}<|<easy-extension.version>${NEW_VER}<|" pom.xml
-
-# 3. 子模块 parent ref
-for p in easy-extension-*/pom.xml; do
-  sed -i.bak "s|<version>${ROOT_VER}</version>|<version>${NEW_VER}</version>|" "$p"
-done
-
-# 4. README dependency example
-sed -i.bak "s|<version>${ROOT_VER}</version>|<version>${NEW_VER}</version>|g" README.md
-
-# 5. frontend package.json
-sed -i.bak "s|\"version\": \"${ROOT_VER}\"|\"version\": \"${NEW_VER}\"|" easy-extension-admin-ui-frontend/package.json
-
-# 清理 backup
-find . -name '*.bak' -delete
+python3 - "$ROOT_VER" "$NEW_VER" <<'PY'
+import pathlib, re, sys
+old, new = sys.argv[1], sys.argv[2]
+targets = {  # 文件 -> 需要替换的行的特征
+    'pom.xml': [r'^    <version>', r'<easy-extension\.version>'],
+    'easy-extension-core/pom.xml': [r'^        <version>'],
+    'easy-extension-annotation-processor/pom.xml': [r'^        <version>'],
+    'easy-extension-spring-boot-starter/pom.xml': [r'^        <version>'],
+    'easy-extension-admin-spring-boot-starter/pom.xml': [r'^        <version>'],
+    'README.md': [r'^    <version>'],
+    'easy-extension-admin-ui-frontend/package.json': [r'^  "version":'],
+}
+count = 0
+for f, patterns in targets.items():
+    p = pathlib.Path(f); lines = p.read_text().split('\n')
+    for i, line in enumerate(lines):
+        if old in line and 'xmlns' not in line and any(re.search(pat, line) for pat in patterns):
+            lines[i] = line.replace(old, new); count += 1
+    p.write_text('\n'.join(lines))
+print(f'replaced {count} lines')   # 期望 9:根 pom 2 + 子模块 4 + README 2 + package.json 1
+PY
 ```
 
-操作完后再跑一次步骤 1 做核对。
+操作完后再跑一次步骤 1 做核对,并确认 `git diff --stat` 只涉及这 7 个文件、共 9 行。
+
+admin 页面显示的版本号运行时读 jar 里的 `pom.properties`,前端 `package.json` 的版本号不会打进 bundle,**改它不需要重新打包前端**。
 
 ### 3. CHANGELOG / Release Notes 检查
 
@@ -195,12 +204,17 @@ git tag -l "v${NEW_VER}" "${NEW_VER}"
 ✅ Tag v${NEW_VER} available      PASS
 
 下一步:
-  git add -A && CLAUDE_COMMIT=1 git commit -m "chore: bump to ${NEW_VER}"
-  CLAUDE_PUSH=1 git push
-  git tag -a v${NEW_VER} -m "Release ${NEW_VER}"
-  git push origin v${NEW_VER}
-  mvn -B clean deploy
+  1. CHANGELOG:把 `## ${NEW_VER} (unreleased)` 改成发布日期
+  2. /commit + /push(release/${NEW_VER} 分支),开 PR 合并到 main
+  3. 合并后在 main 上:
+     git checkout main && git pull
+     git tag -a v${NEW_VER} -m "Release ${NEW_VER}" && git push origin v${NEW_VER}
+     git checkout v${NEW_VER} && mvn -B clean deploy -Prelease; git checkout main
+  4. https://central.sonatype.com/publishing/deployments 等 VALIDATED 后点 Publish
+  5. GitHub Release(内容取自 CHANGELOG)
 ```
+
+`-Prelease` 不能省:GPG 签名在这个 profile 里,不带它 Portal 会因为缺签名拒收。
 
 ## 用法
 
@@ -211,6 +225,7 @@ git tag -l "v${NEW_VER}" "${NEW_VER}"
 
 ## 注意
 
-- 这个 skill **不会**直接执行 `mvn deploy` —— 那是手动操作,需要在 Sonatype OSSRH 后台 release
+- 这个 skill **不会**直接执行 `mvn deploy` —— 那是手动操作,发布走 Central Portal(`central-publishing-maven-plugin`),上传后在 Portal 里手动 Publish
+- GPG 签名使用 `--batch --no-tty`,需要图形化 pinentry:`~/.gnupg/gpg-agent.conf` 里配 `pinentry-program /opt/homebrew/bin/pinentry-mac`,否则签名报 `No pinentry`
 - 也**不会**自动打 tag —— 留给用户手动确认
 - 但会改文件(版本号同步),改完后**必须 commit**
