@@ -81,7 +81,7 @@ CLAUDE_COMMIT=1 git commit -m "$(cat <<'EOF'
 
 可选: 详细说明 (如有)
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Co-Authored-By: <当前会话提供的署名行,不要写死模型名>
 EOF
 )"
 ```

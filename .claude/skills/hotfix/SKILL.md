@@ -73,7 +73,7 @@ CLAUDE_COMMIT=1 git commit -m "$(cat <<'EOF'
 通知下游: <yes/no>
 后续质量门: <预计时间>
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+Co-Authored-By: <当前会话提供的署名行,不要写死模型名>
 EOF
 )"
 CLAUDE_PUSH=1 git push
