@@ -15,6 +15,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>2.1.0</h3>
+    <ul>
+        <li>Supports IntelliJ IDEA 2025.1 and later (2025.1 - 2026.2); 2024.x is no longer supported</li>
+    </ul>
     <h3>2.0.0</h3>
     <ul>
         <li>Supports Easy-Extension 4.x: <code>@Business(abilities = {...})</code> as an ordered list of ability classes, with <code>Self.class</code> marking the business itself</li>
