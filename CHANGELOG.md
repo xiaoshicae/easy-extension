@@ -15,6 +15,9 @@
 - The `NO_BINDING` message says what to do (bind where the call starts, hand the binding over on other threads, the Spring MVC support of the starter). The old tail `, bind one first: try (Binding b = context.bind(param)) { ... }` is gone: match on `ResolutionException#reason() == NO_BINDING`, not on the text.
 - Servlet applications log one more INFO line at startup. Without a `MatcherParamResolver` bean they also get a small bean (`extensionHttpBindingHint`) that only logs that requests are not bound.
 
+### Fixed
+- Admin UI: the bundle embedded in `easy-extension-admin-spring-boot-starter` is rebuilt from the current frontend sources. 4.0.0 shipped the pre-4.0 bundle, so the business conflict table still said "priority" instead of the `abilities` order. The English locale also had an unescaped apostrophe that broke the frontend build.
+
 ### Compatibility notes
 - Binary compatible with 4.0.0. The new `ExtensionContext` methods are `default` methods.
 - Source: a class or interface that implements/extends `ExtensionContext<Resolution>` (an unusual type argument) no longer compiles, because `runWith`/`callWith` become ambiguous; override `runWith(Resolution, Runnable)` and `callWith(Resolution, Supplier)`. Any implementation that already declares a method with one of the new names but another return type fails the same way.
