@@ -10,8 +10,8 @@ import java.lang.annotation.Target;
  * Marks a class as a business: an integration party (tenant, merchant, business line) that mounts
  * abilities and may implement extension points itself.
  * <p>
- * The class must implement {@link io.github.xiaoshicae.extension.core.interfaces.Matcher} unless the
- * context uses a {@link io.github.xiaoshicae.extension.core.spi.BusinessResolver}.
+ * The class must implement {@link io.github.xiaoshicae.extension.core.interfaces.Matcher}: every business
+ * identifies its own requests, so adding a business touches only the business.
  * </p>
  */
 @Target(ElementType.TYPE)

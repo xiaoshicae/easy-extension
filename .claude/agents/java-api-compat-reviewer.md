@@ -75,7 +75,7 @@ git diff origin/main..HEAD 2>/dev/null || git diff HEAD
 
 | 文件:行号 | 类型 | 变更 | 修复建议 |
 |---|---|---|---|
-| easy-extension-core/.../BusinessResolver.java:42 | 接口加抽象方法 | + `void newMethod();` | 改为 `default void newMethod() { ... }` |
+| easy-extension-core/.../interfaces/Matcher.java:42 | 接口加抽象方法 | + `void newMethod();` | 改为 `default void newMethod() { ... }` |
 | ... |
 
 ### 🟡 P1 警告 (N 项)

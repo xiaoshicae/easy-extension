@@ -11,17 +11,12 @@ import io.github.xiaoshicae.extension.core.catalog.ExtensionCatalog;
 import io.github.xiaoshicae.extension.core.definition.AbilityDefinition;
 import io.github.xiaoshicae.extension.core.definition.BusinessDefinition;
 import io.github.xiaoshicae.extension.core.definition.DefaultImplementationDefinition;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
-import io.github.xiaoshicae.extension.core.spi.BusinessSelector;
-import io.github.xiaoshicae.extension.core.spi.OrderedCodeBusinessSelector;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.scanner.ExtensionPointHolder;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.ListableBeanFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 
 import java.lang.annotation.Annotation;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -42,17 +37,11 @@ import java.util.function.BiConsumer;
 public class DeferredExtensionContext<T> implements ExtensionContext<T>, SmartInitializingSingleton {
     private final ListableBeanFactory beanFactory;
     private final EasyExtensionConfigurationProperties properties;
-    private final ObjectProvider<BusinessResolver<T>> businessResolver;
-    private final ObjectProvider<BusinessSelector<T>> businessSelector;
     private volatile ExtensionContext<T> delegate;
 
-    public DeferredExtensionContext(ListableBeanFactory beanFactory, EasyExtensionConfigurationProperties properties,
-                                    ObjectProvider<BusinessResolver<T>> businessResolver,
-                                    ObjectProvider<BusinessSelector<T>> businessSelector) {
+    public DeferredExtensionContext(ListableBeanFactory beanFactory, EasyExtensionConfigurationProperties properties) {
         this.beanFactory = beanFactory;
         this.properties = properties;
-        this.businessResolver = businessResolver;
-        this.businessSelector = businessSelector;
     }
 
     @Override
@@ -82,12 +71,6 @@ public class DeferredExtensionContext<T> implements ExtensionContext<T>, SmartIn
         beanFactory.getBeansOfType(AbilityDefinition.class).values().forEach(definition -> builder.ability((AbilityDefinition<T>) definition));
         beanFactory.getBeansOfType(BusinessDefinition.class).values().forEach(definition -> builder.business((BusinessDefinition<T>) definition));
 
-        BusinessResolver<T> resolver = businessResolver.getIfAvailable();
-        if (resolver != null) {
-            builder.businessResolver(resolver);
-        }
-        BusinessSelector<T> selector = businessSelector.getIfAvailable();
-        builder.businessSelector(selector != null ? selector : new OrderedCodeBusinessSelector<>(properties.getBusinessMatchOrder()));
         builder.strict(!properties.isAllowUnknownBusiness());
         builder.matcherParamType(properties.getMatcherParamType());
         return builder.build();

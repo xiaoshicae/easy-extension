@@ -10,7 +10,7 @@
     {
       "name": "easy-extension.allow-unknown-business",
       "type": "java.lang.Boolean",
-      "description": "是否允许未知业务，当没有业务身份可以匹配时，如果不允许未知业务则请求报错，如果允许，则扩展点会走默认能力兜底 whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability.",
+      "description": "是否允许未知业务，当没有业务身份可以匹配时，如果不允许未知业务则请求报错，如果允许，则扩展点会走默认能力兜底 whether to allow unknown business. when there is no business to match, if not allowed, the request will report an error. If allowed, the extension point will use the default ability. 多个业务同时匹配与此开关无关，始终报错。Several matching businesses is an error regardless of this flag.",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
       "defaultValue": false
     },
@@ -24,9 +24,12 @@
     {
       "name": "easy-extension.business-match-order",
       "type": "java.util.List<java.lang.String>",
-      "description": "业务匹配优先级顺序（使用业务 code）。当多个业务同时匹配时，按此顺序选择优先级最高的。未列出的按注册顺序排在末尾。",
+      "description": "Removed in 5.0.0. 已在 5.0.0 移除:多个业务同时匹配一律报错(MULTIPLE_BUSINESSES_MATCHED),请让各业务的 match 互斥。",
       "sourceType": "io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionConfigurationProperties",
-      "defaultValue": []
+      "deprecation": {
+        "level": "error",
+        "reason": "Removed in 5.0.0: several matching businesses is always an error; make the business matchers mutually exclusive (doc/migration-5.0.md)."
+      }
     },
     {
       "name": "easy-extension.matcher-param-type",

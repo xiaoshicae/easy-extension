@@ -30,7 +30,7 @@ public final class BusinessDefinition<T> {
     }
 
     /**
-     * @param matcher {@code null} when the context uses a {@code BusinessResolver}
+     * @param matcher identifies the business's requests; required (a {@code null} matcher fails the build)
      */
     public static <T> BusinessDefinition<T> of(String code, Matcher<T> matcher, Object implementation) {
         if (code == null || code.isBlank()) {
@@ -67,7 +67,7 @@ public final class BusinessDefinition<T> {
         return code;
     }
 
-    /** The matcher; may be null for a business routed by a BusinessResolver. */
+    /** The matcher that identifies the business's requests. */
     public Matcher<T> matcher() {
         return matcher;
     }

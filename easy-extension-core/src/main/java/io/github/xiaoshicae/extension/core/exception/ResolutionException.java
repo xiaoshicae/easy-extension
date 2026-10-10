@@ -13,10 +13,8 @@ public class ResolutionException extends ExtensionException {
         NO_BINDING,
         /** Strict mode and no business matched. */
         NO_BUSINESS_MATCHED,
-        /** Strict mode and more than one business matched. */
+        /** More than one business matched (in strict and non-strict mode alike). */
         MULTIPLE_BUSINESSES_MATCHED,
-        /** A business code produced by a resolver or selector is not registered or did not match. */
-        BUSINESS_NOT_FOUND,
         /** No implementation, and no default implementation, for the extension point. */
         EXTENSION_NOT_FOUND
     }
