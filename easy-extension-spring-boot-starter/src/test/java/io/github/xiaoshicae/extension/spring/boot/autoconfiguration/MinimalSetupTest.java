@@ -1,7 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfiguration;
 
 import io.github.xiaoshicae.extension.core.exception.ResolutionException;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionInject;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.web.EasyExtensionWebAutoConfiguration;
@@ -24,14 +23,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * The smallest setup the README shows: the business is a code in a request header ({@code T = String}), the businesses
- * have no {@code Matcher}, and endpoints that do not use extension points stay out of the framework.
+ * The smallest setup the README shows: the business is a code in a request header ({@code T = String}), every
+ * business matches its own code, and endpoints that do not use extension points stay out of the framework.
  */
 public class MinimalSetupTest {
 
@@ -60,18 +57,13 @@ public class MinimalSetupTest {
         }
     }
 
-    /** What the user writes: the first two beans are all it takes. */
+    /** What the user writes: the resolver bean is all it takes (plus a match per business, see MinimalConfig). */
     @Configuration
     @EnableWebMvc
     static class Minimal {
         @Bean
         MatcherParamResolver<String> resolver() {
             return request -> request.getHeader("X-Biz-Code");
-        }
-
-        @Bean
-        BusinessResolver<String> businessResolver() {
-            return Optional::ofNullable;
         }
 
         @Bean
@@ -114,7 +106,7 @@ public class MinimalSetupTest {
             MockMvc mvc = mvc(ctx);
 
             assertEquals("422 NO_BUSINESS_MATCHED", answer(mvc, get("/hello")));
-            assertEquals("422 BUSINESS_NOT_FOUND", answer(mvc, get("/hello").header("X-Biz-Code", "biz.other")));
+            assertEquals("422 NO_BUSINESS_MATCHED", answer(mvc, get("/hello").header("X-Biz-Code", "biz.other")));
         });
     }
 

@@ -6,9 +6,6 @@ import io.github.xiaoshicae.extension.core.definition.BusinessDefinition;
 import io.github.xiaoshicae.extension.core.definition.DefaultImplementationDefinition;
 import io.github.xiaoshicae.extension.core.internal.Assembler;
 import io.github.xiaoshicae.extension.core.internal.AnnotationReader;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
-import io.github.xiaoshicae.extension.core.spi.BusinessSelector;
-import io.github.xiaoshicae.extension.core.spi.OrderedCodeBusinessSelector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,8 +28,6 @@ public final class ExtensionContextBuilder<T> {
     private final List<DefaultImplementationDefinition> defaultImplementations = new ArrayList<>();
     private final List<AbilityDefinition<T>> abilities = new ArrayList<>();
     private final List<BusinessDefinition<T>> businesses = new ArrayList<>();
-    private BusinessResolver<T> businessResolver;
-    private BusinessSelector<T> businessSelector = new OrderedCodeBusinessSelector<>(List.of());
     private boolean strict = true;
     private Class<?> matcherParamType;
 
@@ -106,24 +101,9 @@ public final class ExtensionContextBuilder<T> {
     }
 
     /**
-     * Routes requests to businesses by code instead of asking each business to match.
-     */
-    public ExtensionContextBuilder<T> businessResolver(BusinessResolver<T> businessResolver) {
-        this.businessResolver = businessResolver;
-        return this;
-    }
-
-    /**
-     * Chooses among several matching businesses; only used when not {@link #strict(boolean) strict}.
-     */
-    public ExtensionContextBuilder<T> businessSelector(BusinessSelector<T> businessSelector) {
-        this.businessSelector = Objects.requireNonNull(businessSelector, "businessSelector");
-        return this;
-    }
-
-    /**
-     * Strict (the default): exactly one business must match every request. Not strict: no match means only default
-     * implementations answer, several matches are settled by the {@link #businessSelector(BusinessSelector) selector}.
+     * Strict (the default): exactly one business must match every request. Not strict: a request no business
+     * matches is answered by the default implementations only. In both modes, several matching businesses is an
+     * error ({@code MULTIPLE_BUSINESSES_MATCHED}): every business identifies its own requests with {@code match}.
      */
     public ExtensionContextBuilder<T> strict(boolean strict) {
         this.strict = strict;
@@ -151,7 +131,6 @@ public final class ExtensionContextBuilder<T> {
      * @throws io.github.xiaoshicae.extension.core.exception.RegistrationException if the setup is invalid
      */
     public ExtensionContext<T> build() {
-        return Assembler.assemble(extensionPoints, defaultImplementations, abilities, businesses,
-                businessResolver, businessSelector, strict, matcherParamType);
+        return Assembler.assemble(extensionPoints, defaultImplementations, abilities, businesses, strict, matcherParamType);
     }
 }

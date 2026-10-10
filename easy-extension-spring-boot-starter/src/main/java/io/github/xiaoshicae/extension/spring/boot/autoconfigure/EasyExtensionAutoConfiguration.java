@@ -1,8 +1,6 @@
 package io.github.xiaoshicae.extension.spring.boot.autoconfigure;
 
 import io.github.xiaoshicae.extension.core.ExtensionContext;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
-import io.github.xiaoshicae.extension.core.spi.BusinessSelector;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.ExtensionAutoScanRegistrar;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAnnotationBeanPostProcessor;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.extension.register.postprocessor.ExtensionInjectAutowireCandidateResolverInstaller;
@@ -10,7 +8,6 @@ import io.github.xiaoshicae.extension.spring.boot.autoconfigure.task.ExtensionTa
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -41,10 +38,8 @@ public class EasyExtensionAutoConfiguration {
     @ConditionalOnMissingBean(ExtensionContext.class)
     @SuppressWarnings({"rawtypes", "unchecked"})
     public DeferredExtensionContext extensionContext(ListableBeanFactory beanFactory,
-                                                     EasyExtensionConfigurationProperties properties,
-                                                     ObjectProvider<BusinessResolver> businessResolver,
-                                                     ObjectProvider<BusinessSelector> businessSelector) {
-        return new DeferredExtensionContext(beanFactory, properties, businessResolver, businessSelector);
+                                                     EasyExtensionConfigurationProperties properties) {
+        return new DeferredExtensionContext(beanFactory, properties);
     }
 
     @Bean

@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Turns a request parameter into a {@link DefaultResolution}: pick the business, then evaluate the abilities it mounts.
@@ -61,49 +60,32 @@ final class Resolver<T> {
         return new DefaultResolution<>(registry, List.copyOf(chain), trace);
     }
 
+    /**
+     * One pass, every matcher asked once: several matches is an error in strict and non-strict mode alike. The list
+     * of codes is only built once a second business matches.
+     */
     private Registry.BusinessEntry<T> selectBusiness(T param) {
-        if (registry.businessResolver() != null) {
-            Optional<String> code = registry.businessResolver().resolve(param);
-            if (code == null || code.isEmpty()) {
-                return noBusiness();
-            }
-            Registry.BusinessEntry<T> business = registry.businesses().get(code.get());
-            if (business == null) {
-                // an unknown business is "no business": an error in strict mode, default implementations otherwise
-                if (registry.strict()) {
-                    throw new ResolutionException(Reason.BUSINESS_NOT_FOUND,
-                            String.format("business [%s] resolved by BusinessResolver is not registered", code.get()));
-                }
-                return null;
-            }
-            return business;
-        }
-
-        List<Registry.BusinessEntry<T>> matched = new ArrayList<>();
+        Registry.BusinessEntry<T> selected = null;
+        List<String> codes = null;
         for (Registry.BusinessEntry<T> business : registry.businesses().values()) {
-            if (business.matcher().match(param)) {
-                matched.add(business);
+            if (!business.matcher().match(param)) {
+                continue;
             }
+            if (selected == null) {
+                selected = business;
+                continue;
+            }
+            if (codes == null) {
+                codes = new ArrayList<>();
+                codes.add(selected.code());
+            }
+            codes.add(business.code());
         }
-        if (matched.isEmpty()) {
-            return noBusiness();
-        }
-        if (matched.size() == 1) {
-            return matched.get(0);
-        }
-        List<String> codes = matched.stream().map(Registry.BusinessEntry::code).toList();
-        if (registry.strict()) {
+        if (codes != null) {
             throw new ResolutionException(Reason.MULTIPLE_BUSINESSES_MATCHED,
                     String.format("multiple business found, matched business codes: [%s]", String.join(", ", codes)));
         }
-        String selected = registry.businessSelector().select(codes, param);
-        if (selected == null) {
-            return null;
-        }
-        return matched.stream().filter(business -> business.code().equals(selected)).findFirst()
-                .orElseThrow(() -> new ResolutionException(Reason.BUSINESS_NOT_FOUND,
-                        String.format("business [%s] chosen by BusinessSelector is not among the matched businesses [%s]",
-                                selected, String.join(", ", codes))));
+        return selected != null ? selected : noBusiness();
     }
 
     private Registry.BusinessEntry<T> noBusiness() {

@@ -184,11 +184,18 @@ public class CatalogTest {
     }
 
     @Test
-    public void testBusinessMatchersAreIgnoredWhenABusinessResolverRoutes() {
-        // a business whose Matcher<String> would clash with the abilities' Matcher<Param> is irrelevant with a resolver
+    public void testBusinessMatchersTakePartInTheParamType() {
+        // a business matching on String next to abilities matching on Param: no common param type
         ExtensionContextBuilder<Param> builder = payOnly().ability(new InheritedGenericAbility())
-                .business(BusinessDefinition.<Param>of("biz.string", null, new StringBusiness()).implementationClass(StringBusiness.class));
-        assertEquals(Param.class, builder.businessResolver(param -> java.util.Optional.of("biz.string")).build().catalog().matcherParamType());
+                .business(BusinessDefinition.<Param>of("biz.string", stringMatcher(), new StringBusiness()).implementationClass(StringBusiness.class));
+        RegistrationException e = assertThrows(RegistrationException.class, builder::build);
+        assertEquals("abilities and businesses match on different parameter types: [class " + Param.class.getName()
+                + ", class java.lang.String], they must share one (or set matcherParamType explicitly)", e.getMessage());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Matcher<Param> stringMatcher() {
+        return (Matcher<Param>) (Matcher<?>) new StringBusiness();
     }
 
     public static class StringBusiness implements Matcher<String>, Pay {

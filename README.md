@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="#快速开始">快速开始</a> · <a href="#核心概念">核心概念</a> · <a href="#常用用法">常用用法</a> · <a href="#配置">配置</a> · <a href="#管理后台">管理后台</a> · <a href="#从-3x-升级">升级</a>
+  <a href="#快速开始">快速开始</a> · <a href="#核心概念">核心概念</a> · <a href="#常用用法">常用用法</a> · <a href="#配置">配置</a> · <a href="#管理后台">管理后台</a> · <a href="#升级">升级</a>
 </p>
 
 ---
@@ -116,11 +116,16 @@ MatcherParamResolver<OrderMatchParam> resolver() {
 }
 ```
 
-resolver 返回业务和能力 `match` 用的那个类型。**身份只是一个业务码时更简单**:不用自己的参数类型,业务类也不用实现 `Matcher`(能力仍要实现 `Matcher<String>`),两个一行的 Bean 就够了:
+resolver 返回业务和能力 `match` 用的那个类型。**身份只是一个业务码时更简单**:不用自己的参数类型,`T` 直接是业务码,每个业务用一行 `match` 认领自己的码:
 
 ```java
-@Bean MatcherParamResolver<String> resolver()     { return request -> request.getHeader("X-Biz-Code"); }
-@Bean BusinessResolver<String> businessResolver() { return Optional::ofNullable; }   // 业务码直接当 code,见"按 code 直达业务"
+@Bean MatcherParamResolver<String> resolver() { return request -> request.getHeader("X-Biz-Code"); }
+
+@Business(code = "biz.retail")
+public class RetailBusiness implements Matcher<String>, FreightCalcExtension {
+    public boolean match(String code) { return "biz.retail".equals(code); }   // 新增业务只改它自己
+    ...
+}
 ```
 
 **不是每个接口都要走扩展点?** 用 `easy-extension.session-include-path-patterns`(只绑定这些)和 `session-exclude-path-patterns`(这些不绑定)圈定范围。范围外的接口不调用 resolver,也不要求带身份;范围内的接口,没匹配到业务默认会报错,所以不用扩展点的接口(健康检查、普通查询)请排除。启动日志会写明生效的范围(`HTTP binding is on: ...`)。
@@ -171,7 +176,9 @@ public class OrderController {
 
 ### 严格模式
 
-默认情况下,**没有匹配任何业务的请求会报错**(`NO_BUSINESS_MATCHED`),多个业务同时匹配也会报错。设置 `easy-extension.allow-unknown-business=true` 后,无匹配时所有扩展点走默认实现,多个匹配时按 `business-match-order` 选一个。
+默认情况下,**没有匹配任何业务的请求会报错**(`NO_BUSINESS_MATCHED`)。设置 `easy-extension.allow-unknown-business=true` 后,无匹配时所有扩展点走默认实现。
+
+**多个业务同时匹配,任何模式下都报错**(`MULTIPLE_BUSINESSES_MATCHED`):每个业务的 `match` 只认领属于自己的请求,重叠说明 `match` 写得有问题,框架不会替你挑一个。
 
 ## 常用用法
 
@@ -233,17 +240,6 @@ ExtensionContext<OrderMatchParam> context = ExtensionContext.<OrderMatchParam>bu
 
 装配时校验,违反则启动失败。
 
-### 按 code 直达业务
-
-业务很多时,不必逐个 `match`:
-
-```java
-@Bean
-BusinessResolver<OrderMatchParam> resolver() { return p -> Optional.ofNullable(p.getBizCode()); }
-```
-
-配置后业务可以不实现 `Matcher`。身份只是业务码时,`T` 直接用 `String`,见第 5 步。
-
 ### 排查"为什么选了这个实现"
 
 ```java
@@ -267,7 +263,6 @@ logging.level.io.github.xiaoshicae.extension.core.internal.Resolver: DEBUG
 | 配置项 | 默认 | 说明 |
 |---|---|---|
 | `easy-extension.allow-unknown-business` | `false` | 无业务匹配时是否放行(放行则走默认实现) |
-| `easy-extension.business-match-order` | 空 | 放行模式下多个业务同时匹配时,按业务 code 的顺序选择 |
 | `easy-extension.session-include-path-patterns` | 空(全部) | 只对这些路径(Ant 风格)绑定业务身份,如 `/api/**` |
 | `easy-extension.session-exclude-path-patterns` | 空 | 不绑定业务身份的路径(Ant 风格),如 `/actuator/**`,在包含之后排除 |
 | `easy-extension.async-propagation` | `false` | 让 `@Async` / `applicationTaskExecutor` 的任务沿用提交者的业务绑定 |
@@ -300,7 +295,11 @@ logging.level.io.github.xiaoshicae.extension.core.internal.Resolver: DEBUG
 
 IntelliJ IDEA 插件 **Easy Extension**(JetBrains Marketplace,需要 4.x 对应版本):在扩展点、能力、业务、`@ExtensionInject` 处显示导航图标,并提供扩展点拓扑视图。
 
-## 从 3.x 升级
+## 升级
+
+**4.x → 5.0**:识别业务只剩每个业务自己的 `match`,删除了 `BusinessResolver`、`BusinessSelector` 和 `business-match-order`,多个业务同时匹配一律报错。见 [迁移指南](doc/migration-5.0.md)。
+
+**3.x → 4.0**:
 
 4.0 **不向后兼容**。概念不变,表达方式变了:`abilities` 改为能力类的有序数组、默认实现按扩展点兜底、`MatcherParamResolver` 取代手写 Interceptor 和 session API、`ExtensionContext` 不可变且无运行期注册。步骤和对照表见 [迁移指南](doc/migration-4.0.md),变更清单见 [CHANGELOG](CHANGELOG.md),设计说明见 [design-4.0.md](doc/design-4.0.md)。
 

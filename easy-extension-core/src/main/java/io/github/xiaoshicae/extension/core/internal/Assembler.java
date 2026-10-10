@@ -12,8 +12,6 @@ import io.github.xiaoshicae.extension.core.definition.AbilityDefinition;
 import io.github.xiaoshicae.extension.core.definition.BusinessDefinition;
 import io.github.xiaoshicae.extension.core.definition.DefaultImplementationDefinition;
 import io.github.xiaoshicae.extension.core.exception.RegistrationException;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
-import io.github.xiaoshicae.extension.core.spi.BusinessSelector;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,15 +39,13 @@ public final class Assembler {
                                                    List<DefaultImplementationDefinition> defaultDefinitions,
                                                    List<AbilityDefinition<T>> abilityDefinitions,
                                                    List<BusinessDefinition<T>> businessDefinitions,
-                                                   BusinessResolver<T> businessResolver,
-                                                   BusinessSelector<T> businessSelector,
                                                    boolean strict,
                                                    Class<?> explicitMatcherParamType) {
         Map<Class<?>, ExtensionPointInfo> points = points(pointTypes);
         Map<Class<?>, Registry.DefaultEntry> defaults = new LinkedHashMap<>();
         List<DefaultImplementationInfo> defaultInfos = defaults(defaultDefinitions, points, defaults);
         Map<String, Registry.AbilityEntry<T>> abilities = abilities(abilityDefinitions, points);
-        Map<String, Registry.BusinessEntry<T>> businesses = businesses(businessDefinitions, abilities, points, businessResolver != null);
+        Map<String, Registry.BusinessEntry<T>> businesses = businesses(businessDefinitions, abilities, points);
 
         for (ExtensionPointInfo point : points.values()) {
             if (!defaults.containsKey(point.type())) {
@@ -57,7 +53,7 @@ public final class Assembler {
             }
         }
 
-        Class<?> matcherParamType = matcherParamType(abilities, businesses, businessResolver != null, explicitMatcherParamType);
+        Class<?> matcherParamType = matcherParamType(abilities, businesses, explicitMatcherParamType);
 
         ExtensionCatalog catalog = new ExtensionCatalog(
                 List.copyOf(points.values()),
@@ -68,7 +64,7 @@ public final class Assembler {
 
         Registry<T> registry = new Registry<>(Collections.unmodifiableMap(points), Collections.unmodifiableMap(abilities),
                 Collections.unmodifiableMap(businesses), Collections.unmodifiableMap(defaults),
-                strict, businessResolver, businessSelector, catalog);
+                strict, catalog);
         logger.info("[Easy Extension] context built: {} extension points, {} default implementations, {} abilities, {} businesses",
                 points.size(), defaultInfos.size(), abilities.size(), businesses.size());
         return new DefaultExtensionContext<>(registry);
@@ -168,14 +164,13 @@ public final class Assembler {
 
     private static <T> Map<String, Registry.BusinessEntry<T>> businesses(List<BusinessDefinition<T>> definitions,
                                                                         Map<String, Registry.AbilityEntry<T>> abilities,
-                                                                        Map<Class<?>, ExtensionPointInfo> points,
-                                                                        boolean hasBusinessResolver) {
+                                                                        Map<Class<?>, ExtensionPointInfo> points) {
         Map<String, Registry.BusinessEntry<T>> businesses = new LinkedHashMap<>();
         for (BusinessDefinition<T> definition : definitions) {
             String code = definition.code();
             String label = "business [" + code + "]";
-            if (definition.matcher() == null && !hasBusinessResolver) {
-                throw new RegistrationException(label + " should implement Matcher (or configure a BusinessResolver)");
+            if (definition.matcher() == null) {
+                throw new RegistrationException(label + " should implement Matcher");
             }
             if (abilities.containsKey(code)) {
                 throw new RegistrationException(String.format("code [%s] is used by both an ability and a business", code));
@@ -301,22 +296,17 @@ public final class Assembler {
 
     /**
      * The request parameter type: the configured one (every matcher must accept it), else the most specific type
-     * the matchers declare (every other matcher must accept it). Businesses ignore their matcher when a
-     * {@code BusinessResolver} routes requests.
+     * the matchers declare (every other matcher must accept it).
      */
     private static <T> Class<?> matcherParamType(Map<String, Registry.AbilityEntry<T>> abilities,
                                                  Map<String, Registry.BusinessEntry<T>> businesses,
-                                                 boolean hasBusinessResolver, Class<?> explicitType) {
+                                                 Class<?> explicitType) {
         Map<String, Class<?>> declared = new LinkedHashMap<>();
         for (Registry.AbilityEntry<T> ability : abilities.values()) {
             addIfKnown(declared, "ability [" + ability.code() + "]", ability.userClass());
         }
-        if (!hasBusinessResolver) {
-            for (Registry.BusinessEntry<T> business : businesses.values()) {
-                if (business.matcher() != null) {
-                    addIfKnown(declared, "business [" + business.code() + "]", business.userClass());
-                }
-            }
+        for (Registry.BusinessEntry<T> business : businesses.values()) {
+            addIfKnown(declared, "business [" + business.code() + "]", business.userClass());
         }
 
         if (explicitType != null) {

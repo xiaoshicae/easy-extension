@@ -127,8 +127,11 @@ public class RegistrationTest {
     public void testAbilitiesAndBusinessesNeedAMatcher() {
         assertEquals("ability [ability.no-matcher] should implement Matcher",
                 buildError(Fixtures.base().ability(new NoMatcherAbility())));
-        assertEquals("business [biz.no-matcher] should implement Matcher (or configure a BusinessResolver)",
+        assertEquals("business [biz.no-matcher] should implement Matcher",
                 buildError(Fixtures.base().business(new NoMatcherBusiness())));
+        // a definition without a matcher is no longer allowed: every business identifies its own requests
+        assertEquals("business [biz.manual] should implement Matcher",
+                buildError(Fixtures.base().business(BusinessDefinition.<Fixtures.Param>of("biz.manual", null, new NoMatcherBusiness()))));
     }
 
     @Test

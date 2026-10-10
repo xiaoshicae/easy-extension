@@ -54,17 +54,19 @@ DEBUG [Easy Extension] bound GET /api/order/checkout to thread [http-nio-8080-ex
 
 第二行需要 `logging.level.io.github.xiaoshicae.extension.spring.boot.autoconfigure.web=DEBUG`;每次解析的详情(解析链、被跳过的能力、耗时)在 `logging.level.io.github.xiaoshicae.extension.core.internal.Resolver=DEBUG`。没有声明 `MatcherParamResolver` 时,启动日志会说明"HTTP requests are not bound to a business"。
 
-**resolver 返回什么、最少要写什么**:返回业务和能力做 `match` 用的那个类型 `T`。没有内置的默认 resolver(身份放在哪个请求头、哪个参数里只有你知道),但可以很短。身份只是一个业务码时,不需要自己的参数类型,业务类也不用实现 `Matcher`:
+**resolver 返回什么、最少要写什么**:返回业务和能力做 `match` 用的那个类型 `T`。没有内置的默认 resolver(身份放在哪个请求头、哪个参数里只有你知道),但可以很短。身份只是一个业务码时,不需要自己的参数类型,`T` 直接是业务码,每个业务用一行 `match` 认领自己的码:
 
 ```java
-@Bean MatcherParamResolver<String> resolver()     { return request -> request.getHeader("X-Biz-Code"); }
-@Bean BusinessResolver<String> businessResolver() { return Optional::ofNullable; }   // 业务码直接当 code
+@Bean MatcherParamResolver<String> resolver() { return request -> request.getHeader("X-Biz-Code"); }
 
-@Business(code = "biz.retail")        // 没有 match(),按 code 直达
-public class RetailBusiness implements FreightCalcExtension { ... }
+@Business(code = "biz.retail")
+public class RetailBusiness implements Matcher<String>, FreightCalcExtension {
+    public boolean match(String code) { return "biz.retail".equals(code); }
+    ...
+}
 ```
 
-没带请求头时 resolver 返回 `null`,`Optional.ofNullable` 把它当作"没有业务":严格模式下是 `NO_BUSINESS_MATCHED`,业务码没注册是 `BUSINESS_NOT_FOUND`;设了 `allow-unknown-business=true`,两种都走默认实现。能力(`@Ability`)始终要实现 `Matcher<T>`,这时它只能看到业务码;能力需要更多信息时,用自己的参数类型,让 resolver 构造它。**自己写 `Matcher` 时,resolver 不要返回 `null`**(`null` 会原样交给 `match`),没有身份就返回一个"空身份"对象。
+没带请求头时 resolver 返回 `null`,原样交给各业务的 `match`;上面的写法(`"biz.retail".equals(code)`)对 `null` 返回 false,于是没有业务匹配:严格模式下是 `NO_BUSINESS_MATCHED`,设了 `allow-unknown-business=true` 则走默认实现。业务码没有对应的业务时也是一样。能力(`@Ability`)同样实现 `Matcher<T>`,这时它只能看到业务码;能力需要更多信息时,用自己的参数类型,让 resolver 构造它。
 
 **不是每个接口都要走扩展点**:用路径圈定范围。范围外的接口不调用 resolver、不绑定,也不要求带身份;范围内的接口,没匹配到业务在严格模式下就是错误(哪怕这个接口根本没用扩展点),所以不用扩展点的接口(健康检查、普通查询)要排除:
 
@@ -174,7 +176,7 @@ void retailPaysFreight() {
 }
 ```
 
-**RPC**:跨进程传的是**业务身份**(`param` 的字段),不是 `Resolution`(它是进程内快照,不可序列化)。调用方把业务码等字段放进 metadata / attachment / 请求头,被调用方在服务端入口用它构造 `param`。想让下游沿用同一个业务,转发 `context.current().trace().matchedBusinessCode()`,下游配 `BusinessResolver` 按 code 直达。
+**RPC**:跨进程传的是**业务身份**(`param` 的字段),不是 `Resolution`(它是进程内快照,不可序列化)。调用方把业务码等字段放进 metadata / attachment / 请求头,被调用方在服务端入口用它构造 `param`。想让下游沿用同一个业务,转发 `context.current().trace().matchedBusinessCode()`,下游的业务用 `match` 认领这个 code。
 
 gRPC 的要点是:业务方法不一定跑在 `interceptCall` 的线程上,所以在监听器的回调里绑定(示意代码,未针对具体版本编译):
 

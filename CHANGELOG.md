@@ -1,5 +1,19 @@
 # Changelog
 
+## 5.0.0 (unreleased)
+
+**BREAKING CHANGE:** businesses are identified by their own `match` only. `BusinessResolver`, `BusinessSelector` and `easy-extension.business-match-order` are removed, and several matching businesses is an error in every mode. See [doc/migration-5.0.md](doc/migration-5.0.md).
+
+### Removed
+- `core.spi`: `BusinessResolver`, `BusinessSelector`, `OrderedCodeBusinessSelector`; `ExtensionContextBuilder.businessResolver(...)` / `businessSelector(...)`.
+- Starter: `easy-extension.business-match-order` (kept in the configuration metadata as an error-level deprecation for tools that read it; Spring Boot otherwise ignores the leftover property); with it `EasyExtensionConfigurationProperties.getBusinessMatchOrder()` / `setBusinessMatchOrder(...)`. The `BusinessResolver` / `BusinessSelector` beans are no longer picked up: `DeferredExtensionContext` takes `(beanFactory, properties)` and the `EasyExtensionAutoConfiguration.extensionContext(...)` bean method takes `(ListableBeanFactory, EasyExtensionConfigurationProperties)`.
+- `ResolutionException.Reason.BUSINESS_NOT_FOUND`: a code without a business is now "no business matched". The ordinal of `EXTENSION_NOT_FOUND` moves from 4 to 3; match on the constant or `name()`, not on `ordinal()`.
+
+### Changed
+- Several matching businesses fails with `MULTIPLE_BUSINESSES_MATCHED` also when `allow-unknown-business=true` (not strict). Not strict now only means: a request no business matches is answered by the default implementations.
+- Every business must implement `Matcher` (`BusinessDefinition.of` with a `null` matcher fails the build), and business matchers always take part in deriving the matcher param type.
+- Selecting the business asks every business matcher exactly once per request, also when several match (the list of matching codes is built only for the error message).
+
 ## 4.1.1 (2026-10-09)
 
 ### Fixed

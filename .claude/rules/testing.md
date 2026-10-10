@@ -86,13 +86,16 @@ Awaitility.await().atMost(5, SECONDS).until(() -> context.isReady());
 import static org.mockito.Mockito.*;
 
 @Test
-public void testInvoke() {
-    BusinessResolver<Param> mock = mock(BusinessResolver.class);
-    when(mock.execute(any())).thenReturn("ok");
+@SuppressWarnings("unchecked")
+public void testMatcherIsAskedOnce() {
+    Matcher<Param> matcher = mock(Matcher.class);
+    when(matcher.match(any())).thenReturn(true);
 
-    invoker.invoke(mock, request);
+    ExtensionContext<Param> context = Fixtures.base()
+            .business(BusinessDefinition.of("biz.mock", matcher, new RetailBusiness())).build();
+    context.resolve(Param.of("retail"));
 
-    verify(mock).execute(eq(request));
+    verify(matcher).match(eq(Param.of("retail")));
 }
 ```
 

@@ -41,8 +41,8 @@ public interface ExtensionContext<T> {
     /**
      * Resolves the parameter without binding it to any thread.
      *
-     * @throws io.github.xiaoshicae.extension.core.exception.ResolutionException in strict mode, if no business or more
-     *                                                                           than one business matches
+     * @throws io.github.xiaoshicae.extension.core.exception.ResolutionException if more than one business matches, or,
+     *                                                                           in strict mode, if none does
      */
     Resolution resolve(T param);
 
@@ -85,8 +85,8 @@ public interface ExtensionContext<T> {
      * also when {@code body} throws. Bindings nest, so this can be used inside an already bound call to act as another
      * business for a while. For a body that throws checked exceptions, use {@code try (Binding b = bind(param)) {...}}.
      *
-     * @throws io.github.xiaoshicae.extension.core.exception.ResolutionException in strict mode, if no business or more
-     *                                                                           than one business matches
+     * @throws io.github.xiaoshicae.extension.core.exception.ResolutionException if more than one business matches, or,
+     *                                                                           in strict mode, if none does
      */
     default void runWith(T param, Runnable body) {
         Objects.requireNonNull(body, "body");

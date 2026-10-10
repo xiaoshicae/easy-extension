@@ -4,8 +4,6 @@ import io.github.xiaoshicae.extension.core.catalog.ExtensionCatalog;
 import io.github.xiaoshicae.extension.core.catalog.ExtensionPointInfo;
 import io.github.xiaoshicae.extension.core.catalog.MountInfo;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
-import io.github.xiaoshicae.extension.core.spi.BusinessSelector;
 
 import java.util.List;
 import java.util.Map;
@@ -19,8 +17,6 @@ record Registry<T>(Map<Class<?>, ExtensionPointInfo> points,
                    Map<String, BusinessEntry<T>> businesses,
                    Map<Class<?>, DefaultEntry> defaults,
                    boolean strict,
-                   BusinessResolver<T> businessResolver,
-                   BusinessSelector<T> businessSelector,
                    ExtensionCatalog catalog) {
 
     record AbilityEntry<T>(String code, Matcher<T> matcher, Object impl, Class<?> userClass, Set<Class<?>> points,

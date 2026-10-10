@@ -6,8 +6,8 @@
 
 | 类型 | 规则 | 示例 |
 |---|---|---|
-| 包名 | 小写单词,层级化 | `io.github.xiaoshicae.extension.core.spi` |
-| 接口 | 4.0 起**不加** `I` 前缀,用领域名 | `ExtensionContext`, `BusinessResolver`(3.x 的 `I*` 已删除) |
+| 包名 | 小写单词,层级化 | `io.github.xiaoshicae.extension.core.catalog` |
+| 接口 | 4.0 起**不加** `I` 前缀,用领域名 | `ExtensionContext`, `Matcher`(3.x 的 `I*` 已删除) |
 | 内部默认实现 | **`Default` 前缀**,放在 `core.internal` | `DefaultExtensionContext` |
 | 异常 | **`Exception` 后缀**,全部 unchecked | `RegistrationException`, `ResolutionException` |
 | Spring FactoryBean | **`FactoryBean` 后缀** | `FirstMatchedExtensionFactoryBean` |
@@ -21,7 +21,6 @@
 | `core` | 顶层 API(`ExtensionContext`、`ExtensionContextBuilder`、`Resolution`、`Binding`) |
 | `core/annotation` | 注解:`@ExtensionPoint`、`@Ability`、`@Business`、`@DefaultImplementation`、`Self` |
 | `core/interfaces` | `Matcher` |
-| `core/spi` | 扩展 SPI:`BusinessResolver`、`BusinessSelector` |
 | `core/definition` | 不用注解时的编程式装配描述(`*Definition`) |
 | `core/catalog` | 只读元数据(`ExtensionCatalog` 及 `*Info` record) |
 | `core/trace` | 解析追踪与解释(`ResolveTrace`、`ExtensionExplanation`) |

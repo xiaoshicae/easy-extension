@@ -10,8 +10,6 @@ import io.github.xiaoshicae.extension.core.catalog.ExtensionPointInfo;
 import io.github.xiaoshicae.extension.core.definition.AbilityDefinition;
 import io.github.xiaoshicae.extension.core.definition.BusinessDefinition;
 import io.github.xiaoshicae.extension.core.exception.ResolutionException;
-import io.github.xiaoshicae.extension.core.spi.BusinessResolver;
-import io.github.xiaoshicae.extension.core.spi.BusinessSelector;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.DeferredExtensionContext;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.EasyExtensionAutoConfiguration;
 import io.github.xiaoshicae.extension.spring.boot.autoconfigure.annotation.ExtensionScan;
@@ -30,7 +28,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -232,20 +229,6 @@ public class StarterIntegrationTest {
                 assertEquals("default-pay", extensionContext(context).resolve(new Param("nobody")).first(Pay.class).pay()));
     }
 
-    @Configuration
-    static class RoutingByCode {
-        @Bean
-        BusinessResolver<Param> businessResolver() {
-            return param -> Optional.of("biz.retail");
-        }
-    }
-
-    @Test
-    public void testABusinessResolverBeanRoutesRequests() {
-        runner.withUserConfiguration(RoutingByCode.class).run(context ->
-                assertEquals("retail-pay", extensionContext(context).resolve(new Param("whoever")).first(Pay.class).pay()));
-    }
-
     public static class SecondRetailPay implements Pay {
         @Override
         public String pay() {
@@ -261,28 +244,31 @@ public class StarterIntegrationTest {
         }
     }
 
-    @Configuration
-    static class PickSecond {
-        @Bean
-        BusinessSelector<Param> selector() {
-            return (codes, param) -> "biz.retail.2";
+    @Test
+    public void testSeveralMatchingBusinessesIsAnErrorInEveryMode() {
+        for (String allowUnknown : new String[]{"false", "true"}) {
+            runner.withUserConfiguration(TwoRetailBusinesses.class)
+                    .withPropertyValues("easy-extension.allow-unknown-business=" + allowUnknown)
+                    .run(context -> {
+                        ResolutionException e = assertThrows(ResolutionException.class, () -> extensionContext(context).resolve(new Param("retail")));
+                        assertEquals(ResolutionException.Reason.MULTIPLE_BUSINESSES_MATCHED, e.reason(), "allow-unknown-business=" + allowUnknown);
+                        assertEquals("multiple business found, matched business codes: [biz.retail, biz.retail.2]", e.getMessage(),
+                                "allow-unknown-business=" + allowUnknown);
+                    });
         }
     }
 
     @Test
-    public void testSeveralMatchingBusinessesAreSettledBySelectorOrConfiguredOrder() {
-        // strict: ambiguity is an error
-        runner.withUserConfiguration(TwoRetailBusinesses.class).run(context -> {
-            ResolutionException e = assertThrows(ResolutionException.class, () -> extensionContext(context).resolve(new Param("retail")));
-            assertEquals(ResolutionException.Reason.MULTIPLE_BUSINESSES_MATCHED, e.reason());
-        });
-        // not strict: a BusinessSelector bean ...
-        runner.withUserConfiguration(TwoRetailBusinesses.class, PickSecond.class).withPropertyValues("easy-extension.allow-unknown-business=true")
-                .run(context -> assertEquals("retail2-pay", extensionContext(context).resolve(new Param("retail")).first(Pay.class).pay()));
-        // ... or, without one, the configured order
+    public void testALeftoverBusinessMatchOrderIsIgnored() {
+        // removed in 5.0: an old configuration still starts, and does not settle several matching businesses any more
         runner.withUserConfiguration(TwoRetailBusinesses.class)
                 .withPropertyValues("easy-extension.allow-unknown-business=true", "easy-extension.business-match-order=biz.retail.2,biz.retail")
-                .run(context -> assertEquals("retail2-pay", extensionContext(context).resolve(new Param("retail")).first(Pay.class).pay()));
+                .run(context -> {
+                    assertNull(context.getStartupFailure());
+                    ResolutionException e = assertThrows(ResolutionException.class, () -> extensionContext(context).resolve(new Param("retail")));
+                    assertEquals(ResolutionException.Reason.MULTIPLE_BUSINESSES_MATCHED, e.reason());
+                    assertEquals("multiple business found, matched business codes: [biz.retail, biz.retail.2]", e.getMessage());
+                });
     }
 
     @Test

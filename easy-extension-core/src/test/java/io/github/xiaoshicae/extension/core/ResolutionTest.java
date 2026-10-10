@@ -1,5 +1,9 @@
 package io.github.xiaoshicae.extension.core;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import io.github.xiaoshicae.extension.core.interfaces.Matcher;
 import io.github.xiaoshicae.extension.core.definition.DefaultImplementationDefinition;
 import io.github.xiaoshicae.extension.core.definition.AbilityDefinition;
@@ -7,14 +11,12 @@ import io.github.xiaoshicae.extension.core.Fixtures.*;
 import io.github.xiaoshicae.extension.core.definition.BusinessDefinition;
 import io.github.xiaoshicae.extension.core.exception.ResolutionException;
 import io.github.xiaoshicae.extension.core.exception.ResolutionException.Reason;
-import io.github.xiaoshicae.extension.core.spi.OrderedCodeBusinessSelector;
 import io.github.xiaoshicae.extension.core.trace.ExtensionExplanation;
 import io.github.xiaoshicae.extension.core.trace.ResolveTrace;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -103,63 +105,36 @@ public class ResolutionTest {
     }
 
     @Test
-    public void testSelectorSettlesSeveralMatchingBusinesses() {
-        ExtensionContext<Param> byOrder = Fixtures.base().strict(false)
-                .business(new RetailBusiness()).business(new SecondRetailBusiness())
-                .businessSelector(new OrderedCodeBusinessSelector<>(List.of("biz.retail.2", "biz.retail"))).build();
-        assertEquals("retail2-pay", byOrder.resolve(Param.of("retail")).first(Pay.class).pay());
-
-        // unlisted codes: the first registered business wins
-        ExtensionContext<Param> unlisted = Fixtures.base().strict(false)
-                .business(new RetailBusiness()).business(new SecondRetailBusiness()).build();
-        assertEquals("retail-pay", unlisted.resolve(Param.of("retail")).first(Pay.class).pay());
-
-        ExtensionContext<Param> none = Fixtures.base().strict(false)
-                .business(new RetailBusiness()).business(new SecondRetailBusiness())
-                .businessSelector((codes, param) -> null).build();
-        assertEquals("default-pay", none.resolve(Param.of("retail")).first(Pay.class).pay());
-
-        ExtensionContext<Param> bogus = Fixtures.base().strict(false)
-                .business(new RetailBusiness()).business(new SecondRetailBusiness())
-                .businessSelector((codes, param) -> "biz.nope").build();
-        ResolutionException e = assertThrows(ResolutionException.class, () -> bogus.resolve(Param.of("retail")));
-        assertEquals(Reason.BUSINESS_NOT_FOUND, e.reason());
-        assertEquals("business [biz.nope] chosen by BusinessSelector is not among the matched businesses [biz.retail, biz.retail.2]", e.getMessage());
-    }
-
-    @Test
-    public void testBusinessResolverRoutesByCodeAndIgnoresMatchers() {
-        // FreshBusiness.match would be false for tenant "x": the resolver decides alone
-        ExtensionContext<Param> context = Fixtures.base().business(new FreshBusiness()).business(new RetailBusiness())
-                .businessResolver(param -> "x".equals(param.tenant()) ? Optional.of("biz.fresh")
-                        : "ghost".equals(param.tenant()) ? Optional.of("biz.ghost") : Optional.empty())
-                .build();
-
-        assertEquals("fresh-pay", context.resolve(Param.of("x")).first(Pay.class).pay());
-
-        ResolutionException unknown = assertThrows(ResolutionException.class, () -> context.resolve(Param.of("ghost")));
-        assertEquals(Reason.BUSINESS_NOT_FOUND, unknown.reason());
-        assertEquals("business [biz.ghost] resolved by BusinessResolver is not registered", unknown.getMessage());
-
-        // empty is "no business", it does not fall back to matching (the retail business would match "retail")
-        ResolutionException empty = assertThrows(ResolutionException.class, () -> context.resolve(Param.of("retail")));
-        assertEquals(Reason.NO_BUSINESS_MATCHED, empty.reason());
-    }
-
-    @Test
-    public void testBusinessWithoutMatcherWorksWithAResolver() {
-        ExtensionContext<Param> context = Fixtures.base()
-                .business(BusinessDefinition.<Param>of("biz.manual", null, new ManualBusiness()))
-                .businessResolver(param -> Optional.of("biz.manual")).build();
-
-        assertEquals("manual-pay", context.resolve(Param.of("any")).first(Pay.class).pay());
-    }
-
-    public static class ManualBusiness implements Pay {
-        @Override
-        public String pay() {
-            return "manual-pay";
+    public void testSeveralBusinessesListsEveryMatchAndAsksEachMatcherOnce() {
+        Map<String, AtomicInteger> calls = new LinkedHashMap<>();
+        Function<String, Matcher<Param>> counting = code -> {
+            calls.put(code, new AtomicInteger());
+            return param -> {
+                calls.get(code).incrementAndGet();
+                return !"biz.fresh-like".equals(code) && "retail".equals(param.tenant());
+            };
+        };
+        ExtensionContextBuilder<Param> builder = Fixtures.base();
+        for (String code : List.of("biz.a", "biz.fresh-like", "biz.b", "biz.c")) { // biz.fresh-like never matches
+            builder.business(BusinessDefinition.of(code, counting.apply(code), new RetailBusiness()));
         }
+        ExtensionContext<Param> context = builder.build();
+
+        ResolutionException e = assertThrows(ResolutionException.class, () -> context.resolve(Param.of("retail")));
+        assertEquals(Reason.MULTIPLE_BUSINESSES_MATCHED, e.reason());
+        assertEquals("multiple business found, matched business codes: [biz.a, biz.b, biz.c]", e.getMessage());
+        calls.forEach((code, count) -> assertEquals(1, count.get(), code + " matcher calls"));
+    }
+
+    @Test
+    public void testSeveralBusinessesIsAnErrorEvenWhenNotStrict() {
+        // not strict only relaxes "no business": overlapping matchers are a problem of the businesses, not a choice
+        ExtensionContext<Param> context = Fixtures.base().strict(false)
+                .business(new RetailBusiness()).business(new SecondRetailBusiness()).build();
+
+        ResolutionException e = assertThrows(ResolutionException.class, () -> context.resolve(Param.of("retail")));
+        assertEquals(Reason.MULTIPLE_BUSINESSES_MATCHED, e.reason());
+        assertEquals("multiple business found, matched business codes: [biz.retail, biz.retail.2]", e.getMessage());
     }
 
     @Test
@@ -194,16 +169,6 @@ public class ResolutionTest {
         assertEquals("RETAIL-PAY", resolution.invoke(Pay.class, e -> e.pay().toUpperCase()));
         assertEquals(List.of(10, 14, 11), resolution.invokeAll(Pay.class, e -> e.pay().length()));
         assertEquals(35, resolution.invokeReduce(Pay.class, e -> e.pay().length(), 0, Integer::sum));
-    }
-
-    @Test
-    public void testUnknownBusinessFromAResolverIsNoBusinessWhenNotStrict() {
-        ExtensionContext<Param> context = Fixtures.base().business(new RetailBusiness()).strict(false)
-                .businessResolver(param -> Optional.of("biz.not-onboarded")).build();
-
-        Resolution resolution = context.resolve(Param.of("retail", "alipay"));
-        assertNull(resolution.trace().matchedBusinessCode());
-        assertEquals("default-pay", resolution.first(Pay.class).pay());
     }
 
     public static class SharedPay implements Matcher<Param>, Pay {
