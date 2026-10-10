@@ -59,7 +59,7 @@ public class OrderService {
 <dependency>
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension-spring-boot-starter</artifactId>
-    <version>4.1.1</version>
+    <version>5.0.0</version>
 </dependency>
 ```
 
@@ -281,7 +281,7 @@ logging.level.io.github.xiaoshicae.extension.core.internal.Resolver: DEBUG
 <dependency>
     <groupId>io.github.xiaoshicae</groupId>
     <artifactId>easy-extension-admin-spring-boot-starter</artifactId>
-    <version>4.1.1</version>
+    <version>5.0.0</version>
 </dependency>
 ```
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.0.0 (unreleased)
+## 5.0.0 (2026-10-10)
 
 **BREAKING CHANGE:** businesses are identified by their own `match` only. `BusinessResolver`, `BusinessSelector` and `easy-extension.business-match-order` are removed, and several matching businesses is an error in every mode. See [doc/migration-5.0.md](doc/migration-5.0.md).
 
